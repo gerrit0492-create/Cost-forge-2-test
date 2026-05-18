@@ -27,6 +27,8 @@ _P = {
     "setup":    st.Page("pages/24_market_setup.py",            title="Market Setup",     icon="🧩"),
     "restore":  st.Page("pages/25_Restore_Hulp.py",            title="Restore",          icon="♻️"),
     "mgmt":     st.Page("pages/27_Management_Dashboard.py",    title="Management",       icon="📊"),
+    "linedet":  st.Page("pages/28_Line_Cost_Detail.py",        title="Line Cost Detail", icon="🔍"),
+    "quotesheet": st.Page("pages/29_Quote_Sheet.py",           title="Quote Sheet",      icon="🧾"),
     "debug":    st.Page("pages/00_Debug.py",                   title="Debug",            icon="🐛"),
     "diagnose": st.Page("pages/0_Diagnose.py",                 title="Diagnose",         icon="🔍"),
 }
@@ -166,6 +168,14 @@ def dashboard() -> None:
     with c4:
         _card(_P["calc"],    "💸", "Calculation",
               "Detailed calculation per BOM line.")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        _card(_P["linedet"],    "🔍", "Line Cost Detail",
+              "Full cost breakdown per line — purchase, machine, labour, overhead, margin with error checks.")
+    with c2:
+        _card(_P["quotesheet"], "🧾", "Quote Sheet",
+              "Internal cost vs selling price — generate a customer quote with optional margin override.")
 
     st.divider()
 
