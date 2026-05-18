@@ -6,7 +6,24 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
+_STR_COLS = ["line_id", "material_id", "qty"]
+_NUM_COLS = ["material_cost", "process_cost", "overhead", "total_cost"]
+
+
+def _prepare_df(df):
+    df = df.copy()
+    for col in _STR_COLS:
+        if col not in df.columns:
+            df[col] = ""
+    for col in _NUM_COLS:
+        if col not in df.columns:
+            df[col] = 0.0
+    df[_NUM_COLS] = df[_NUM_COLS].fillna(0.0)
+    return df
+
+
 def make_offer_pdf(df, title: str = "Offerte") -> bytes:
+    df = _prepare_df(df)
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4)
     styles = getSampleStyleSheet()
@@ -21,13 +38,13 @@ def make_offer_pdf(df, title: str = "Offerte") -> bytes:
     headers = ["Line", "Material", "Qty", "Mat. cost", "Proc. cost", "Overhead", "Total"]
     rows = [
         [
-            str(r.get("line_id", "")),
-            str(r.get("material_id", "")),
-            str(r.get("qty", "")),
-            f"{r.get('material_cost', 0):,.2f}",
-            f"{r.get('process_cost', 0):,.2f}",
-            f"{r.get('overhead', 0):,.2f}",
-            f"{r.get('total_cost', 0):,.2f}",
+            str(r["line_id"]),
+            str(r["material_id"]),
+            str(r["qty"]),
+            f"{r['material_cost']:,.2f}",
+            f"{r['process_cost']:,.2f}",
+            f"{r['overhead']:,.2f}",
+            f"{r['total_cost']:,.2f}",
         ]
         for _, r in df.iterrows()
     ]

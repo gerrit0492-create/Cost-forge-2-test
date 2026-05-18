@@ -1,6 +1,7 @@
 # utils/history.py
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,6 +9,8 @@ from pathlib import Path
 from typing import Iterable, List, Optional
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 # Paden
 DATA_DIR = Path("data")
@@ -24,6 +27,7 @@ try:
         load_materials as _load_materials_io,
     )
 except Exception:
+    logger.warning("utils.io not available; falling back to direct CSV read", exc_info=True)
     _load_materials_io = None  # type: ignore
     SCHEMA_MATERIALS = {
         "material_id": "string",
@@ -99,6 +103,7 @@ def build_history_df(material_ids: Optional[Iterable[str]] = None) -> pd.DataFra
         try:
             df = pd.read_csv(p)
         except Exception:
+            logger.warning("Skipping corrupt snapshot: %s", p, exc_info=True)
             continue
 
         # Normaliseer kolommen
@@ -116,10 +121,10 @@ def build_history_df(material_ids: Optional[Iterable[str]] = None) -> pd.DataFra
             rows.append(
                 dict(
                     date=dt,
-                    material_id=str(r.get("material_id", "")),
-                    description=str(r.get("description", "")),
-                    commodity=str(r.get("commodity", "")),
-                    price_eur_per_kg=pd.to_numeric(r.get("price_eur_per_kg"), errors="coerce"),
+                    material_id=str(r["material_id"]),
+                    description=str(r["description"]),
+                    commodity=str(r["commodity"]),
+                    price_eur_per_kg=pd.to_numeric(r["price_eur_per_kg"], errors="coerce"),
                 )
             )
 
@@ -164,9 +169,8 @@ def diff_vs_latest() -> pd.DataFrame:
     p["price_eur_per_kg"] = pd.to_numeric(p["price_eur_per_kg"], errors="coerce")
 
     m = p.merge(c, on="material_id", suffixes=("_old", "_new"), how="outer")
-    m["pct_change"] = (m["price_eur_per_kg_new"] - m["price_eur_per_kg_old"]) / m[
-        "price_eur_per_kg_old"
-    ]
+    old_nonzero = m["price_eur_per_kg_old"].replace(0, pd.NA)
+    m["pct_change"] = (m["price_eur_per_kg_new"] - m["price_eur_per_kg_old"]) / old_nonzero
     m = m.rename(columns={"price_eur_per_kg_old": "old_price", "price_eur_per_kg_new": "new_price"})
     return m
 

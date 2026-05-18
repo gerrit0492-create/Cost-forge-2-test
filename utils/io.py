@@ -39,6 +39,9 @@ def paths():
 
 
 def _read_csv(p, schema=None):
+    p = Path(p)
+    if not p.exists():
+        raise FileNotFoundError(f"CSV file not found: {p}")
     if schema is None:
         return pd.read_csv(p)
     dtypes = {k: v for k, v in schema.items() if v != "Int64"}

@@ -1,4 +1,5 @@
 # pages/99_Update_from_Public_CSV.py
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -40,15 +41,26 @@ def read_public_csv(csv_url: str) -> pd.DataFrame:
     return df
 
 
+def _atomic_write_csv(df: pd.DataFrame, dest: Path) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=dest.parent, suffix=".tmp")
+    tmp_path = Path(tmp_name)
+    try:
+        with open(fd, "w", newline="", encoding="utf-8") as fh:
+            df.to_csv(fh, index=False)
+        tmp_path.replace(dest)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
 def write_and_snapshot(df: pd.DataFrame, target: Path, history_prefix: str):
-    target.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(target, index=False)
+    _atomic_write_csv(df, target)
     hist_dir = Path("data/history")
-    hist_dir.mkdir(parents=True, exist_ok=True)
     stamp = pd.Timestamp.utcnow().strftime("%Y%m%d")
     snap = hist_dir / f"{history_prefix}{stamp}.csv"
     if not snap.exists():
-        df.to_csv(snap, index=False)
+        _atomic_write_csv(df, snap)
     return target, snap
 
 
