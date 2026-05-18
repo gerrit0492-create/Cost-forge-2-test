@@ -25,13 +25,39 @@ DISPLAY_COLS = [
 ]
 
 _TEMPLATE = pd.DataFrame([
-    dict(line_id="L01", material_id="S235",     qty=1,  mass_kg=8.50, process_route="LASER_CUT",    runtime_h=0.45),
-    dict(line_id="L02", material_id="S235",     qty=2,  mass_kg=3.20, process_route="BENDING",       runtime_h=0.30),
-    dict(line_id="L03", material_id="AL6061",   qty=1,  mass_kg=4.20, process_route="CNC_MILL_5AX",  runtime_h=3.50),
-    dict(line_id="L04", material_id="316",      qty=2,  mass_kg=0.90, process_route="CNC_LATHE",     runtime_h=0.80),
-    dict(line_id="L05", material_id="Ti6Al4V",  qty=1,  mass_kg=0.65, process_route="3DP_SLM",       runtime_h=4.50),
-    dict(line_id="L06", material_id="POM",      qty=8,  mass_kg=0.12, process_route="CNC_LATHE",     runtime_h=0.25),
-    dict(line_id="L07", material_id="S235",     qty=1,  mass_kg=0.00, process_route="ASSEMBLY",      runtime_h=4.00),
+    # Staal
+    dict(line_id="L01", material_id="S235",       qty=1,  mass_kg=8.50, process_route="LASER_CUT",    runtime_h=0.45),
+    dict(line_id="L02", material_id="S235",       qty=2,  mass_kg=3.20, process_route="BENDING",       runtime_h=0.30),
+    dict(line_id="L03", material_id="S355",       qty=4,  mass_kg=1.80, process_route="LASER_CUT",     runtime_h=0.20),
+    dict(line_id="L04", material_id="S235",       qty=1,  mass_kg=0.00, process_route="MIG_WELD",      runtime_h=2.50),
+    # Aluminium
+    dict(line_id="L05", material_id="AL6061",     qty=1,  mass_kg=4.20, process_route="CNC_MILL_5AX",  runtime_h=3.50),
+    dict(line_id="L06", material_id="AL6061",     qty=2,  mass_kg=1.60, process_route="CNC_MILL_3AX",  runtime_h=1.20),
+    dict(line_id="L07", material_id="AL5083",     qty=1,  mass_kg=2.40, process_route="WATERJET",      runtime_h=0.60),
+    dict(line_id="L08", material_id="AL6061",     qty=4,  mass_kg=0.30, process_route="ANODIZE",       runtime_h=0.25),
+    # Roestvast staal
+    dict(line_id="L09", material_id="316",        qty=2,  mass_kg=0.90, process_route="CNC_LATHE",     runtime_h=0.80),
+    dict(line_id="L10", material_id="316",        qty=1,  mass_kg=2.10, process_route="CNC_MILL_3AX",  runtime_h=1.40),
+    dict(line_id="L11", material_id="304",        qty=1,  mass_kg=0.95, process_route="CNC_LATHE",     runtime_h=0.55),
+    dict(line_id="L12", material_id="1.4462",     qty=1,  mass_kg=3.80, process_route="TIG_WELD",      runtime_h=2.20),
+    # Titanium
+    dict(line_id="L13", material_id="Ti6Al4V",   qty=1,  mass_kg=0.65, process_route="3DP_SLM",       runtime_h=4.50),
+    # Gietijzer
+    dict(line_id="L14", material_id="EN-GJS-500", qty=2,  mass_kg=2.80, process_route="CNC_LATHE",     runtime_h=1.60),
+    dict(line_id="L15", material_id="EN-GJL-250", qty=1,  mass_kg=5.20, process_route="CNC_MILL_3AX",  runtime_h=1.80),
+    dict(line_id="L16", material_id="EN-GJS-500", qty=2,  mass_kg=3.10, process_route="GRIND_SURF",    runtime_h=0.90),
+    # Kunststof
+    dict(line_id="L17", material_id="POM",        qty=8,  mass_kg=0.12, process_route="CNC_LATHE",     runtime_h=0.25),
+    dict(line_id="L18", material_id="PTFE",       qty=4,  mass_kg=0.05, process_route="CNC_LATHE",     runtime_h=0.15),
+    dict(line_id="L19", material_id="PA6",        qty=6,  mass_kg=0.18, process_route="CNC_MILL_3AX",  runtime_h=0.20),
+    dict(line_id="L20", material_id="POM",        qty=12, mass_kg=0.08, process_route="DRILL_TAP",     runtime_h=0.12),
+    # Koper / Messing
+    dict(line_id="L21", material_id="CuETP",      qty=3,  mass_kg=0.35, process_route="CNC_LATHE",     runtime_h=0.40),
+    dict(line_id="L22", material_id="CuZn37",     qty=6,  mass_kg=0.22, process_route="CNC_LATHE",     runtime_h=0.35),
+    # Afwerking & montage
+    dict(line_id="L23", material_id="S235",       qty=1,  mass_kg=6.20, process_route="PAINT",         runtime_h=0.50),
+    dict(line_id="L24", material_id="AL6061",     qty=2,  mass_kg=0.50, process_route="3DP_FDM",       runtime_h=1.20),
+    dict(line_id="L25", material_id="S235",       qty=1,  mass_kg=0.00, process_route="ASSEMBLY",      runtime_h=4.00),
 ])
 
 
@@ -51,24 +77,25 @@ def main() -> None:
         "Kosten worden direct berekend op basis van de materialen- en bewerkingsdatabase."
     )
 
-    # ── Template download ────────────────────────────────────────────────────
-    with st.expander("ℹ️ Vereiste kolommen & template downloaden", expanded=False):
-        st.markdown(
-            "| Kolom | Type | Omschrijving |\n"
-            "|---|---|---|\n"
-            "| `line_id` | tekst | Uniek regelnummer (bijv. L01) |\n"
-            "| `material_id` | tekst | ID uit de materiaaldatabase |\n"
-            "| `qty` | int | Aantal stuks |\n"
-            "| `mass_kg` | float | Massa per stuk in kg (0 voor montage/lassen) |\n"
-            "| `process_route` | tekst | Bewerkings-ID uit de procesdatabase |\n"
-            "| `runtime_h` | float | Bewerkingstijd per stuk in uren |\n"
-        )
-        st.download_button(
-            "⬇ Download BOM template CSV",
-            _TEMPLATE.to_csv(index=False).encode(),
-            file_name="bom_template.csv",
-            mime="text/csv",
-        )
+    # ── Template download — always visible at the top ────────────────────────
+    st.subheader("Stap 1 — Download het template")
+    st.markdown(
+        "Het template bevat alle beschikbare **material_id**'s en **process_route**'s als voorbeeldregels. "
+        "Pas de waarden aan voor jouw project en upload het bestand hieronder."
+    )
+    col_dl, col_info = st.columns([1, 3])
+    col_dl.download_button(
+        label="⬇️  Download BOM template (.csv)",
+        data=_TEMPLATE.to_csv(index=False).encode(),
+        file_name="bom_template.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+    col_info.markdown(
+        "**Vereiste kolommen:**  "
+        "`line_id` · `material_id` · `qty` · `mass_kg` · `process_route` · `runtime_h`  \n"
+        "_mass\\_kg = 0 is toegestaan (bijv. lassen of montage zonder materiaalgewicht)_"
+    )
 
     # ── Reference tables ─────────────────────────────────────────────────────
     mats   = load_materials()
@@ -89,7 +116,8 @@ def main() -> None:
 
     # ── Upload ────────────────────────────────────────────────────────────────
     st.divider()
-    up = st.file_uploader("📂 Upload BOM CSV", type=["csv"])
+    st.subheader("Stap 2 — Upload jouw ingevulde BOM")
+    up = st.file_uploader("📂 Sleep het bestand hierheen of klik om te bladeren", type=["csv"])
     if not up:
         st.info("Upload een BOM CSV om te beginnen.")
         return
