@@ -1,0 +1,20 @@
+{
+  "loads": 1,
+  "subsystem_counts": {
+    "I": 1,
+    "H": 1,
+    "S": 1,
+    "D": 1,
+    "N": 1,
+    "ST": 1,
+    "R": 1,
+    "F": 1,
+    "SE": 1,
+    "HY": 1,
+    "HW": 1,
+    "QA": 1,
+    "SB": 1,
+    "TB": 1
+  },
+  "last_project": "Marine Waterjet MWJ-720"
+}
