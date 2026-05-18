@@ -7,14 +7,21 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from utils.completeness import (
+    WATERJET_SUBSYSTEMS,
+    common_missing,
+    completeness_score,
+    detect_subsystems,
+    record_bom_load,
+)
 from utils.docx_export import make_offer_docx
 from utils.io import load_materials, load_processes, load_quotes
+from utils.nav import home_button
 from utils.pdf_export import make_offer_pdf
 from utils.pricing import compute_costs
+from utils.project import load_project_name, save_project_name
 from utils.quotes import apply_best_quotes
 from utils.safe import guard
-from utils.nav import home_button
-from utils.project import load_project_name, save_project_name
 
 BOM_PATH = Path("data/bom.csv")
 
@@ -263,6 +270,31 @@ _TEMPLATE = pd.DataFrame(
         dict(line_id="QA07", material_id="NAB_CAST", qty=1, mass_kg=0.0,   process_route="NDT_INSPECT",    runtime_h=5.0),
         dict(line_id="QA08", material_id="SS316L",   qty=1, mass_kg=0.0,   process_route="FINAL_ASSEMBLY", runtime_h=24.0),
         dict(line_id="QA09", material_id="SS316L",   qty=1, mass_kg=0.0,   process_route="FINAL_ASSEMBLY", runtime_h=12.0),
+        # ── Stator Bowl (diffuser) ────────────────────────────────────────
+        dict(line_id="SB01", material_id="NAB_CAST", qty=1, mass_kg=80.0,  process_route="SAND_CAST",      runtime_h=48.0),
+        dict(line_id="SB02", material_id="NAB",      qty=1, mass_kg=28.0,  process_route="5AX_MILL_IMP",   runtime_h=16.0),
+        dict(line_id="SB03", material_id="SS316L",   qty=1, mass_kg=15.0,  process_route="PREC_BORE",      runtime_h=6.0),
+        dict(line_id="SB04", material_id="SS316L",   qty=1, mass_kg=10.0,  process_route="CNC_MILL_3AX",   runtime_h=4.0),
+        dict(line_id="SB05", material_id="SS2205",   qty=1, mass_kg=7.5,   process_route="CNC_LATHE_PREC", runtime_h=3.0),
+        dict(line_id="SB06", material_id="SS316L",   qty=2, mass_kg=5.0,   process_route="TIG_WELD_316",   runtime_h=2.0),
+        dict(line_id="SB07", material_id="A4_FAST",  qty=1, mass_kg=2.5,   process_route="FINAL_ASSEMBLY", runtime_h=0.3),
+        dict(line_id="SB08", material_id="NR_RUBBER",qty=2, mass_kg=0.5,   process_route="FINAL_ASSEMBLY", runtime_h=0.3),
+        dict(line_id="SB09", material_id="SS316L",   qty=1, mass_kg=0.0,   process_route="NDT_INSPECT",    runtime_h=4.0),
+        dict(line_id="SB10", material_id="SS316L",   qty=1, mass_kg=0.0,   process_route="PRESSURE_TEST",  runtime_h=2.0),
+        dict(line_id="SB11", material_id="S355J2",   qty=1, mass_kg=0.0,   process_route="POWDER_COAT",    runtime_h=3.0),
+        dict(line_id="SB12", material_id="SS316L",   qty=6, mass_kg=0.8,   process_route="CNC_LATHE_PREC", runtime_h=0.4),
+        # ── Thrust Block ──────────────────────────────────────────────────
+        dict(line_id="TB01", material_id="SS2205",   qty=1, mass_kg=38.0,  process_route="CNC_LATHE_PREC", runtime_h=12.0),
+        dict(line_id="TB02", material_id="SS2205",   qty=1, mass_kg=18.0,  process_route="PREC_BORE",      runtime_h=8.0),
+        dict(line_id="TB03", material_id="SS174PH",  qty=1, mass_kg=10.0,  process_route="CNC_LATHE_PREC", runtime_h=5.0),
+        dict(line_id="TB04", material_id="SS316L",   qty=1, mass_kg=8.0,   process_route="CNC_MILL_3AX",   runtime_h=3.0),
+        dict(line_id="TB05", material_id="CUNI90",   qty=2, mass_kg=3.0,   process_route="CNC_LATHE_PREC", runtime_h=2.0),
+        dict(line_id="TB06", material_id="SS174PH",  qty=1, mass_kg=4.0,   process_route="SURF_GRIND",     runtime_h=2.5),
+        dict(line_id="TB07", material_id="SS316L",   qty=4, mass_kg=1.5,   process_route="CNC_LATHE_PREC", runtime_h=0.8),
+        dict(line_id="TB08", material_id="NR_RUBBER",qty=4, mass_kg=0.3,   process_route="FINAL_ASSEMBLY", runtime_h=0.2),
+        dict(line_id="TB09", material_id="A4_FAST",  qty=1, mass_kg=3.5,   process_route="FINAL_ASSEMBLY", runtime_h=0.4),
+        dict(line_id="TB10", material_id="SS174PH",  qty=1, mass_kg=0.0,   process_route="NDT_INSPECT",    runtime_h=3.0),
+        dict(line_id="TB11", material_id="SS2205",   qty=1, mass_kg=0.0,   process_route="PRESSURE_TEST",  runtime_h=2.0),
     ]
 )
 
@@ -270,98 +302,57 @@ _TEMPLATE = pd.DataFrame(
 def _metric_row(df: pd.DataFrame) -> None:
     c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Material cost", f"EUR {df['material_cost'].sum():,.2f}")
-    c2.metric("Process cost", f"EUR {df['process_cost'].sum():,.2f}")
-    c3.metric("Overhead", f"EUR {df['overhead'].sum():,.2f}")
-    c4.metric("Margin", f"EUR {df['margin'].sum():,.2f}")
-    c5.metric("**TOTAL**", f"EUR {df['total_cost'].sum():,.2f}")
+    c2.metric("Process cost",  f"EUR {df['process_cost'].sum():,.2f}")
+    c3.metric("Overhead",      f"EUR {df['overhead'].sum():,.2f}")
+    c4.metric("Margin",        f"EUR {df['margin'].sum():,.2f}")
+    c5.metric("**TOTAL**",     f"EUR {df['total_cost'].sum():,.2f}")
 
 
-def main() -> None:
-    home_button()
-    st.title("📥 BOM Import & Calculation")
-    st.caption(
-        "Upload a BOM CSV with the required columns. "
-        "Costs are calculated immediately based on the materials and processes database."
+def _completeness_panel(bom: pd.DataFrame) -> None:
+    """Smart completeness widget — shows subsystem coverage and missing items."""
+    score = completeness_score(bom)
+    present = detect_subsystems(bom)
+    missing = common_missing(bom)
+    critical_miss = [(p, info) for p, info in missing if info["critical"]]
+
+    pct = int(score * 100)
+    label = (
+        "✅ Complete waterjet BOM — all subsystems present"
+        if pct == 100
+        else f"⚠️  BOM completeness: {pct}% — {len(missing)} subsystem(s) missing"
     )
 
-    # ── Assembly / project name ───────────────────────────────────────────────
-    current_name = load_project_name()
-    name_col, _ = st.columns([2, 3])
-    new_name = name_col.text_input("🏷️ Assembly / Project name", value=current_name,
-                                   placeholder="e.g. Marine Waterjet MWJ-720")
-    if new_name != current_name:
-        save_project_name(new_name)
-        st.success(f"Assembly name saved: **{new_name}**")
+    with st.expander(label, expanded=bool(critical_miss)):
+        st.progress(score, text=f"{pct}% of 14 waterjet subsystems detected")
 
-    st.divider()
+        cols = st.columns(7)
+        for i, (prefix, info) in enumerate(WATERJET_SUBSYSTEMS.items()):
+            is_present = prefix in present
+            count = present.get(prefix, 0)
+            status = f"✅ {count} lines" if is_present else ("🔴 **missing**" if info["critical"] else "⬜ not included")
+            cols[i % 7].markdown(
+                f"{info['icon']} **{info['name']}**  \n{status}  \n"
+                f"<small>{info['desc']}</small>",
+                unsafe_allow_html=True,
+            )
 
-    # ── Template download — always visible at the top ────────────────────────
-    st.subheader("Step 1 — Download the template")
-    st.markdown(
-        "The template contains a complete 214-line **MWJ-720 marine waterjet BOM** as an example. "
-        "Adjust the values for your project and upload the file below."
-    )
-    col_dl, col_info = st.columns([1, 3])
-    col_dl.download_button(
-        label="⬇️  Download BOM template (.csv)",
-        data=_TEMPLATE.to_csv(index=False).encode(),
-        file_name="bom_template_mwj720.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-    col_info.markdown(
-        "**Required columns:**  "
-        "`line_id` · `material_id` · `qty` · `mass_kg` · `process_route` · `runtime_h`  \n"
-        "_mass\\_kg = 0 is allowed (e.g. dynamic balancing, pressure testing or final assembly without net material weight)_  \n"
-        "**Marine materials** (e.g. `NAB`, `SS316L`, `SS2205`, `SS174PH`, `AL6082`, `S355J2`, `HDPE`, `NR_RUBBER`, `PEEK`, `CUNI90`) · "
-        "**Marine processes** (e.g. `5AX_MILL_IMP`, `CNC_LATHE_PREC`, `TIG_WELD_316`, `SAND_CAST`, `DYN_BALANCE`, `NDT_INSPECT`, `FINAL_ASSEMBLY`)"
-    )
+        if critical_miss:
+            names = "  •  ".join(f"{info['icon']} **{info['name']}**" for _, info in critical_miss)
+            st.error(
+                f"**Missing critical subsystems:** {names}  \n"
+                "These are essential for a complete waterjet cost estimate. "
+                "Download the full template to see reference lines for each subsystem."
+            )
+        elif missing:
+            opt_names = ", ".join(info["name"] for _, info in missing)
+            st.info(f"Optional subsystems not included: {opt_names}")
+        else:
+            st.success("🎉 All 14 waterjet subsystems are present. BOM is complete.")
 
-    # ── Reference tables ─────────────────────────────────────────────────────
-    mats = load_materials()
-    procs = load_processes()
-    quotes = load_quotes()
 
-    c1, c2 = st.columns(2)
-    with c1.expander("📋 Available materials"):
-        st.dataframe(
-            mats[["material_id", "description", "price_eur_per_kg"]],
-            use_container_width=True,
-            hide_index=True,
-        )
-    with c2.expander("⚙️ Available processes"):
-        st.dataframe(
-            procs[
-                [
-                    "process_id",
-                    "description",
-                    "machine_rate_eur_h",
-                    "labor_rate_eur_h",
-                    "overhead_pct",
-                    "margin_pct",
-                ]
-            ],
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    # ── Upload ────────────────────────────────────────────────────────────────
-    st.divider()
-    st.subheader("Step 2 — Upload your completed BOM")
-    up = st.file_uploader("📂 Drag the file here or click to browse", type=["csv"])
-    if not up:
-        st.info("Upload a BOM CSV to get started.")
-        return
-
-    try:
-        bom = pd.read_csv(up)
-    except Exception as e:
-        st.error(f"CSV could not be read: {e}")
-        return
-
-    st.subheader("Imported BOM")
-    st.dataframe(bom, use_container_width=True, hide_index=True)
-
+def _run_calculation(bom: pd.DataFrame, mats: pd.DataFrame, procs: pd.DataFrame,
+                     quotes: pd.DataFrame, project_name: str) -> None:
+    """Validate, calculate, display results and save. Shared by upload and auto-load."""
     # ── Validate columns ──────────────────────────────────────────────────────
     missing_cols = [c for c in REQUIRED_COLS if c not in bom.columns]
     if missing_cols:
@@ -369,43 +360,47 @@ def main() -> None:
         st.info(f"Required columns: `{'`, `'.join(REQUIRED_COLS)}`")
         return
 
-    # Cast numeric columns
     for col in ["qty", "mass_kg", "runtime_h"]:
         bom[col] = pd.to_numeric(bom[col], errors="coerce").fillna(0)
     bom["qty"] = bom["qty"].astype("Int64")
 
-    # ── Validate material_ids ─────────────────────────────────────────────────
-    known_mats = set(mats["material_id"])
-    unknown_mats = sorted(set(bom["material_id"].astype(str)) - known_mats)
-
-    # ── Validate process_routes ───────────────────────────────────────────────
+    known_mats  = set(mats["material_id"])
     known_procs = set(procs["process_id"])
+    unknown_mats  = sorted(set(bom["material_id"].astype(str)) - known_mats)
     unknown_procs = sorted(set(bom["process_route"].astype(str)) - known_procs)
 
     has_errors = False
     if unknown_mats:
         st.error(
-            f"❌ Unknown material_id's (no price available): "
-            f"`{'`, `'.join(unknown_mats)}`\n\n"
+            f"❌ Unknown material_id's: `{'`, `'.join(unknown_mats)}`  \n"
             "Add them to the materials database or adjust the BOM."
         )
         has_errors = True
     if unknown_procs:
         st.error(
-            f"❌ Unknown process_route's: "
-            f"`{'`, `'.join(unknown_procs)}`\n\n"
+            f"❌ Unknown process_route's: `{'`, `'.join(unknown_procs)}`  \n"
             "Add them to the processes database or adjust the BOM."
         )
         has_errors = True
     if has_errors:
         return
 
-    st.success(f"✅ Validation passed — {len(bom)} lines, all materials and processes known.")
+    # ── Smart completeness check ──────────────────────────────────────────────
+    _completeness_panel(bom)
 
-    # ── Calculate costs ───────────────────────────────────────────────────────
+    score = completeness_score(bom)
+    pct   = int(score * 100)
+    st.success(
+        f"✅ Validation passed — **{len(bom)} lines**, all materials and processes known. "
+        f"BOM completeness: **{pct}%**"
+    )
+
+    # ── Calculate ─────────────────────────────────────────────────────────────
     mats_q = apply_best_quotes(mats, quotes)
     try:
-        df = compute_costs(mats_q, procs, bom)
+        with st.status("⚙️ Calculating costs…", expanded=False) as status:
+            df = compute_costs(mats_q, procs, bom)
+            status.update(label="✅ Calculation complete", state="complete")
     except ValueError as e:
         st.error(f"Calculation failed: {e}")
         return
@@ -413,6 +408,24 @@ def main() -> None:
     # ── Summary metrics ───────────────────────────────────────────────────────
     st.subheader("💶 Cost overview")
     _metric_row(df)
+
+    # ── Cost per subsystem (smart view) ──────────────────────────────────────
+    def _subsystem_label(lid: str) -> str:
+        upper = str(lid).upper()
+        for prefix in sorted(WATERJET_SUBSYSTEMS, key=len, reverse=True):
+            if upper.startswith(prefix):
+                return f"{WATERJET_SUBSYSTEMS[prefix]['icon']} {WATERJET_SUBSYSTEMS[prefix]['name']}"
+        return "Other"
+
+    df["subsystem"] = df["line_id"].apply(_subsystem_label)
+    sub_grp = (
+        df.groupby("subsystem")[["material_cost", "process_cost", "overhead", "margin", "total_cost"]]
+        .sum()
+        .sort_values("total_cost", ascending=False)
+        .round(2)
+    )
+    with st.expander("🔩 Costs per waterjet subsystem"):
+        st.dataframe(sub_grp, use_container_width=True)
 
     # ── Cost breakdown by material group ──────────────────────────────────────
     if "commodity" in df.columns:
@@ -430,14 +443,18 @@ def main() -> None:
     # ── Line-by-line detail ───────────────────────────────────────────────────
     st.subheader("📋 Line detail")
     avail_cols = [c for c in DISPLAY_COLS if c in df.columns]
-    st.dataframe(
-        df[avail_cols].round(4),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(df[avail_cols].round(4), use_container_width=True, hide_index=True)
 
-    # ── Save BOM so other pages use it ───────────────────────────────────────
+    # ── Save + haptic feedback ────────────────────────────────────────────────
     BOM_PATH.write_text(bom.to_csv(index=False), encoding="utf-8")
+    st.toast(f"✅ BOM saved — {len(bom)} lines · EUR {df['total_cost'].sum():,.0f} total", icon="💾")
+
+    # Self-learning: record this load
+    record_bom_load(bom, project_name)
+
+    if pct == 100:
+        st.balloons()
+
     st.caption(f"BOM saved as `{BOM_PATH}` — all other pages now use this BOM.")
 
     # ── Exports ───────────────────────────────────────────────────────────────
@@ -462,6 +479,116 @@ def main() -> None:
         file_name="quote.pdf",
         mime="application/pdf",
     )
+
+
+def main() -> None:
+    home_button()
+    st.title("📥 BOM Import & Calculation")
+    st.caption(
+        "Upload a BOM CSV or recalculate the saved BOM. "
+        "Smart completeness checking guides you to a full 14-subsystem waterjet BOM."
+    )
+
+    # ── Assembly / project name ───────────────────────────────────────────────
+    current_name = load_project_name()
+    name_col, _ = st.columns([2, 3])
+    new_name = name_col.text_input(
+        "🏷️ Assembly / Project name",
+        value=current_name,
+        placeholder="e.g. Marine Waterjet MWJ-720",
+        help="This name appears on all pages and in exported documents.",
+    )
+    if new_name != current_name:
+        save_project_name(new_name)
+        st.toast(f"Project name saved: {new_name}", icon="🏷️")
+
+    st.divider()
+
+    # ── Template download ─────────────────────────────────────────────────────
+    st.subheader("Step 1 — Download the reference template")
+    st.markdown(
+        "The template is a **complete 237-line MWJ-720 marine waterjet BOM** covering all 14 subsystems: "
+        "Impeller · **Stator Bowl** · Pump Housing · Shaft · **Thrust Block** · Inlet Duct · "
+        "Nozzle · Steering · Reverse · Frame · Sealing · Hydraulic · Hardware · QA.  \n"
+        "Adjust values for your project and upload below."
+    )
+    col_dl, col_info = st.columns([1, 3])
+    col_dl.download_button(
+        label="⬇️  Download BOM template (.csv)",
+        data=_TEMPLATE.to_csv(index=False).encode(),
+        file_name="bom_template_mwj720_complete.csv",
+        mime="text/csv",
+        use_container_width=True,
+    )
+    col_info.markdown(
+        "**Required columns:**  "
+        "`line_id` · `material_id` · `qty` · `mass_kg` · `process_route` · `runtime_h`  \n"
+        "_mass\\_kg = 0 is allowed for operations without net material weight "
+        "(dynamic balancing, hydrostatic testing, NDT, final assembly)_  \n"
+        "**Line ID convention:** prefix identifies the subsystem — "
+        "`I` Impeller · `SB` Stator Bowl · `H` Housing · `S` Shaft · `TB` Thrust Block · "
+        "`D` Duct · `N` Nozzle · `ST` Steering · `R` Reverse · `F` Frame · "
+        "`SE` Sealing · `HY` Hydraulic · `HW` Hardware · `QA` Testing"
+    )
+
+    # ── Reference tables ─────────────────────────────────────────────────────
+    mats   = load_materials()
+    procs  = load_processes()
+    quotes = load_quotes()
+
+    c1, c2 = st.columns(2)
+    with c1.expander("📋 Available materials"):
+        st.dataframe(
+            mats[["material_id", "description", "price_eur_per_kg"]],
+            use_container_width=True, hide_index=True,
+        )
+    with c2.expander("⚙️ Available processes"):
+        st.dataframe(
+            procs[["process_id", "description", "machine_rate_eur_h",
+                   "labor_rate_eur_h", "overhead_pct", "margin_pct"]],
+            use_container_width=True, hide_index=True,
+        )
+
+    # ── Load BOM — upload or auto-load ────────────────────────────────────────
+    st.divider()
+    st.subheader("Step 2 — Load your BOM")
+
+    tab_upload, tab_saved = st.tabs(["📂 Upload new BOM", "⚡ Recalculate saved BOM"])
+
+    with tab_upload:
+        up = st.file_uploader(
+            "Drag the file here or click to browse",
+            type=["csv"],
+            help="Upload a CSV with the 6 required columns shown above.",
+        )
+        if up:
+            try:
+                bom = pd.read_csv(up)
+            except Exception as e:
+                st.error(f"CSV could not be read: {e}")
+                return
+            st.caption(f"Loaded {len(bom)} lines from **{up.name}**")
+            st.dataframe(bom, use_container_width=True, hide_index=True)
+            _run_calculation(bom, mats, procs, quotes, new_name or current_name)
+
+    with tab_saved:
+        if BOM_PATH.exists():
+            try:
+                saved_bom = pd.read_csv(BOM_PATH)
+                score = completeness_score(saved_bom)
+                pct   = int(score * 100)
+                st.info(
+                    f"**Saved BOM:** `{BOM_PATH}`  \n"
+                    f"{len(saved_bom)} lines · completeness {pct}% · "
+                    f"last saved automatically on upload"
+                )
+                if st.button("⚡ Recalculate saved BOM", type="primary",
+                             help="Re-run cost calculation on the currently saved BOM."):
+                    _run_calculation(saved_bom, mats, procs, quotes, new_name or current_name)
+            except Exception as e:
+                st.error(f"Could not read saved BOM: {e}")
+        else:
+            st.info("No saved BOM found yet. Upload a BOM first — it will be saved automatically.")
 
 
 guard(main)
