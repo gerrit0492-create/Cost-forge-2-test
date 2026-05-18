@@ -7,17 +7,8 @@ from utils.safe import guard
 
 _COLS = ["line_id", "material_id", "qty", "material_cost", "process_cost", "overhead", "margin", "total_cost"]
 
-try:
-    import tabulate as _tab  # noqa: F401
-    _HAS_TABULATE = True
-except ImportError:
-    _HAS_TABULATE = False
 
-
-def _df_to_markdown(df):
-    if _HAS_TABULATE:
-        return df.to_markdown(index=False)
-    # Fallback: pipe-table without tabulate
+def _to_markdown(df: "pd.DataFrame") -> str:  # noqa: F821
     rows = [df.columns.tolist()] + df.astype(str).values.tolist()
     col_w = [max(len(str(r[i])) for r in rows) for i in range(len(df.columns))]
     def fmt(row):
@@ -28,13 +19,6 @@ def _df_to_markdown(df):
 
 def main():
     st.title("📑 Rapport (Markdown)")
-
-    if not _HAS_TABULATE:
-        st.warning(
-            "tabulate is niet geïnstalleerd — tabel wordt als plain pipe-table gerenderd. "
-            "Installeer met: `pip install tabulate`"
-        )
-
     mats   = load_materials()
     procs  = load_processes()
     bom    = load_bom()
@@ -46,7 +30,7 @@ def main():
         "# Offerte-rapport",
         f"**Totaal (EUR):** {df['total_cost'].sum():,.2f}",
         "",
-        _df_to_markdown(df[_COLS].round(4)),
+        _to_markdown(df[_COLS].round(4)),
     ]
     content = "\n".join(md)
     st.download_button(
