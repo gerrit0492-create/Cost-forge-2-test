@@ -1,5 +1,3 @@
-import importlib
-
 import streamlit as st
 
 from utils.io import load_bom, load_materials, load_processes, load_quotes
@@ -8,7 +6,12 @@ from utils.quotes import apply_best_quotes
 from utils.safe import guard
 
 _COLS = ["line_id", "material_id", "qty", "material_cost", "process_cost", "overhead", "margin", "total_cost"]
-_HAS_TABULATE = importlib.util.find_spec("tabulate") is not None
+
+try:
+    import tabulate as _tab  # noqa: F401
+    _HAS_TABULATE = True
+except ImportError:
+    _HAS_TABULATE = False
 
 
 def _df_to_markdown(df):
