@@ -1,8 +1,10 @@
 # tools/update_materials_from_market.py
 from __future__ import annotations
-from pathlib import Path
-from typing import Optional, Tuple
+
 from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
 import pandas as pd
 
 DATA = Path("data")
@@ -42,8 +44,10 @@ def _read_market_factors() -> Optional[pd.DataFrame]:
 
 def best_quotes(quotes: pd.DataFrame) -> pd.DataFrame:
     q = quotes.copy()
-    if "preferred" not in q.columns: q["preferred"] = 0
-    if "lead_time_days" not in q.columns: q["lead_time_days"] = 999_999
+    if "preferred" not in q.columns:
+        q["preferred"] = 0
+    if "lead_time_days" not in q.columns:
+        q["lead_time_days"] = 999_999
     q = q.sort_values(
         by=["material_id","preferred","price_eur_per_kg","lead_time_days"],
         ascending=[True,False,True,True],
@@ -82,16 +86,21 @@ def apply_market_factors(mats: pd.DataFrame, factors: pd.DataFrame) -> pd.DataFr
         v = price
         pct, fac = r.get("pct_change"), r.get("factor")
         if pd.notna(pct):
-            try: v *= (1 + float(pct)/100.0)
-            except Exception: pass
+            try:
+                v *= 1 + float(pct) / 100.0
+            except Exception:
+                pass
         if pd.notna(fac):
-            try: v *= float(fac)
-            except Exception: pass
+            try:
+                v *= float(fac)
+            except Exception:
+                pass
         return v
 
     for i in range(len(out)):
         base = out.at[i, "price_eur_per_kg"]
-        if pd.isna(base): continue
+        if pd.isna(base):
+            continue
         mid = str(out.at[i, "material_id"])
         if mid in by_mat:
             out.at[i, "price_eur_per_kg"] = _apply(base, by_mat[mid])

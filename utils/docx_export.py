@@ -3,7 +3,6 @@ from io import BytesIO
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-
 _STR_COLS = ["line_id", "material_id", "qty"]
 _NUM_COLS = ["material_cost", "process_cost", "overhead", "total_cost"]
 

@@ -1,5 +1,9 @@
 from __future__ import annotations
-import pathlib, py_compile, sys
+
+import pathlib
+import py_compile
+import sys
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 errors = []
 for p in sorted((ROOT/'pages').glob('*.py')):
