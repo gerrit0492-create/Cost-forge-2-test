@@ -1,17 +1,17 @@
 supplier,material_id,price_eur_per_kg,lead_time_days,valid_until,preferred
-SteelCo,S235,1.05,10,2026-12-31,1
-SteelCo,S355,1.18,10,2026-12-31,1
-Metals4U,AL6061,4.40,7,2026-12-31,1
-Metals4U,AL5083,4.75,8,2026-12-31,1
-Outokumpu,316,3.70,12,2026-12-31,1
-Outokumpu,304,3.45,10,2026-12-31,1
-Outokumpu,1.4462,5.10,14,2026-12-31,1
-TiMet,Ti6Al4V,31.50,21,2026-12-31,1
-SteelCo,EN-GJL-250,1.55,14,2026-12-31,1
-SteelCo,EN-GJS-500,1.75,14,2026-12-31,1
-MCB,CuZn37,8.30,10,2026-12-31,1
-MCB,CuETP,8.65,10,2026-12-31,1
-PlasticsNL,POM,5.40,5,2026-12-31,1
-PlasticsNL,PTFE,17.80,7,2026-12-31,1
-PlasticsNL,PA6,4.10,5,2026-12-31,1
-PlasticsNL,PE500,3.75,5,2026-12-31,0
+MarineMetals BV,NAB,8.20,14,2026-12-31,1
+MarineMetals BV,NAB_CAST,9.10,21,2026-12-31,1
+ThyssenKrupp Materials,SS316L,3.35,10,2026-12-31,1
+ThyssenKrupp Materials,SS2205,5.05,14,2026-12-31,1
+ThyssenKrupp Materials,SS174PH,17.50,21,2026-12-31,1
+Aalco Metals,AL6082,3.70,7,2026-12-31,1
+Aalco Metals,AL5083,4.10,7,2026-12-31,1
+MarineMetals BV,S355J2,0.90,10,2026-12-31,1
+Plasticseal NL,HDPE,2.05,5,2026-12-31,1
+Plasticseal NL,NR_RUBBER,6.30,7,2026-12-31,1
+MarineMetals BV,A4_FAST,13.50,5,2026-12-31,1
+Titanium Industries,TI_GR2,27.00,28,2026-12-31,1
+Outokumpu,SS904L,11.50,21,2026-12-31,1
+MarineMetals BV,CUNI90,8.90,14,2026-12-31,1
+Goodfellow,PEEK,82.00,10,2026-12-31,1
+ThyssenKrupp Materials,SS316L_TUBE,4.05,12,2026-12-31,1

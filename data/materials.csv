@@ -1,17 +1,17 @@
 material_id,description,commodity,price_eur_per_kg
-S235,Constructiestaal S235 (plaat/profiel),Staal,1.10
-S355,Constructiestaal S355 (hoge sterkte),Staal,1.20
-AL6061,Aluminium legering 6061-T6,Aluminium,4.50
-AL5083,Aluminium legering 5083 (maritiem),Aluminium,4.80
-316,Roestvast staal 316L (plaat),RVS,3.80
-304,Roestvast staal 304 (plaat),RVS,3.50
-1.4462,Duplex roestvast staal 1.4462,RVS Duplex,5.20
-Ti6Al4V,Titanium legering Ti-6Al-4V,Titanium,32.00
-CuZn37,Messing CuZn37 (plaat),Messing,8.50
-CuETP,Koper elektrolytisch (plaat),Koper,8.80
-EN-GJL-250,Gietijzer lamellair GJL-250,Gietijzer,1.60
-EN-GJS-500,Sfero gietijzer GJS-500,Gietijzer,1.80
-PA6,Polyamide PA6 (nylon plaat),Kunststof,4.20
-POM,Polyoxymethyleen Delrin (plaat),Kunststof,5.50
-PTFE,Teflon PTFE (plaat),Kunststof,18.00
-PE500,Polyethyleen PE500 (plaat),Kunststof,3.80
+NAB,Nickel Aluminium Bronze CW307G (wrought),Marine Bronze,8.50
+NAB_CAST,Cast Nickel Aluminium Bronze C95800,Marine Bronze,9.50
+SS316L,Stainless steel 316L plate/bar,Marine Stainless,3.50
+SS2205,Duplex stainless 2205 (1.4462),Duplex Stainless,5.20
+SS174PH,17-4PH stainless bar (H900 condition),Precipitation Hardened SS,18.00
+AL6082,Aluminium 6082-T6 marine grade,Marine Aluminium,3.80
+AL5083,Aluminium 5083-H111 anti-corrosion,Marine Aluminium,4.20
+S355J2,Carbon steel S355J2+N plate,Carbon Steel,0.95
+HDPE,HDPE marine grade sheet,Polymer,2.10
+NR_RUBBER,Nitrile rubber sheet NBR 70,Elastomer,6.50
+A4_FAST,A4-80 stainless fastener set (per kg),Fastener,14.00
+TI_GR2,Titanium Grade 2 commercially pure,Titanium,28.00
+SS904L,Super austenitic 904L bar/plate,Super Austenitic SS,12.00
+CUNI90,Copper-Nickel 90/10 tube/bar,Copper-Nickel,9.20
+PEEK,PEEK polymer bar (wear applications),High-Perf Polymer,85.00
+SS316L_TUBE,Stainless 316L seamless tube,Marine Stainless,4.20

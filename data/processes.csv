@@ -1,18 +1,18 @@
 process_id,description,machine_rate_eur_h,labor_rate_eur_h,overhead_pct,margin_pct
-CNC_MILL_3AX,CNC Frezen 3-assig,80,45,0.20,0.10
-CNC_MILL_5AX,CNC Frezen 5-assig,120,55,0.20,0.12
-CNC_LATHE,CNC Draaien,70,40,0.20,0.10
-LASER_CUT,Lasersnijden,65,35,0.15,0.10
-WATERJET,Waterstraalsnijden,75,40,0.15,0.10
-BENDING,Kantelen / buigen,55,30,0.15,0.10
-PUNCH,Ponsen,50,30,0.15,0.08
-MIG_WELD,MIG Lassen,60,35,0.25,0.15
-TIG_WELD,TIG Lassen,70,40,0.25,0.15
-SPOT_WELD,Puntlassen,45,30,0.20,0.10
-GRIND_SURF,Vlakslijpen,60,35,0.20,0.10
-DRILL_TAP,Boren en tappen,40,30,0.15,0.08
-ASSEMBLY,Montage,0,45,0.20,0.10
-3DP_FDM,3D Print FDM,25,20,0.20,0.15
-3DP_SLM,3D Print SLM (metaal),150,60,0.30,0.20
-PAINT,Spuiten / poedercoaten,35,30,0.20,0.10
-ANODIZE,Anodiseren,40,25,0.20,0.12
+5AX_MILL_IMP,5-axis CNC impeller milling (precision),165,70,0.28,0.18
+CNC_LATHE_PREC,Precision CNC turning (shafts/cones),90,55,0.25,0.18
+PREC_BORE,Precision boring (housings/flanges),110,55,0.25,0.18
+SURF_GRIND,Surface and cylindrical grinding,95,50,0.22,0.18
+DYN_BALANCE,Dynamic balancing (impeller/shaft),80,45,0.22,0.15
+TIG_WELD_316,TIG welding 316L marine certified,65,65,0.25,0.18
+PLASMA_CUT,Plasma cutting plate/sheet,75,40,0.20,0.15
+WATERJET_CUT,Waterjet cutting (abrasive),70,35,0.20,0.15
+SAND_CAST,Sand casting + rough machining,45,35,0.30,0.20
+PRESSURE_TEST,Hydrostatic pressure testing,60,55,0.25,0.15
+FINAL_ASSEMBLY,Final assembly and alignment,75,70,0.25,0.18
+NDT_INSPECT,NDT inspection (UT/MT/PT),85,80,0.25,0.15
+CNC_MILL_3AX,CNC milling 3-axis general,80,50,0.22,0.18
+HARD_CHROME,Hard chrome plating (wear surfaces),90,45,0.25,0.18
+ELEC_NICKEL,Electroless nickel plating,85,45,0.25,0.18
+POWDER_COAT,Marine epoxy powder coating,55,35,0.20,0.15
+ANODIZE,Hard anodizing (aluminium parts),50,30,0.20,0.15
