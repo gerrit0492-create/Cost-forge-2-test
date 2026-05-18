@@ -1,0 +1,18 @@
+process_id,description,machine_rate_eur_h,labor_rate_eur_h,overhead_pct,margin_pct
+CNC_MILL_3AX,CNC Frezen 3-assig,80,45,0.20,0.10
+CNC_MILL_5AX,CNC Frezen 5-assig,120,55,0.20,0.12
+CNC_LATHE,CNC Draaien,70,40,0.20,0.10
+LASER_CUT,Lasersnijden,65,35,0.15,0.10
+WATERJET,Waterstraalsnijden,75,40,0.15,0.10
+BENDING,Kantelen / buigen,55,30,0.15,0.10
+PUNCH,Ponsen,50,30,0.15,0.08
+MIG_WELD,MIG Lassen,60,35,0.25,0.15
+TIG_WELD,TIG Lassen,70,40,0.25,0.15
+SPOT_WELD,Puntlassen,45,30,0.20,0.10
+GRIND_SURF,Vlakslijpen,60,35,0.20,0.10
+DRILL_TAP,Boren en tappen,40,30,0.15,0.08
+ASSEMBLY,Montage,0,45,0.20,0.10
+3DP_FDM,3D Print FDM,25,20,0.20,0.15
+3DP_SLM,3D Print SLM (metaal),150,60,0.30,0.20
+PAINT,Spuiten / poedercoaten,35,30,0.20,0.10
+ANODIZE,Anodiseren,40,25,0.20,0.12

@@ -1,6 +1,12 @@
-# Je kunt op material_id of commodity matchen. Minstens één van pct_change of factor invullen.
+# Marktfactoren — match op material_id of commodity. Vul pct_change (%) of factor in.
 material_id,commodity,pct_change,factor,note
-AL6061,Aluminium,3,,LME-beweging
-S235,Staal,-2,,Spot prijsdaling
-SS_Duplex_14462,RVS,,1.02,Leveranciersindex
+AL6061,Aluminium,3,,LME-beweging Q1
+AL5083,Aluminium,3,,LME-beweging Q1
+S235,Staal,-1.5,,Spot prijsdaling
+S355,Staal,-1.5,,Spot prijsdaling
+1.4462,RVS Duplex,,1.02,Leveranciersindex
+316,RVS,1,,Nikkel premie
+304,RVS,1,,Nikkel premie
 ,Titanium,4,,Commodity-brede stijging
+CuETP,Koper,2.5,,LME koper
+CuZn37,Messing,2,,Zink + koper mix

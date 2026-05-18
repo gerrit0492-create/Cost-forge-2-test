@@ -1,23 +1,17 @@
-source,commodity,unit,price,currency,fx_to_eur,effective_date,url,notes,material_id,description,price_eur_per_kg
-S235,Staal,Plaat,1.25,EUR,1,Sun Sep 07 2025 00:23:10 GMT+0200 (Midden-Europese zomertijd),https://www.mcb.eu/,MCB staalprijs (dummy),,,
-S355,Staal,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:11 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-1.4301 (304),RVS,Plaat,2.85,EUR,1,Sun Sep 07 2025 00:23:11 GMT+0200 (Midden-Europese zomertijd),https://www.outokumpu.com/surcharges,Outokumpu surcharge (dummy),,,
-1.4404 (316),RVS,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:11 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-1.4462 (2205),RVS Duplex,Plaat,2.85,EUR,1,Sun Sep 07 2025 00:23:12 GMT+0200 (Midden-Europese zomertijd),https://www.outokumpu.com/surcharges,Outokumpu surcharge (dummy),,,
-1.4410 (2507),RVS Super Duplex,Plaat,2.85,EUR,1,Sun Sep 07 2025 00:23:12 GMT+0200 (Midden-Europese zomertijd),https://www.outokumpu.com/surcharges,Outokumpu surcharge (dummy),,,
-AlMg3 (5754),Aluminium,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:13 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-AlMg4.5Mn (5083),Aluminium,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:13 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-AlSi10Mg,Aluminium,Gietstuk,5.0,EUR,1,Sun Sep 07 2025 00:23:15 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-AlCu4Mg (2024),Aluminium,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:15 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-AlZnMgCu1.5 (7075),Aluminium,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:16 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-Ti6Al4V,Titanium,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:16 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-Cu-ETP (E-Cu),Koper,Plaat,2.3,EUR,1,Sun Sep 07 2025 00:23:17 GMT+0200 (Midden-Europese zomertijd),https://www.lme.com/,LME prijs (dummy via ECB),,,
-CuSn12,Koper,Gietstuk,2.3,EUR,1,Sun Sep 07 2025 00:23:17 GMT+0200 (Midden-Europese zomertijd),https://www.lme.com/,LME prijs (dummy via ECB),,,
-CuZn37 (Ms63),Messing,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:18 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-GG25,Gietijzer,Gietstuk,5.0,EUR,1,Sun Sep 07 2025 00:23:18 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-EN-GJS-400-15 (GGG40),Sfero Gietijzer,Gietstuk,5.0,EUR,1,Sun Sep 07 2025 00:23:19 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-PA6,Nylon,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:19 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-POM,Delrin,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:20 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-PTFE,Teflon,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:20 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-PE-HD,Polyethyleen,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:20 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
-PMMA (Acryl),Kunststof,Plaat,5.0,EUR,1,Sun Sep 07 2025 00:23:21 GMT+0200 (Midden-Europese zomertijd),,Fallback prijs,,,
+material_id,description,commodity,price_eur_per_kg
+S235,Constructiestaal S235 (plaat/profiel),Staal,1.0981
+S355,Constructiestaal S355 (hoge sterkte),Staal,1.2024
+AL6061,Aluminium legering 6061-T6,Aluminium,4.5157
+AL5083,Aluminium legering 5083 (maritiem),Aluminium,4.7976
+316,Roestvast staal 316L (plaat),RVS,3.799
+304,Roestvast staal 304 (plaat),RVS,3.4939
+1.4462,Duplex roestvast staal 1.4462,RVS Duplex,5.186
+Ti6Al4V,Titanium legering Ti-6Al-4V,Titanium,32.0119
+CuZn37,Messing CuZn37 (plaat),Messing,8.5152
+CuETP,Koper elektrolytisch (plaat),Koper,8.8523
+EN-GJL-250,Gietijzer lamellair GJL-250,Gietijzer,1.5981
+EN-GJS-500,Sfero gietijzer GJS-500,Gietijzer,1.798
+PA6,Polyamide PA6 (nylon plaat),Kunststof,4.1722
+POM,Polyoxymethyleen Delrin (plaat),Kunststof,5.5003
+PTFE,Teflon PTFE (plaat),Kunststof,17.9533
+PE500,Polyethyleen PE500 (plaat),Kunststof,3.7839

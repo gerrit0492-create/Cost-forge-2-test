@@ -1,0 +1,17 @@
+material_id,description,commodity,price_eur_per_kg
+S235,Constructiestaal S235 (plaat/profiel),Staal,1.10
+S355,Constructiestaal S355 (hoge sterkte),Staal,1.20
+AL6061,Aluminium legering 6061-T6,Aluminium,4.50
+AL5083,Aluminium legering 5083 (maritiem),Aluminium,4.80
+316,Roestvast staal 316L (plaat),RVS,3.80
+304,Roestvast staal 304 (plaat),RVS,3.50
+1.4462,Duplex roestvast staal 1.4462,RVS Duplex,5.20
+Ti6Al4V,Titanium legering Ti-6Al-4V,Titanium,32.00
+CuZn37,Messing CuZn37 (plaat),Messing,8.50
+CuETP,Koper elektrolytisch (plaat),Koper,8.80
+EN-GJL-250,Gietijzer lamellair GJL-250,Gietijzer,1.60
+EN-GJS-500,Sfero gietijzer GJS-500,Gietijzer,1.80
+PA6,Polyamide PA6 (nylon plaat),Kunststof,4.20
+POM,Polyoxymethyleen Delrin (plaat),Kunststof,5.50
+PTFE,Teflon PTFE (plaat),Kunststof,18.00
+PE500,Polyethyleen PE500 (plaat),Kunststof,3.80

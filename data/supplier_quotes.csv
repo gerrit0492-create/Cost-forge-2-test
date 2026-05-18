@@ -1,0 +1,17 @@
+supplier,material_id,price_eur_per_kg,lead_time_days,valid_until,preferred
+SteelCo,S235,1.05,10,2026-12-31,1
+SteelCo,S355,1.18,10,2026-12-31,1
+Metals4U,AL6061,4.40,7,2026-12-31,1
+Metals4U,AL5083,4.75,8,2026-12-31,1
+Outokumpu,316,3.70,12,2026-12-31,1
+Outokumpu,304,3.45,10,2026-12-31,1
+Outokumpu,1.4462,5.10,14,2026-12-31,1
+TiMet,Ti6Al4V,31.50,21,2026-12-31,1
+SteelCo,EN-GJL-250,1.55,14,2026-12-31,1
+SteelCo,EN-GJS-500,1.75,14,2026-12-31,1
+MCB,CuZn37,8.30,10,2026-12-31,1
+MCB,CuETP,8.65,10,2026-12-31,1
+PlasticsNL,POM,5.40,5,2026-12-31,1
+PlasticsNL,PTFE,17.80,7,2026-12-31,1
+PlasticsNL,PA6,4.10,5,2026-12-31,1
+PlasticsNL,PE500,3.75,5,2026-12-31,0
