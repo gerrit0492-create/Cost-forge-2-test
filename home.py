@@ -83,8 +83,9 @@ def _card(page, icon: str, title: str, caption: str) -> None:
 
 
 def dashboard() -> None:
+    from utils.currency import currency_selector
     from utils.project import load_project_name
-
+    currency_selector()
     name = load_project_name()
     st.title("🛠️ Cost Forge 2")
     if name:
