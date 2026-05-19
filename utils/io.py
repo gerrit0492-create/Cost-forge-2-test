@@ -17,6 +17,7 @@ SCHEMA_PROCESSES = {
 }
 SCHEMA_BOM = {
     "line_id": "string",
+    "part_name": "string",
     "material_id": "string",
     "qty": "Int64",
     "mass_kg": "float64",

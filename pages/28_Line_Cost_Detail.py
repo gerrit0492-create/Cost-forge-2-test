@@ -103,9 +103,10 @@ if chosen_sub != all_label:
     view = view[view["subsystem"] == prefix]
 
 if search_term:
+    desc = view["part_name"] if "part_name" in view.columns else pd.Series("", index=view.index)
     mask = (
         view["line_id"].astype(str).str.contains(search_term, case=False, na=False) |
-        view.get("description_x", pd.Series(dtype=str)).astype(str).str.contains(search_term, case=False, na=False)
+        desc.astype(str).str.contains(search_term, case=False, na=False)
     )
     view = view[mask]
 
@@ -127,7 +128,7 @@ st.divider()
 # ── Per-line detail table ─────────────────────────────────────────────────────
 display_cols = {
     "line_id":        "Line ID",
-    "description_x":  "Material desc.",
+    "part_name":      "Component",
     "material_id":    "Material",
     "qty":            "Qty",
     "mass_kg":        "Mass (kg)",

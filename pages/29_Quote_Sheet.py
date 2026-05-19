@@ -133,6 +133,7 @@ st.divider()
 with st.expander("Full BOM line detail", expanded=False):
     line_cols = {
         "line_id":          "Line ID",
+        "part_name":        "Component",
         "material_id":      "Material",
         "qty":              "Qty",
         "mass_kg":          "Mass kg",
