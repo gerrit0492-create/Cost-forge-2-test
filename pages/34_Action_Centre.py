@@ -64,6 +64,11 @@ def _compute_checks():
         mask = pd.to_numeric(bom["runtime_h"], errors="coerce").fillna(0) == 0
         zero_rt_lines = bom[mask]["line_id"].tolist()
 
+    zero_mass_lines = []
+    if "mass_kg" in bom.columns:
+        mask2 = pd.to_numeric(bom["mass_kg"], errors="coerce").fillna(0) <= 0
+        zero_mass_lines = bom[mask2]["line_id"].tolist()
+
     comp_score    = completeness_score(bom)
     missing_subs  = missing_subsystems(bom)
     crit_missing  = [(p, i) for p, i in missing_subs if i["critical"]]
@@ -76,7 +81,7 @@ def _compute_checks():
         b_miss=b_miss, b_pos=b_pos, b_no_rt=b_no_rt, b_no_mat=b_no_mat,
         q_expired_ids=q_expired_ids, rules_ok=rules_ok,
         dq_score=dq_score, unquoted=unquoted,
-        zero_rt_lines=zero_rt_lines, crit_missing=crit_missing,
+        zero_rt_lines=zero_rt_lines, zero_mass_lines=zero_mass_lines, crit_missing=crit_missing,
         comp_score=comp_score, expired_mats=expired_mats,
     )
 
@@ -110,6 +115,7 @@ def main() -> None:
         "All materials quoted":             not c["unquoted"],
         "Data Quality ≥ 8/10":             c["dq_score"] >= 8,
         "No zero-runtime BOM lines":        not c["zero_rt_lines"],
+        "No zero-mass BOM lines":           not c["zero_mass_lines"],
         "Critical subsystems present":      not c["crit_missing"],
         "BOM fields complete":              not c["b_miss"] and not c["b_no_rt"] and not c["b_no_mat"],
         "Material prices valid":            not c["m_miss"] and not c["m_pos"],
@@ -267,6 +273,50 @@ def main() -> None:
             updated_bom = bom.copy()
             for _, row in edited_rt.iterrows():
                 updated_bom.loc[updated_bom["line_id"] == row["line_id"], "runtime_h"] = row["runtime_h"]
+            save_sheet(updated_bom, "bom")
+            st.cache_data.clear()
+            st.success("Saved — click 🔄 Re-check all.")
+            st.rerun()
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  FIX SECTION 3b — ZERO MASS BOM LINES
+    # ══════════════════════════════════════════════════════════════════════════
+    _section(f"{_badge(not c['zero_mass_lines'])} Fix BOM lines with zero or missing mass (kg)")
+
+    if not c["zero_mass_lines"]:
+        st.success("All BOM lines have a valid mass_kg value.")
+    else:
+        st.warning(
+            f"{len(c['zero_mass_lines'])} BOM line(s) have mass_kg = 0 or blank — "
+            "dry weight and €/kg calculations will be incorrect."
+        )
+        st.markdown(
+            "Enter the correct **mass in kg** for each line. "
+            "Use part drawings, weighing scales or material datasheet."
+        )
+        bom = c["bom"].copy()
+        mass_mask = pd.to_numeric(bom["mass_kg"], errors="coerce").fillna(0) <= 0
+        mass_rows = bom[mass_mask].copy()
+        mass_cols = [col for col in ["line_id", "part_name", "material_id",
+                                     "qty", "mass_kg"] if col in mass_rows.columns]
+        edited_mass = st.data_editor(
+            mass_rows[mass_cols].reset_index(drop=True),
+            column_config={
+                "line_id":     st.column_config.TextColumn("Line ID",   disabled=True),
+                "part_name":   st.column_config.TextColumn("Part",      disabled=True),
+                "material_id": st.column_config.TextColumn("Material",  disabled=True),
+                "qty":         st.column_config.NumberColumn("Qty",     disabled=True),
+                "mass_kg":     st.column_config.NumberColumn("Mass (kg)", min_value=0.0,
+                                                              format="%.4f"),
+            },
+            use_container_width=True, num_rows="fixed", key="fix_mass",
+        )
+        if st.button("💾 Save mass values", key="save_mass"):
+            updated_bom = bom.copy()
+            for _, row in edited_mass.iterrows():
+                updated_bom.loc[updated_bom["line_id"] == row["line_id"], "mass_kg"] = row["mass_kg"]
             save_sheet(updated_bom, "bom")
             st.cache_data.clear()
             st.success("Saved — click 🔄 Re-check all.")
