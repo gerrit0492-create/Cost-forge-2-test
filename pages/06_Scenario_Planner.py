@@ -112,19 +112,28 @@ total_s    = df_s["total_cost"].sum()
 delta_abs  = total_s - total_base
 delta_pct  = delta_abs / total_base * 100 if total_base else 0
 
+mat_base  = df_base["material_cost"].sum()
+mat_s     = df_s["material_cost"].sum()
+proc_base = df_base["process_cost"].sum()
+proc_s    = df_s["process_cost"].sum()
+
 # ── KPI comparison ────────────────────────────────────────────────────────────
 st.subheader("Cost impact")
-k1, k2, k3, k4, k5 = st.columns(5)
+k1, k2, k3 = st.columns(3)
 k1.metric("Baseline selling price", fmt(total_base))
 k2.metric("Scenario selling price", fmt(total_s),
           delta=f"{fmt_delta(delta_abs)} ({delta_pct:+.1f}%)")
-k3.metric("Material Δ",
-          fmt_delta(df_s['material_cost'].sum() - df_base['material_cost'].sum()))
-k4.metric("Process Δ",
-          fmt_delta(df_s['process_cost'].sum() - df_base['process_cost'].sum()))
-k5.metric("Location",
+k3.metric("Location",
           location if location != "— custom —" else "Custom",
           delta=f"Labour ×{location_mult:.2f}" if location != "— custom —" else None)
+
+m1, m2, m3, m4 = st.columns(4)
+m1.metric("Material cost (baseline)", fmt(mat_base))
+m2.metric("Material cost (scenario)", fmt(mat_s),
+          delta=fmt_delta(mat_s - mat_base) if mat_s != mat_base else None)
+m3.metric("Process cost (baseline)", fmt(proc_base))
+m4.metric("Process cost (scenario)", fmt(proc_s),
+          delta=fmt_delta(proc_s - proc_base) if proc_s != proc_base else None)
 
 st.divider()
 
