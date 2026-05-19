@@ -16,6 +16,10 @@ home_button()
 st.title("🧭 Scenario Planner")
 st.caption("Simulate the impact of material price changes, labour rate shifts, and margin adjustments.")
 
+if st.button("🔄 Refresh", help="Clear cache and reload"):
+    st.cache_data.clear()
+    st.rerun()
+
 # ── Load baseline ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def _baseline():
@@ -28,7 +32,12 @@ def _baseline():
     return mats_q, procs, bom, df
 
 
-mats_base, procs_base, bom, df_base = _baseline()
+try:
+    mats_base, procs_base, bom, df_base = _baseline()
+except Exception as exc:
+    st.error(f"Could not load baseline data: {exc}")
+    st.info("Try clicking **🔄 Refresh** above to clear the cache and reload.")
+    st.stop()
 total_base = df_base["total_cost"].sum()
 
 # ── Sidebar: per-commodity material sliders ───────────────────────────────────
