@@ -154,22 +154,27 @@ scale_exp_col = (
     else pd.Series([2.0] * len(bom)).values
 )
 
+col_base_mass = f"Mass ref-{BASE_BORE_MM} (kg)"
+col_tgt_mass  = f"Mass MWJ-{target_bore} (kg)"
+col_base_cost = f"Cost ref-{BASE_BORE_MM}"
+col_tgt_cost  = f"Cost MWJ-{target_bore}"
+
 cmp = pd.DataFrame({
-    "Line ID":                     df_base["line_id"],
-    "Component":                   df_base["part_name"] if "part_name" in df_base.columns else "",
-    "Scale exp":                   scale_exp_col,
-    f"Mass MWJ-{BASE_BORE_MM} (kg)": bom["mass_kg"].round(2).values,
-    f"Mass MWJ-{target_bore} (kg)":  bom_scaled["mass_kg"].round(2).values,
-    f"Cost MWJ-{BASE_BORE_MM}":      df_base["total_cost"].round(2),
-    f"Cost MWJ-{target_bore}":       df_scaled["total_cost"].round(2),
+    "Line ID":      df_base["line_id"],
+    "Component":    df_base["part_name"] if "part_name" in df_base.columns else "",
+    "Scale exp":    scale_exp_col,
+    col_base_mass:  bom["mass_kg"].round(2).values,
+    col_tgt_mass:   bom_scaled["mass_kg"].round(2).values,
+    col_base_cost:  df_base["total_cost"].round(2),
+    col_tgt_cost:   df_scaled["total_cost"].round(2),
 })
-cmp["Cost Δ"] = (cmp[f"Cost MWJ-{target_bore}"] - cmp[f"Cost MWJ-{BASE_BORE_MM}"]).round(2)
+cmp["Cost Δ"] = (cmp[col_tgt_cost] - cmp[col_base_cost]).round(2)
 cmp["Cost Δ%"] = (
-    cmp["Cost Δ"] / cmp[f"Cost MWJ-{BASE_BORE_MM}"].replace(0, float("nan")) * 100
+    cmp["Cost Δ"] / cmp[col_base_cost].replace(0, float("nan")) * 100
 ).round(1)
 
-for col in [f"Cost MWJ-{BASE_BORE_MM}", f"Cost MWJ-{target_bore}"]:
-    cmp[col] = cmp[col].map(lambda x: fmt(x, 2))
+cmp[col_base_cost] = cmp[col_base_cost].map(lambda x: fmt(x, 2))
+cmp[col_tgt_cost]  = cmp[col_tgt_cost].map(lambda x: fmt(x, 2))
 cmp["Cost Δ"]  = cmp["Cost Δ"].map(lambda x: fmt_delta(x, 2))
 cmp["Cost Δ%"] = cmp["Cost Δ%"].map(lambda x: f"{x:+.1f}%" if pd.notna(x) else "—")
 
