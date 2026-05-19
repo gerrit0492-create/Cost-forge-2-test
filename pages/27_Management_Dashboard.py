@@ -41,38 +41,34 @@ def main() -> None:
     # ── KPI row ───────────────────────────────────────────────────────────────
     st.subheader("💶 Total Overview")
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("Total Price", fmt(total, 2))
-    k2.metric("Material Cost", fmt(mat_sum, 2), _pct(mat_sum, total))
-    k3.metric("Process Cost", fmt(proc_sum, 2), _pct(proc_sum, total))
-    k4.metric("Overhead", fmt(oh_sum, 2), _pct(oh_sum, total))
-    k5.metric("Margin", fmt(mar_sum, 2), _pct(mar_sum, total))
+    k1.metric("Selling price",  fmt(total, 2))
+    k2.metric("Material (purchase)", fmt(mat_sum, 2),  f"{mat_sum/total*100:.1f}% of sell")
+    k3.metric("Machine + Labour",    fmt(proc_sum, 2), f"{proc_sum/total*100:.1f}% of sell")
+    k4.metric("Overhead",            fmt(oh_sum, 2),   f"{oh_sum/total*100:.1f}% of sell")
+    k5.metric("Margin",              fmt(mar_sum, 2),  f"{mar_sum/total*100:.1f}% of sell")
 
-    # ── Cost composition bar ──────────────────────────────────────────────────
+    # ── Cost composition ──────────────────────────────────────────────────────
     st.divider()
     st.subheader("📐 Cost Composition")
 
-    comp = pd.DataFrame(
-        {
-            "Cost type": ["Material", "Process", "Overhead", "Margin"],
-            "Amount (€)": [mat_sum, proc_sum, oh_sum, mar_sum],
-            "Share (%)": [
-                round(mat_sum / total * 100, 1),
-                round(proc_sum / total * 100, 1),
-                round(oh_sum / total * 100, 1),
-                round(mar_sum / total * 100, 1),
-            ],
-        }
-    )
+    comp = pd.DataFrame({
+        "Cost element":  ["Material (purchase)", "Machine + Labour", "Overhead", "Margin"],
+        "EUR":           [mat_sum, proc_sum, oh_sum, mar_sum],
+        "Share of sell": [mat_sum/total, proc_sum/total, oh_sum/total, mar_sum/total],
+    })
 
-    col_chart, col_table = st.columns([2, 1])
-    with col_chart:
-        st.bar_chart(comp.set_index("Cost type")["Amount (€)"])
-    with col_table:
-        st.dataframe(
-            comp.style.format({"Amount (€)": lambda x: fmt(x, 2), "Share (%)": "{:.1f}%"}),
-            use_container_width=True,
-            hide_index=True,
-        )
+    # Stacked single-bar — one row, four columns → all segments visible
+    stacked = pd.DataFrame(
+        [[mat_sum, proc_sum, oh_sum, mar_sum]],
+        columns=["Material", "Process", "Overhead", "Margin"],
+        index=["Cost build-up"],
+    )
+    st.bar_chart(stacked, color=["#2196F3", "#FF9800", "#9C27B0", "#4CAF50"])
+
+    comp_disp = comp.copy()
+    comp_disp["EUR"] = comp_disp["EUR"].map(lambda x: fmt(x, 0))
+    comp_disp["Share of sell"] = comp_disp["Share of sell"].map(lambda x: f"{x*100:.1f}%")
+    st.dataframe(comp_disp, use_container_width=True, hide_index=True)
 
     # ── By commodity ──────────────────────────────────────────────────────────
     st.divider()
@@ -89,23 +85,20 @@ def main() -> None:
         )
         grp.index.name = "Material group"
 
+        # Stacked bar: each commodity shows Material + Process + Overhead + Margin
+        grp_stacked = grp[["material_cost", "process_cost", "overhead", "margin"]].rename(
+            columns={"material_cost": "Material", "process_cost": "Process",
+                     "overhead": "Overhead", "margin": "Margin"}
+        )
         col_a, col_b = st.columns([2, 1])
         with col_a:
-            st.bar_chart(grp["total_cost"])
+            st.bar_chart(grp_stacked)
         with col_b:
-            st.dataframe(
-                grp[["material_cost", "process_cost", "overhead", "total_cost"]]
-                .rename(
-                    columns={
-                        "material_cost": "Material",
-                        "process_cost": "Process",
-                        "overhead": "Overhead",
-                        "total_cost": "Total",
-                    }
-                )
-                .style.format(lambda x: fmt(x, 2)),
-                use_container_width=True,
+            tbl = grp[["material_cost", "process_cost", "overhead", "total_cost"]].rename(
+                columns={"material_cost": "Material €", "process_cost": "Process €",
+                         "overhead": "Overhead €", "total_cost": "Total €"}
             )
+            st.dataframe(tbl.style.format(lambda x: fmt(x, 0)), use_container_width=True)
     else:
         st.info("No commodity column present in material data.")
 
@@ -189,14 +182,22 @@ def main() -> None:
         .set_index("line_id")
         .round(2)
     )
-    st.bar_chart(detail[["material_cost", "process_cost", "overhead", "margin"]])
+    # Show material and process side-by-side so material cost is not swamped
+    ch1, ch2 = st.columns(2)
+    with ch1:
+        st.caption("Material purchase cost per line")
+        st.bar_chart(detail["material_cost"])
+    with ch2:
+        st.caption("Machine + Labour cost per line")
+        st.bar_chart(detail["process_cost"])
 
-    with st.expander("📄 Full line detail"):
+    with st.expander("📄 Full line detail (all cost columns)"):
         cost_cols = ["material_cost", "process_cost", "overhead", "margin", "total_cost"]
-        st.dataframe(
-            detail.style.format({c: lambda x: fmt(x, 2) for c in cost_cols if c in detail.columns}),
-            use_container_width=True,
-        )
+        tbl = detail[cost_cols].rename(columns={
+            "material_cost": "Material €", "process_cost": "Process €",
+            "overhead": "Overhead €", "margin": "Margin €", "total_cost": "Total €",
+        })
+        st.dataframe(tbl.style.format(lambda x: fmt(x, 0)), use_container_width=True)
 
     # ── Dry weight by subsystem ───────────────────────────────────────────────
     st.divider()
