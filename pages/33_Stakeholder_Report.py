@@ -573,6 +573,9 @@ st.divider()
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("## 4 · Risk Register")
 st.caption("For: Management · Quality · Cost Engineering")
+st.page_link("pages/34_Action_Centre.py",
+             label="🔧 Open Action Centre — fix all issues in one place →",
+             use_container_width=False)
 
 if not risks:
     st.success("✅ No significant risks identified — data is complete and consistent.")

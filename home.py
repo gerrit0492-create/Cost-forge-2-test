@@ -38,6 +38,7 @@ _P = {
     "prepost":    st.Page("pages/31_Pre_Post.py",               title="Pre / Post",          icon="📊"),
     "itemcost":   st.Page("pages/32_Item_Costing.py",           title="Item Costing",        icon="🔢"),
     "stakeholder":st.Page("pages/33_Stakeholder_Report.py",    title="Stakeholder Report",  icon="📋"),
+    "actions":    st.Page("pages/34_Action_Centre.py",          title="Action Centre",       icon="🔧"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -411,6 +412,13 @@ def dashboard() -> None:
     with c4:
         _card(_P["stakeholder"],"📋", "Stakeholder Report",
               "Conclusive multi-section report — executive summary, cost, procurement and risk register.")
+
+    st.info(
+        "**🔧 Issues to resolve?** Use the Action Centre to fix expired quotes, "
+        "missing runtime values, overhead rates and estimate maturity — all in one place.",
+        icon="🔧",
+    )
+    st.page_link(_P["actions"], label="→ Open Action Centre", use_container_width=False)
 
     st.divider()
 
