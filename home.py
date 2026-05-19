@@ -32,6 +32,7 @@ _P = {
     "linedet":  st.Page("pages/28_Line_Cost_Detail.py",        title="Line Cost Detail", icon="🔍"),
     "quotesheet": st.Page("pages/29_Quote_Sheet.py",           title="Quote Sheet",      icon="🧾"),
     "borescale": st.Page("pages/30_Bore_Scale.py",            title="Bore Scale",       icon="📐"),
+    "prepost":   st.Page("pages/31_Pre_Post.py",              title="Pre / Post",       icon="📊"),
     "debug":    st.Page("pages/00_Debug.py",                   title="Debug",            icon="🐛"),
     "diagnose": st.Page("pages/0_Diagnose.py",                 title="Diagnose",         icon="🔍"),
 }
@@ -178,7 +179,7 @@ def dashboard() -> None:
         _card(_P["calc"],    "💸", "Calculation",
               "Detailed calculation per BOM line.")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         _card(_P["linedet"],    "🔍", "Line Cost Detail",
               "Full cost breakdown per line — purchase, machine, labour, overhead, margin with error checks.")
@@ -188,6 +189,9 @@ def dashboard() -> None:
     with c3:
         _card(_P["borescale"],  "📐", "Bore Scale",
               "Scale BOM cost and mass to a different bore diameter using per-line scaling exponents.")
+    with c4:
+        _card(_P["prepost"],    "📊", "Pre / Post",
+              "Compare budget estimate against recorded actuals — variance per line and per subsystem.")
 
     st.divider()
 
