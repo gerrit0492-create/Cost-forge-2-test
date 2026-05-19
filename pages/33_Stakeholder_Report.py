@@ -111,37 +111,123 @@ present_subs = detect_subsystems(bom)
 missing_subs = missing_subsystems(bom)
 crit_missing = [(p, i) for p, i in missing_subs if i["critical"]]
 
-# Risk findings
+# Risk findings — each entry: (severity, title, detail, why_it_matters, fix_steps, page_links)
+# page_links = list of (label, path) tuples
 risks = []
 if expired_list:
-    risks.append(("🔴 High", "Expired supplier quotes",
-                  f"{len(expired_list)} material(s): {', '.join(expired_list[:5])}",
-                  "Renew quotes before issuing firm price"))
+    risks.append((
+        "🔴 High",
+        "Expired supplier quotes",
+        f"{len(expired_list)} material(s): {', '.join(expired_list[:5])}{'…' if len(expired_list)>5 else ''}",
+        "Costs are calculated using stale or base prices — the quoted price to the customer may not be achievable.",
+        [
+            "Open **Supplier Quotes** and go to the *Quote status* tab.",
+            "Identify all rows marked 🔴 Expired.",
+            "Contact each supplier and request an updated price and validity date.",
+            "Enter the new quote via **CSV Import** or directly in `cost_forge.xlsx → Quotes`.",
+            "Click 🔄 Refresh and verify all quotes show 🟢 Valid before releasing the quotation.",
+        ],
+        [("→ Supplier Quotes", "pages/07_Supplier_Quotes.py"),
+         ("→ CSV Import",      "pages/99_Update_from_Public_CSV.py")],
+    ))
 if crit_missing:
-    risks.append(("🔴 High", "Critical subsystems missing from BOM",
-                  ", ".join(i["name"] for _, i in crit_missing),
-                  "Upload complete BOM via BOM Import"))
+    risks.append((
+        "🔴 High",
+        "Critical subsystems missing from BOM",
+        ", ".join(i["name"] for _, i in crit_missing),
+        "The cost estimate is incomplete — the total sell price is understated because critical parts are absent.",
+        [
+            "Open your BOM source file (ERP export or Excel).",
+            f"Ensure the missing subsystem(s) have line IDs starting with the correct prefix: "
+            f"{', '.join('`'+p+'`' for p,_ in crit_missing)}.",
+            "Re-upload the complete BOM via **BOM Import**.",
+            "Check the BOM completeness grid in this report — all critical rows should show 🟢.",
+        ],
+        [("→ BOM Import", "pages/15_Bom_Import.py"),
+         ("→ Data Quality", "pages/05_Data_Quality.py")],
+    ))
 if len(unquoted) > 0:
-    risks.append(("🟠 Medium", "Materials without valid quote",
-                  f"{len(unquoted)} of {len(mats)} materials",
-                  "Obtain supplier quotes to firm up pricing"))
+    risks.append((
+        "🟠 Medium",
+        "Materials without a valid supplier quote",
+        f"{len(unquoted)} of {len(mats)} materials have no confirmed quote",
+        "Those materials fall back to the base catalogue price — cost accuracy is reduced and the price is not commercially confirmed.",
+        [
+            "Open **Supplier Quotes → Coverage Gaps** to see the exact list of unquoted materials.",
+            "Contact suppliers for each unquoted material.",
+            "Enter the received quotes via **CSV Import** or `cost_forge.xlsx → Quotes`.",
+            "Re-check coverage in **Material Library → Quote coverage** tab.",
+        ],
+        [("→ Supplier Quotes — Coverage Gaps", "pages/07_Supplier_Quotes.py"),
+         ("→ CSV Import", "pages/99_Update_from_Public_CSV.py"),
+         ("→ Material Library", "pages/04_Materiaalbronnen.py")],
+    ))
 if mat_share > 75:
-    risks.append(("🟠 Medium", "High material cost exposure",
-                  f"Material is {mat_share:.0f}% of cost base",
-                  "Consider price-escalation clauses or fixed-price supply contracts"))
+    risks.append((
+        "🟠 Medium",
+        "High material cost exposure",
+        f"Material is {mat_share:.0f}% of the cost base (threshold: 75%)",
+        "Commodity price movements directly affect margin. A 5 % material price increase could eliminate all profit.",
+        [
+            "Open **Supplier Quotes → Spend & Concentration** and identify the top 3 spend materials.",
+            "Negotiate fixed-price supply contracts or price-escalation clauses for those materials.",
+            "Use **Scenario Planner** to simulate the margin impact of price swings before quoting.",
+            "Consider back-to-back supply agreements for the highest-exposure items.",
+        ],
+        [("→ Supplier Quotes — Spend", "pages/07_Supplier_Quotes.py"),
+         ("→ Scenario Planner", "pages/06_Scenario_Planner.py")],
+    ))
 if margin_pct < 10:
-    risks.append(("🔴 High", "Overall margin below threshold",
-                  f"Margin is {margin_pct:.1f}% — minimum recommended 10%",
-                  "Review pricing or reduce costs before release"))
+    risks.append((
+        "🔴 High",
+        "Overall margin below minimum threshold",
+        f"Margin is {margin_pct:.1f}% — minimum recommended is 10%",
+        "Any cost increase (materials, rework, delays) will result in a commercial loss on this order.",
+        [
+            "Open **Line Cost Detail** and sort by margin % ascending to find the lowest-margin lines.",
+            "Check whether process routing hours can be reduced — review in **Routing Costs**.",
+            "Verify overhead % and margin % settings are correct in **Presets**.",
+            "Review the sell price with the commercial team in **Quote Sheet**.",
+            "Consider value-engineering the top 3 cost-driver lines (see Section 2 above).",
+        ],
+        [("→ Line Cost Detail", "pages/28_Line_Cost_Detail.py"),
+         ("→ Presets",          "pages/03_Presets.py"),
+         ("→ Quote Sheet",      "pages/29_Quote_Sheet.py"),
+         ("→ Routing Costs",    "pages/16_Routing_Kosten.py")],
+    ))
 if maturity in ("RoM (±30%)", "Budget (±15%)"):
-    risks.append(("🟡 Low", "Estimate maturity — not firm",
-                  f"Current maturity: {maturity}",
-                  "Confirm BOM and supplier quotes before issuing to customer"))
+    risks.append((
+        "🟡 Low",
+        "Estimate maturity is not firm",
+        f"Current maturity: {maturity}",
+        "Numbers carry inherent uncertainty at this maturity level. Do not issue as a firm commercial quotation.",
+        [
+            "Complete the BOM with confirmed part numbers, quantities and weights.",
+            "Obtain supplier quotes for all materials (see *Materials without a valid quote* above if applicable).",
+            "Lock overhead % and margin % in **Presets** with the approved project rates.",
+            "Once BOM and quotes are confirmed, change the estimate maturity to *Definitive* or *Firm* in the dashboard sidebar.",
+        ],
+        [("→ Presets",      "pages/03_Presets.py"),
+         ("→ Data Quality", "pages/05_Data_Quality.py")],
+    ))
 if target_cost > 0 and total_sell > target_cost * 1.05:
     gap_pct = (total_sell - target_cost) / target_cost * 100
-    risks.append(("🟠 Medium", "Cost exceeds budget target",
-                  f"Sell price {fmt(total_sell)} vs target {fmt(target_cost)} (+{gap_pct:.1f}%)",
-                  "Identify cost-reduction opportunities per subsystem"))
+    risks.append((
+        "🟠 Medium",
+        "Sell price exceeds budget target",
+        f"Sell price {fmt(total_sell)} vs target {fmt(target_cost)} (+{gap_pct:.1f}%)",
+        "The commercial target is not met — risk of contract loss or unacceptable margin reduction.",
+        [
+            "Review the subsystem breakdown in Section 2 and target the largest cost subsystem for value engineering.",
+            "Use **Scenario Planner** to model which commodity savings would close the gap.",
+            "Check whether process times can be reduced in **Routing Costs**.",
+            "Review overhead % and margin settings in **Presets** — verify they reflect the actual project.",
+            "Escalate to the commercial and engineering team with the Section 2 subsystem table as evidence.",
+        ],
+        [("→ Scenario Planner", "pages/06_Scenario_Planner.py"),
+         ("→ Routing Costs",    "pages/16_Routing_Kosten.py"),
+         ("→ Presets",          "pages/03_Presets.py")],
+    ))
 
 # Low-margin lines
 low_margin_lines = []
@@ -203,8 +289,8 @@ if target_cost > 0:
               delta="over" if gap>0 else "under", delta_color="inverse" if gap>0 else "normal")
 
 if risks:
-    st.markdown(f"**{len(risks)} finding(s) require attention** — see Risk Register (Section 4).")
-    for sev, title, detail, _ in risks[:3]:
+    st.markdown(f"**{len(risks)} finding(s) require attention** — see Risk Register (Section 4) for step-by-step resolution.")
+    for sev, title, detail, *_ in risks[:3]:
         st.warning(f"{sev} &nbsp; **{title}** — {detail}")
     if len(risks) > 3:
         st.caption(f"+ {len(risks)-3} more finding(s) in Section 4.")
@@ -348,8 +434,28 @@ st.caption("For: Management · Quality · Cost Engineering")
 if not risks:
     st.success("✅ No significant risks identified — data is complete and consistent.")
 else:
-    risk_df = pd.DataFrame(risks, columns=["Severity","Finding","Detail","Recommended action"])
-    st.dataframe(risk_df, use_container_width=True, hide_index=True)
+    st.caption(f"{len(risks)} finding(s) detected. Each card below explains the issue, why it matters, and exactly how to resolve it.")
+    for sev, title, detail, why, steps, pages in risks:
+        sev_colour = {"🔴": "#f44336", "🟠": "#ff9800", "🟡": "#ffc107"}.get(sev[0], "#888")
+        with st.container(border=True):
+            h1, h2 = st.columns([6, 1])
+            h1.markdown(
+                f"<span style='color:{sev_colour}; font-weight:700; font-size:1.05em;'>{sev}</span>"
+                f" &nbsp; <span style='font-weight:700; font-size:1.05em;'>{title}</span>",
+                unsafe_allow_html=True,
+            )
+            h2.caption(detail)
+
+            st.markdown(f"**Impact:** {why}")
+
+            st.markdown("**How to resolve:**")
+            for i, step in enumerate(steps, 1):
+                st.markdown(f"{i}. {step}")
+
+            if pages:
+                link_cols = st.columns(len(pages))
+                for col, (label, path) in zip(link_cols, pages):
+                    col.page_link(path, label=label, use_container_width=True)
 
 # BOM completeness
 st.subheader("BOM completeness")
@@ -458,8 +564,11 @@ def _build_excel() -> bytes:
 
         # Sheet 5 — Risk Register
         if risks:
-            pd.DataFrame(risks, columns=["Severity","Finding","Detail","Recommended action"]
-                         ).to_excel(w, sheet_name="Risk Register", index=False)
+            pd.DataFrame(
+                [(sev, title, detail, why, "\n".join(f"{i+1}. {s}" for i, s in enumerate(steps)))
+                 for sev, title, detail, why, steps, _ in risks],
+                columns=["Severity", "Finding", "Detail", "Impact", "Resolution steps"],
+            ).to_excel(w, sheet_name="Risk Register", index=False)
 
         # Sheet 6 — BOM Completeness
         pd.DataFrame(sub_status_rows).to_excel(w, sheet_name="BOM Completeness", index=False)
