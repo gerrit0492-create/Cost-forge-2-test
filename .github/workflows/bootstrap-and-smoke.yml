@@ -2,8 +2,6 @@ name: "Bootstrap 2.0 • code + csv repair + seed + smoke + exports"
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
 
 permissions:
   contents: write
