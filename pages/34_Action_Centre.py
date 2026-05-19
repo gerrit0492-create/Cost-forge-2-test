@@ -11,7 +11,7 @@ from utils.nav import home_button
 from utils.project import load_project_meta, save_project_meta
 from utils.quotes import expired_quote_materials
 from utils.safe import guard
-from utils.validators import all_rules_ok, business_rules, check_missing, check_positive
+from utils.validators import all_rules_ok, business_rules, check_missing, check_positive, material_lines
 
 MATURITY_OPTIONS = ["RoM (±30%)", "Budget (±15%)", "Definitive (±5%)", "Firm"]
 
@@ -30,7 +30,8 @@ def _compute_checks():
     p_pos    = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
     b_miss   = check_missing(bom,   ["line_id", "material_id", "qty",
                                       "mass_kg", "process_route", "runtime_h"])
-    b_pos    = check_positive(bom,  ["qty", "mass_kg"])
+    mat_bom  = material_lines(bom)
+    b_pos    = check_positive(mat_bom, ["qty", "mass_kg"])
     b_no_rt  = (bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
                 if "process_route" in bom.columns and "process_id" in procs.columns else [])
     b_no_mat = (bom[~bom["material_id"].isin(mats["material_id"])]["line_id"].tolist()

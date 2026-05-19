@@ -112,7 +112,7 @@ missing_subs = missing_subsystems(bom)
 crit_missing = [(p, i) for p, i in missing_subs if i["critical"]]
 
 # ── Additional pre-computations for live status in risk cards ─────────────────
-from utils.validators import all_rules_ok, business_rules, check_missing, check_positive
+from utils.validators import all_rules_ok, business_rules, check_missing, check_positive, material_lines
 
 _m_miss    = check_missing(mats,  ["material_id", "price_eur_per_kg"])
 _m_pos     = check_positive(mats, ["price_eur_per_kg"])
@@ -121,7 +121,7 @@ _p_miss    = check_missing(procs, ["process_id", "machine_rate_eur_h", "labor_ra
 _p_pos     = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
 _b_miss    = check_missing(bom,   ["line_id", "material_id", "qty", "mass_kg",
                                     "process_route", "runtime_h"])
-_b_pos     = check_positive(bom,  ["qty", "mass_kg"])
+_b_pos     = check_positive(material_lines(bom), ["qty", "mass_kg"])
 _b_no_rt   = (bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
               if "process_route" in bom.columns and "process_id" in procs.columns else [])
 _b_no_mat  = (bom[~bom["material_id"].isin(mats["material_id"])]["line_id"].tolist()

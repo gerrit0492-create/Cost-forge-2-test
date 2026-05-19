@@ -6,7 +6,7 @@ import streamlit as st
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
 from utils.safe import guard
-from utils.validators import all_rules_ok, business_rules, check_missing, check_positive
+from utils.validators import all_rules_ok, business_rules, check_missing, check_positive, material_lines
 
 
 def _health(ok: bool) -> str:
@@ -42,10 +42,11 @@ def main() -> None:
                                     "labor_rate_eur_h", "overhead_pct", "margin_pct"])
     p_pos   = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
 
-    # BOM
+    # BOM — mass/qty checks only on material-based lines (service/NDT/assembly lines have no mass)
+    mat_bom = material_lines(bom)
     b_miss  = check_missing(bom, ["line_id", "material_id", "qty",
                                    "mass_kg", "process_route", "runtime_h"])
-    b_pos   = check_positive(bom, ["qty", "mass_kg"])
+    b_pos   = check_positive(mat_bom, ["qty", "mass_kg"])
     b_no_route = (
         bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
         if "process_route" in bom.columns and "process_id" in procs.columns else []

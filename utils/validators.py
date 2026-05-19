@@ -41,7 +41,16 @@ def within(df: pd.DataFrame, col: str, lo: float | None, hi: float | None) -> bo
     return bool(good)
 
 
+def material_lines(bom: pd.DataFrame) -> pd.DataFrame:
+    """BOM rows that reference a physical material (excludes service/assembly/NDT lines)."""
+    if "material_id" not in bom.columns:
+        return bom
+    has_mat = bom["material_id"].notna() & (bom["material_id"].astype(str).str.strip() != "")
+    return bom[has_mat]
+
+
 def business_rules(mats: pd.DataFrame, procs: pd.DataFrame, bom: pd.DataFrame) -> List[Rule]:
+    mat_bom = material_lines(bom)   # service lines excluded from physical checks
     rules: List[Rule] = []
     rules.append(
         Rule(
@@ -65,13 +74,9 @@ def business_rules(mats: pd.DataFrame, procs: pd.DataFrame, bom: pd.DataFrame) -
             "margin_pct moet tussen 0 en 1 liggen.",
         )
     )
-    rules.append(Rule("qty_min_1", within(bom, "qty", 1, None), "qty moet >= 1 zijn."))
-    rules.append(
-        Rule("mass_positive", within(bom, "mass_kg", 0.000001, None), "mass_kg moet > 0 zijn.")
-    )
-    rules.append(
-        Rule("runtime_nonneg", within(bom, "runtime_h", 0.0, None), "runtime_h moet >= 0 zijn.")
-    )
+    rules.append(Rule("qty_min_1",    within(mat_bom, "qty",      1,         None), "qty moet >= 1 zijn."))
+    rules.append(Rule("mass_positive", within(mat_bom, "mass_kg",  0.000001, None), "mass_kg moet > 0 zijn."))
+    rules.append(Rule("runtime_nonneg", within(bom,    "runtime_h", 0.0,     None), "runtime_h moet >= 0 zijn."))
     rules.append(
         Rule(
             "mat_price_pos",
