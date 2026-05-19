@@ -29,15 +29,21 @@ REQUIRED_COLS = ["line_id", "material_id", "qty", "mass_kg", "process_route", "r
 
 DISPLAY_COLS = [
     "line_id",
+    "part_name",
     "material_id",
     "qty",
     "mass_kg",
+    "yield_factor",
     "price_eur_per_kg",
     "material_cost",
     "process_route",
     "runtime_h",
+    "setup_h",
+    "machine_cost",
+    "labour_cost",
     "process_cost",
     "overhead",
+    "base_cost",
     "margin",
     "total_cost",
 ]
@@ -203,6 +209,31 @@ _TEMPLATE = pd.DataFrame(
         dict(line_id="QA08", part_name="Final assembly alignment & FAT",                   material_id="SS316L",    qty=1, mass_kg=0.0,   process_route="FINAL_ASSEMBLY", runtime_h=32.0),
     ]
 )
+
+# ── Enrich template with optional columns ─────────────────────────────────────
+_SETUP_H: dict[str, float] = {
+    "I01": 8.0, "SB01": 8.0, "SB02": 6.0, "SB03": 2.0,
+    "H01": 12.0, "H02": 8.0, "H03": 3.0, "H04": 4.0,
+    "H05": 2.0, "H06": 2.0, "H07": 2.0, "H08": 2.0,
+    "S01": 4.0, "S02": 2.0, "S03": 3.0, "S04": 2.5, "S05": 1.5, "S06": 2.0,
+    "S07": 1.5, "S08": 1.5, "S09": 1.0, "S10": 2.0,
+    "TB01": 3.0, "TB02": 3.0, "TB03": 2.0, "TB04": 2.0,
+    "D01": 4.0, "D02": 2.0, "D03": 2.0, "D04": 2.0,
+    "N01": 2.5, "N02": 2.0,
+    "ST01": 2.0, "ST02": 2.0, "ST03": 2.0, "ST04": 2.0,
+    "R01": 2.5, "R02": 2.0,
+    "F01": 5.0, "F02": 3.0,
+    "SE01": 2.0, "SE02": 2.0, "SE03": 2.0,
+    "HY01": 2.0, "QA08": 4.0,
+}
+_YIELD_BY_PROCESS: dict[str, float] = {
+    "SAND_CAST": 0.60, "TIG_WELD_316": 0.90, "PLASMA_CUT": 0.85,
+}
+_TEMPLATE["setup_h"]              = _TEMPLATE["line_id"].map(_SETUP_H).fillna(0.0)
+_TEMPLATE["yield_factor"]         = _TEMPLATE["process_route"].map(_YIELD_BY_PROCESS).fillna(1.0)
+_TEMPLATE["make_buy"]             = "M"
+_TEMPLATE["cost_type"]            = "UNIT"
+_TEMPLATE["subcontract_price_eur"] = float("nan")
 
 
 def _metric_row(df: pd.DataFrame) -> None:
@@ -413,7 +444,7 @@ def main() -> None:
     # ── Template download ─────────────────────────────────────────────────────
     st.subheader("Step 1 — Download the reference template")
     st.markdown(
-        "The template is a **complete 237-line MWJ-720 marine waterjet BOM** covering all 14 subsystems: "
+        "The template is a **complete 143-line MWJ-720 marine waterjet BOM** covering all 14 subsystems: "
         "Impeller · **Stator Bowl** · Pump Housing · Shaft · **Thrust Block** · Inlet Duct · "
         "Nozzle · Steering · Reverse · Frame · Sealing · Hydraulic · Hardware · QA.  \n"
         "Adjust values for your project and upload below."
@@ -427,11 +458,12 @@ def main() -> None:
         use_container_width=True,
     )
     col_info.markdown(
-        "**Required columns:**  "
-        "`line_id` · `material_id` · `qty` · `mass_kg` · `process_route` · `runtime_h`  \n"
-        "_mass\\_kg = 0 is allowed for operations without net material weight "
-        "(dynamic balancing, hydrostatic testing, NDT, final assembly)_  \n"
-        "**Line ID convention:** prefix identifies the subsystem — "
+        "**Required columns:** `line_id` · `material_id` · `qty` · `mass_kg` · `process_route` · `runtime_h`  \n"
+        "**Optional columns:** `part_name` · `setup_h` · `yield_factor` · `make_buy` · `cost_type` · `subcontract_price_eur`  \n"
+        "_`mass_kg = 0` is valid for process-only rows (NDT, balancing, testing, assembly)._  \n"
+        "_`yield_factor` = purchase mass / finished mass (e.g. 0.60 for sand castings, 0.90 for weldments)._  \n"
+        "_`setup_h` is amortised across the production run quantity set on Quote Sheet._  \n"
+        "**Line ID prefix → subsystem:** "
         "`I` Impeller · `SB` Stator Bowl · `H` Housing · `S` Shaft · `TB` Thrust Block · "
         "`D` Duct · `N` Nozzle · `ST` Steering · `R` Reverse · `F` Frame · "
         "`SE` Sealing · `HY` Hydraulic · `HW` Hardware · `QA` Testing"

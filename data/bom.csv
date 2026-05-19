@@ -1,144 +1,144 @@
-line_id,part_name,material_id,qty,mass_kg,process_route,runtime_h
-I01,5-blade impeller body OD720 NAB billet-machined,NAB,1,68.0,5AX_MILL_IMP,44.0
-I02,Impeller back ring / balance ring NAB,NAB,1,9.2,CNC_LATHE_PREC,4.0
-I03,Front wear ring OD720 NAB,NAB,1,7.5,CNC_LATHE_PREC,3.5
-I04,Rear wear ring NAB,NAB,1,6.2,CNC_LATHE_PREC,3.0
-I05,Shaft seal carrier SS316L,SS316L,1,4.5,CNC_LATHE_PREC,2.5
-I06,Impeller retaining nut 17-4PH,SS174PH,1,2.8,CNC_LATHE_PREC,1.5
-I07,Wear insert set SS2205 (4-off),SS2205,4,0.9,CNC_LATHE_PREC,0.5
-I08,Lip seals & O-ring kit NBR,NR_RUBBER,1,1.2,FINAL_ASSEMBLY,0.5
-I09,Impeller fastener kit A4-80 M20-M30,A4_FAST,1,2.2,FINAL_ASSEMBLY,0.3
-I10,Dynamic balance G2.5 finished impeller,NAB,1,0.0,DYN_BALANCE,4.0
-I11,NDT dye-pen + UT blade inspection,NAB,1,0.0,NDT_INSPECT,3.0
-I12,Impeller assembly & shaft fit-check,SS316L,1,0.0,FINAL_ASSEMBLY,4.0
-SB01,Diffuser stator casting NAB OD850,NAB_CAST,1,108.0,SAND_CAST,56.0
-SB02,Stator vane set 7-off machined NAB,NAB,1,34.0,5AX_MILL_IMP,20.0
-SB03,Diffuser inner bore & flow passages,SS316L,1,12.0,PREC_BORE,7.0
-SB04,Discharge transition ring SS2205,SS2205,1,14.0,CNC_LATHE_PREC,4.5
-SB05,Stator inner sleeve NAB,NAB,1,8.5,CNC_LATHE_PREC,4.0
-SB06,Stator seal ring pair NBR,NR_RUBBER,2,0.8,FINAL_ASSEMBLY,0.3
-SB07,Stator stud & nut set A4-80,A4_FAST,1,4.8,FINAL_ASSEMBLY,0.5
-SB08,Stator wear liner pair HDPE,HDPE,2,3.0,WATERJET_CUT,0.8
-SB09,NDT casting dye-pen + radiography,NAB_CAST,1,0.0,NDT_INSPECT,4.5
-SB10,Hydraulic pressure test 15 bar,SS316L,1,0.0,PRESSURE_TEST,3.0
-H01,Main volute casting NAB OD960,NAB_CAST,1,168.0,SAND_CAST,72.0
-H02,Volute front cover casting NAB,NAB_CAST,1,44.0,SAND_CAST,28.0
-H03,Bearing housing machined SS2205,SS2205,1,36.0,CNC_LATHE_PREC,12.0
-H04,Volute precision bore & face machining,NAB_CAST,1,0.0,PREC_BORE,14.0
-H05,Discharge flange 316L machined,SS316L,1,18.0,CNC_MILL_3AX,5.5
-H06,Inlet suction port 316L machined,SS316L,1,15.0,CNC_MILL_3AX,4.5
-H07,Front bearing carrier 316L bored,SS316L,1,12.0,PREC_BORE,4.0
-H08,Rear bearing carrier 316L bored,SS316L,1,9.5,PREC_BORE,3.5
-H09,Drain & vent fittings SS316L (2-off),SS316L,2,3.8,CNC_LATHE_PREC,1.5
-H10,Housing O-ring & gasket set NBR,NR_RUBBER,1,3.5,FINAL_ASSEMBLY,0.5
-H11,Housing stud bolt set A4-80 M30,A4_FAST,1,5.5,FINAL_ASSEMBLY,0.5
-H12,NDT casting + bore inspection,NAB_CAST,1,0.0,NDT_INSPECT,6.0
-H13,Assembled housing pressure test 12 bar,SS316L,1,0.0,PRESSURE_TEST,4.0
-S01,Main drive shaft 17-4PH Ø140 L=1850,SS174PH,1,72.0,CNC_LATHE_PREC,26.0
-S02,Forward journal cylindrical grind,SS174PH,1,0.0,SURF_GRIND,3.5
-S03,Engine-side coupling half 17-4PH,SS174PH,1,18.5,CNC_LATHE_PREC,7.0
-S04,Impeller-side coupling hub 17-4PH,SS174PH,1,14.0,CNC_LATHE_PREC,5.5
-S05,Intermediate shaft sleeve 17-4PH,SS174PH,1,8.5,CNC_LATHE_PREC,4.0
-S06,Bearing journal sleeve 17-4PH ground,SS174PH,1,5.5,SURF_GRIND,3.0
-S07,Angular contact bearing inner ring (2-off),SS316L,2,5.5,CNC_LATHE_PREC,2.5
-S08,Thrust bearing race pair SS316L,SS316L,2,4.2,CNC_LATHE_PREC,2.0
-S09,Shaft locking nut & tab washer 17-4PH,SS174PH,1,2.5,CNC_LATHE_PREC,1.5
-S10,Hard chrome journals 2 zones,SS174PH,1,0.0,HARD_CHROME,3.5
-S11,Shaft lip seal set NBR (4-off),NR_RUBBER,4,0.4,FINAL_ASSEMBLY,0.3
-S12,Shaft fastener kit A4-80,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.4
-S13,Dynamic balance assembled shaft,SS174PH,1,0.0,DYN_BALANCE,3.5
-S14,NDT UT + MPI shaft inspection,SS174PH,1,0.0,NDT_INSPECT,4.5
-TB01,Thrust housing body SS2205 Ø380,SS2205,1,52.0,CNC_LATHE_PREC,14.0
-TB02,Thrust collar SS2205 Ø280 precision,SS2205,1,22.0,PREC_BORE,9.0
-TB03,Thrust pad carrier 17-4PH,SS174PH,1,12.0,CNC_LATHE_PREC,5.5
-TB04,Thrust bearing face precision grind,SS2205,1,0.0,PREC_BORE,4.0
-TB05,Thrust pads CuNi90/10 (2-off),CUNI90,2,3.5,CNC_LATHE_PREC,2.5
-TB06,Seal carrier SS316L,SS316L,1,5.5,CNC_LATHE_PREC,2.5
-TB07,O-ring & seal kit NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3
-TB08,Thrust block fastener kit A4-80,A4_FAST,1,3.8,FINAL_ASSEMBLY,0.4
-TB09,NDT inspection thrust housing,SS2205,1,0.0,NDT_INSPECT,3.5
-TB10,Pressure test assembled block 20 bar,SS2205,1,0.0,PRESSURE_TEST,2.5
-D01,Main inlet duct shell 316L TIG welded,SS316L,1,58.0,TIG_WELD_316,14.0
-D02,Duct inlet flange 316L machined,SS316L,1,22.0,CNC_MILL_3AX,6.0
-D03,Hull mounting flange 316L,SS316L,1,18.0,CNC_MILL_3AX,5.0
-D04,Intake grating bar assembly 316L,SS316L,1,12.0,TIG_WELD_316,4.0
-D05,Inspection port cover (2-off) 316L,SS316L,2,6.5,CNC_MILL_3AX,2.5
-D06,Anti-cavitation lip profile 316L,SS316L,1,5.5,WATERJET_CUT,2.0
-D07,Hull backing plate S355J2,S355J2,1,8.5,PLASMA_CUT,1.5
-D08,Rubber transition boot NBR,NR_RUBBER,1,4.5,FINAL_ASSEMBLY,0.8
-D09,Duct fastener kit A4-80,A4_FAST,1,3.2,FINAL_ASSEMBLY,0.3
-D10,Weld seam NDT + dimensional survey,SS316L,1,0.0,NDT_INSPECT,3.0
-D11,Pressure test flow passage 8 bar,SS316L,1,0.0,PRESSURE_TEST,2.5
-N01,Nozzle body 316L OD720 machined,SS316L,1,28.0,CNC_LATHE_PREC,7.5
-N02,Nozzle exit wear ring SS2205,SS2205,1,14.0,CNC_LATHE_PREC,5.0
-N03,Steering pivot housing 316L,SS316L,1,10.5,CNC_MILL_3AX,4.0
-N04,Nozzle inner liner SS2205,SS2205,1,8.5,CNC_LATHE_PREC,3.5
-N05,Deflector hinge pin 316L (2-off),SS316L,2,2.5,CNC_LATHE_PREC,1.0
-N06,Nozzle seal & O-ring set NBR,NR_RUBBER,2,0.5,FINAL_ASSEMBLY,0.3
-N07,Nozzle fastener kit A4-80,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.3
-N08,Nozzle dimensional check & seal test,SS316L,1,0.0,PRESSURE_TEST,1.5
-N09,NDT nozzle body inspection,SS316L,1,0.0,NDT_INSPECT,1.5
-ST01,Steering tiller plate port 316L,SS316L,1,14.0,CNC_MILL_3AX,5.5
-ST02,Steering tiller plate stbd 316L,SS316L,1,14.0,CNC_MILL_3AX,5.5
-ST03,Steering pivot shaft 316L Ø80,SS316L,1,10.5,CNC_LATHE_PREC,4.0
-ST04,Actuator bracket weldment 316L,SS316L,1,8.5,TIG_WELD_316,3.5
-ST05,Steering arm pair 316L,SS316L,2,5.5,CNC_MILL_3AX,2.5
-ST06,Pivot bearing housing 316L bored,SS316L,1,5.0,PREC_BORE,2.5
-ST07,Tiller clevis & pin set 316L,SS316L,2,3.5,CNC_LATHE_PREC,1.5
-ST08,CuNi90/10 pivot bush pair,CUNI90,2,1.8,CNC_LATHE_PREC,1.0
-ST09,Seal & protection boot set NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3
-ST10,Steering fastener kit A4-80,A4_FAST,1,4.5,FINAL_ASSEMBLY,0.4
-R01,Reverse bucket body 316L machined,SS316L,1,28.0,CNC_MILL_3AX,7.0
-R02,Bucket shell weldment 316L,SS316L,1,18.0,TIG_WELD_316,5.5
-R03,Hinge shaft 316L Ø60,SS316L,1,10.5,CNC_LATHE_PREC,4.5
-R04,Actuator bracket pair 316L,SS316L,2,6.5,CNC_MILL_3AX,2.5
-R05,Bucket guide rail 316L,SS316L,1,5.5,CNC_MILL_3AX,2.5
-R06,Hinge pin pair 316L (2-off),SS316L,2,3.5,CNC_LATHE_PREC,1.5
-R07,CuNi90/10 hinge bush pair,CUNI90,2,2.0,CNC_LATHE_PREC,1.0
-R08,Seal & protection boot set NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3
-R09,Reverse fastener kit A4-80,A4_FAST,1,4.5,FINAL_ASSEMBLY,0.4
-R10,Powder coat bucket interior,S355J2,1,0.0,POWDER_COAT,3.5
-F01,Main baseframe weldment S355J2,S355J2,1,95.0,TIG_WELD_316,22.0
-F02,Cross-member set S355J2 (4-off),S355J2,4,18.0,TIG_WELD_316,4.5
-F03,Hull mounting pad set S355J2 (6-off),S355J2,6,5.5,PLASMA_CUT,0.8
-F04,Alignment plate set S355J2 (4-off),S355J2,4,4.5,CNC_MILL_3AX,1.5
-F05,Stiffener plate set S355J2,S355J2,1,22.0,PLASMA_CUT,2.0
-F06,Vibration mount bracket S355J2 (4-off),S355J2,4,3.5,PLASMA_CUT,0.5
-F07,Frame fastener & anchor kit A4-80,A4_FAST,1,6.5,FINAL_ASSEMBLY,0.5
-F08,Sand blast + 2-coat marine epoxy,S355J2,1,0.0,POWDER_COAT,8.0
-F09,Weld seam NDT frame,S355J2,1,0.0,NDT_INSPECT,3.0
-SE01,Shaft face seal housing 316L,SS316L,1,9.5,CNC_LATHE_PREC,4.0
-SE02,Mechanical seal carrier 316L,SS316L,1,7.5,CNC_LATHE_PREC,3.5
-SE03,Seal housing precision bore,SS316L,1,0.0,PREC_BORE,2.5
-SE04,PEEK bush set OD50 (4-off),PEEK,4,0.18,CNC_LATHE_PREC,0.5
-SE05,Primary lip seal pair NBR,NR_RUBBER,2,0.8,CNC_LATHE_PREC,0.4
-SE06,Secondary O-ring backup kit,NR_RUBBER,4,0.4,FINAL_ASSEMBLY,0.2
-SE07,Water lube port fitting 316L,SS316L,1,2.5,CNC_LATHE_PREC,1.5
-SE08,Seal gland follower 316L,SS316L,1,2.2,CNC_LATHE_PREC,1.2
-SE09,Seal fastener kit A4-80,A4_FAST,1,1.5,FINAL_ASSEMBLY,0.2
-SE10,Seal assembly pressure test,SS316L,1,0.0,PRESSURE_TEST,1.5
-HY01,Hydraulic manifold block 316L machined,SS316L,1,6.5,CNC_MILL_3AX,4.5
-HY02,Steering cylinder supply tube 316L,SS316L_TUBE,1,3.8,TIG_WELD_316,2.5
-HY03,Reverse cylinder supply tube 316L,SS316L_TUBE,1,3.5,TIG_WELD_316,2.5
-HY04,Return line tube set 316L (3-off),SS316L_TUBE,3,1.5,TIG_WELD_316,1.0
-HY05,Pressure relief valve body 316L,SS316L,1,2.8,CNC_LATHE_PREC,2.0
-HY06,Tube fitting set machined 316L (12-off),SS316L,12,0.15,CNC_LATHE_PREC,0.3
-HY07,O-ring & seal kit hydraulic NBR,NR_RUBBER,1,0.5,FINAL_ASSEMBLY,0.2
-HY08,Hydraulic system flush & pressure test,SS316L,1,0.0,PRESSURE_TEST,3.0
-HY09,NDT weld inspection hydraulic,SS316L_TUBE,1,0.0,NDT_INSPECT,1.5
-HW01,M30 stud & nut set housing bolting,A4_FAST,1,9.5,FINAL_ASSEMBLY,0.6
-HW02,M24 stud & nut set impeller side,A4_FAST,1,7.5,FINAL_ASSEMBLY,0.5
-HW03,M20 cap screw set cover plates,A4_FAST,1,5.5,FINAL_ASSEMBLY,0.4
-HW04,M16 socket head screw set general,A4_FAST,1,4.0,FINAL_ASSEMBLY,0.3
-HW05,M12 fastener set brackets & clips,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.2
-HW06,Pin & retaining ring set 316L,SS316L,1,3.5,CNC_LATHE_PREC,1.0
-HW07,Lifting eye bolt set 316L (4-off),SS316L,4,1.8,CNC_LATHE_PREC,0.5
-HW08,Rating plate & name plate 316L,SS316L,1,0.5,CNC_MILL_3AX,0.5
-QA01,Dynamic balance impeller G2.5 final,NAB,1,0.0,DYN_BALANCE,5.0
-QA02,Dynamic balance complete rotor,SS174PH,1,0.0,DYN_BALANCE,4.0
-QA03,Unit hydrostatic pressure test,SS316L,1,0.0,PRESSURE_TEST,6.0
-QA04,Flow performance acceptance test,SS316L,1,0.0,PRESSURE_TEST,12.0
-QA05,Final dimensional survey + NDT,SS316L,1,0.0,NDT_INSPECT,8.0
-QA06,Shaft + impeller MPI/UT inspection,SS174PH,1,0.0,NDT_INSPECT,5.0
-QA07,Casting radiography x-ray (3 castings),NAB_CAST,1,0.0,NDT_INSPECT,7.0
-QA08,Final assembly alignment & FAT,SS316L,1,0.0,FINAL_ASSEMBLY,32.0
+line_id,part_name,material_id,qty,mass_kg,process_route,runtime_h,setup_h,yield_factor,make_buy,cost_type,subcontract_price_eur
+I01,5-blade impeller body OD720 NAB billet-machined,NAB,1,68.0,5AX_MILL_IMP,44.0,8.0,1.0,M,UNIT,
+I02,Impeller back ring / balance ring NAB,NAB,1,9.2,CNC_LATHE_PREC,4.0,0.0,1.0,M,UNIT,
+I03,Front wear ring OD720 NAB,NAB,1,7.5,CNC_LATHE_PREC,3.5,0.0,1.0,M,UNIT,
+I04,Rear wear ring NAB,NAB,1,6.2,CNC_LATHE_PREC,3.0,0.0,1.0,M,UNIT,
+I05,Shaft seal carrier SS316L,SS316L,1,4.5,CNC_LATHE_PREC,2.5,0.0,1.0,M,UNIT,
+I06,Impeller retaining nut 17-4PH,SS174PH,1,2.8,CNC_LATHE_PREC,1.5,0.0,1.0,M,UNIT,
+I07,Wear insert set SS2205 (4-off),SS2205,4,0.9,CNC_LATHE_PREC,0.5,0.0,1.0,M,UNIT,
+I08,Lip seals & O-ring kit NBR,NR_RUBBER,1,1.2,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+I09,Impeller fastener kit A4-80 M20-M30,A4_FAST,1,2.2,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+I10,Dynamic balance G2.5 finished impeller,NAB,1,0.0,DYN_BALANCE,4.0,0.0,1.0,M,UNIT,
+I11,NDT dye-pen + UT blade inspection,NAB,1,0.0,NDT_INSPECT,3.0,0.0,1.0,M,UNIT,
+I12,Impeller assembly & shaft fit-check,SS316L,1,0.0,FINAL_ASSEMBLY,4.0,0.0,1.0,M,UNIT,
+SB01,Diffuser stator casting NAB OD850,NAB_CAST,1,108.0,SAND_CAST,56.0,8.0,0.6,M,UNIT,
+SB02,Stator vane set 7-off machined NAB,NAB,1,34.0,5AX_MILL_IMP,20.0,6.0,1.0,M,UNIT,
+SB03,Diffuser inner bore & flow passages,SS316L,1,12.0,PREC_BORE,7.0,2.0,1.0,M,UNIT,
+SB04,Discharge transition ring SS2205,SS2205,1,14.0,CNC_LATHE_PREC,4.5,0.0,1.0,M,UNIT,
+SB05,Stator inner sleeve NAB,NAB,1,8.5,CNC_LATHE_PREC,4.0,0.0,1.0,M,UNIT,
+SB06,Stator seal ring pair NBR,NR_RUBBER,2,0.8,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+SB07,Stator stud & nut set A4-80,A4_FAST,1,4.8,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+SB08,Stator wear liner pair HDPE,HDPE,2,3.0,WATERJET_CUT,0.8,0.0,1.0,M,UNIT,
+SB09,NDT casting dye-pen + radiography,NAB_CAST,1,0.0,NDT_INSPECT,4.5,0.0,1.0,M,UNIT,
+SB10,Hydraulic pressure test 15 bar,SS316L,1,0.0,PRESSURE_TEST,3.0,0.0,1.0,M,UNIT,
+H01,Main volute casting NAB OD960,NAB_CAST,1,168.0,SAND_CAST,72.0,12.0,0.6,M,UNIT,
+H02,Volute front cover casting NAB,NAB_CAST,1,44.0,SAND_CAST,28.0,8.0,0.6,M,UNIT,
+H03,Bearing housing machined SS2205,SS2205,1,36.0,CNC_LATHE_PREC,12.0,3.0,1.0,M,UNIT,
+H04,Volute precision bore & face machining,NAB_CAST,1,0.0,PREC_BORE,14.0,4.0,1.0,M,UNIT,
+H05,Discharge flange 316L machined,SS316L,1,18.0,CNC_MILL_3AX,5.5,2.0,1.0,M,UNIT,
+H06,Inlet suction port 316L machined,SS316L,1,15.0,CNC_MILL_3AX,4.5,2.0,1.0,M,UNIT,
+H07,Front bearing carrier 316L bored,SS316L,1,12.0,PREC_BORE,4.0,2.0,1.0,M,UNIT,
+H08,Rear bearing carrier 316L bored,SS316L,1,9.5,PREC_BORE,3.5,2.0,1.0,M,UNIT,
+H09,Drain & vent fittings SS316L (2-off),SS316L,2,3.8,CNC_LATHE_PREC,1.5,0.0,1.0,M,UNIT,
+H10,Housing O-ring & gasket set NBR,NR_RUBBER,1,3.5,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+H11,Housing stud bolt set A4-80 M30,A4_FAST,1,5.5,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+H12,NDT casting + bore inspection,NAB_CAST,1,0.0,NDT_INSPECT,6.0,0.0,1.0,M,UNIT,
+H13,Assembled housing pressure test 12 bar,SS316L,1,0.0,PRESSURE_TEST,4.0,0.0,1.0,M,UNIT,
+S01,Main drive shaft 17-4PH Ø140 L=1850,SS174PH,1,72.0,CNC_LATHE_PREC,26.0,4.0,1.0,M,UNIT,
+S02,Forward journal cylindrical grind,SS174PH,1,0.0,SURF_GRIND,3.5,2.0,1.0,M,UNIT,
+S03,Engine-side coupling half 17-4PH,SS174PH,1,18.5,CNC_LATHE_PREC,7.0,3.0,1.0,M,UNIT,
+S04,Impeller-side coupling hub 17-4PH,SS174PH,1,14.0,CNC_LATHE_PREC,5.5,2.5,1.0,M,UNIT,
+S05,Intermediate shaft sleeve 17-4PH,SS174PH,1,8.5,CNC_LATHE_PREC,4.0,1.5,1.0,M,UNIT,
+S06,Bearing journal sleeve 17-4PH ground,SS174PH,1,5.5,SURF_GRIND,3.0,2.0,1.0,M,UNIT,
+S07,Angular contact bearing inner ring (2-off),SS316L,2,5.5,CNC_LATHE_PREC,2.5,1.5,1.0,M,UNIT,
+S08,Thrust bearing race pair SS316L,SS316L,2,4.2,CNC_LATHE_PREC,2.0,1.5,1.0,M,UNIT,
+S09,Shaft locking nut & tab washer 17-4PH,SS174PH,1,2.5,CNC_LATHE_PREC,1.5,1.0,1.0,M,UNIT,
+S10,Hard chrome journals 2 zones,SS174PH,1,0.0,HARD_CHROME,3.5,2.0,1.0,M,UNIT,
+S11,Shaft lip seal set NBR (4-off),NR_RUBBER,4,0.4,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+S12,Shaft fastener kit A4-80,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.4,0.0,1.0,M,UNIT,
+S13,Dynamic balance assembled shaft,SS174PH,1,0.0,DYN_BALANCE,3.5,0.0,1.0,M,UNIT,
+S14,NDT UT + MPI shaft inspection,SS174PH,1,0.0,NDT_INSPECT,4.5,0.0,1.0,M,UNIT,
+TB01,Thrust housing body SS2205 Ø380,SS2205,1,52.0,CNC_LATHE_PREC,14.0,3.0,1.0,M,UNIT,
+TB02,Thrust collar SS2205 Ø280 precision,SS2205,1,22.0,PREC_BORE,9.0,3.0,1.0,M,UNIT,
+TB03,Thrust pad carrier 17-4PH,SS174PH,1,12.0,CNC_LATHE_PREC,5.5,2.0,1.0,M,UNIT,
+TB04,Thrust bearing face precision grind,SS2205,1,0.0,PREC_BORE,4.0,2.0,1.0,M,UNIT,
+TB05,Thrust pads CuNi90/10 (2-off),CUNI90,2,3.5,CNC_LATHE_PREC,2.5,0.0,1.0,M,UNIT,
+TB06,Seal carrier SS316L,SS316L,1,5.5,CNC_LATHE_PREC,2.5,0.0,1.0,M,UNIT,
+TB07,O-ring & seal kit NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+TB08,Thrust block fastener kit A4-80,A4_FAST,1,3.8,FINAL_ASSEMBLY,0.4,0.0,1.0,M,UNIT,
+TB09,NDT inspection thrust housing,SS2205,1,0.0,NDT_INSPECT,3.5,0.0,1.0,M,UNIT,
+TB10,Pressure test assembled block 20 bar,SS2205,1,0.0,PRESSURE_TEST,2.5,0.0,1.0,M,UNIT,
+D01,Main inlet duct shell 316L TIG welded,SS316L,1,58.0,TIG_WELD_316,14.0,4.0,0.9,M,UNIT,
+D02,Duct inlet flange 316L machined,SS316L,1,22.0,CNC_MILL_3AX,6.0,2.0,1.0,M,UNIT,
+D03,Hull mounting flange 316L,SS316L,1,18.0,CNC_MILL_3AX,5.0,2.0,1.0,M,UNIT,
+D04,Intake grating bar assembly 316L,SS316L,1,12.0,TIG_WELD_316,4.0,2.0,0.9,M,UNIT,
+D05,Inspection port cover (2-off) 316L,SS316L,2,6.5,CNC_MILL_3AX,2.5,0.0,1.0,M,UNIT,
+D06,Anti-cavitation lip profile 316L,SS316L,1,5.5,WATERJET_CUT,2.0,0.0,1.0,M,UNIT,
+D07,Hull backing plate S355J2,S355J2,1,8.5,PLASMA_CUT,1.5,0.0,0.85,M,UNIT,
+D08,Rubber transition boot NBR,NR_RUBBER,1,4.5,FINAL_ASSEMBLY,0.8,0.0,1.0,M,UNIT,
+D09,Duct fastener kit A4-80,A4_FAST,1,3.2,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+D10,Weld seam NDT + dimensional survey,SS316L,1,0.0,NDT_INSPECT,3.0,0.0,1.0,M,UNIT,
+D11,Pressure test flow passage 8 bar,SS316L,1,0.0,PRESSURE_TEST,2.5,0.0,1.0,M,UNIT,
+N01,Nozzle body 316L OD720 machined,SS316L,1,28.0,CNC_LATHE_PREC,7.5,2.5,1.0,M,UNIT,
+N02,Nozzle exit wear ring SS2205,SS2205,1,14.0,CNC_LATHE_PREC,5.0,2.0,1.0,M,UNIT,
+N03,Steering pivot housing 316L,SS316L,1,10.5,CNC_MILL_3AX,4.0,0.0,1.0,M,UNIT,
+N04,Nozzle inner liner SS2205,SS2205,1,8.5,CNC_LATHE_PREC,3.5,0.0,1.0,M,UNIT,
+N05,Deflector hinge pin 316L (2-off),SS316L,2,2.5,CNC_LATHE_PREC,1.0,0.0,1.0,M,UNIT,
+N06,Nozzle seal & O-ring set NBR,NR_RUBBER,2,0.5,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+N07,Nozzle fastener kit A4-80,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+N08,Nozzle dimensional check & seal test,SS316L,1,0.0,PRESSURE_TEST,1.5,0.0,1.0,M,UNIT,
+N09,NDT nozzle body inspection,SS316L,1,0.0,NDT_INSPECT,1.5,0.0,1.0,M,UNIT,
+ST01,Steering tiller plate port 316L,SS316L,1,14.0,CNC_MILL_3AX,5.5,2.0,1.0,M,UNIT,
+ST02,Steering tiller plate stbd 316L,SS316L,1,14.0,CNC_MILL_3AX,5.5,2.0,1.0,M,UNIT,
+ST03,Steering pivot shaft 316L Ø80,SS316L,1,10.5,CNC_LATHE_PREC,4.0,2.0,1.0,M,UNIT,
+ST04,Actuator bracket weldment 316L,SS316L,1,8.5,TIG_WELD_316,3.5,2.0,0.9,M,UNIT,
+ST05,Steering arm pair 316L,SS316L,2,5.5,CNC_MILL_3AX,2.5,0.0,1.0,M,UNIT,
+ST06,Pivot bearing housing 316L bored,SS316L,1,5.0,PREC_BORE,2.5,0.0,1.0,M,UNIT,
+ST07,Tiller clevis & pin set 316L,SS316L,2,3.5,CNC_LATHE_PREC,1.5,0.0,1.0,M,UNIT,
+ST08,CuNi90/10 pivot bush pair,CUNI90,2,1.8,CNC_LATHE_PREC,1.0,0.0,1.0,M,UNIT,
+ST09,Seal & protection boot set NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+ST10,Steering fastener kit A4-80,A4_FAST,1,4.5,FINAL_ASSEMBLY,0.4,0.0,1.0,M,UNIT,
+R01,Reverse bucket body 316L machined,SS316L,1,28.0,CNC_MILL_3AX,7.0,2.5,1.0,M,UNIT,
+R02,Bucket shell weldment 316L,SS316L,1,18.0,TIG_WELD_316,5.5,2.0,0.9,M,UNIT,
+R03,Hinge shaft 316L Ø60,SS316L,1,10.5,CNC_LATHE_PREC,4.5,0.0,1.0,M,UNIT,
+R04,Actuator bracket pair 316L,SS316L,2,6.5,CNC_MILL_3AX,2.5,0.0,1.0,M,UNIT,
+R05,Bucket guide rail 316L,SS316L,1,5.5,CNC_MILL_3AX,2.5,0.0,1.0,M,UNIT,
+R06,Hinge pin pair 316L (2-off),SS316L,2,3.5,CNC_LATHE_PREC,1.5,0.0,1.0,M,UNIT,
+R07,CuNi90/10 hinge bush pair,CUNI90,2,2.0,CNC_LATHE_PREC,1.0,0.0,1.0,M,UNIT,
+R08,Seal & protection boot set NBR,NR_RUBBER,4,0.3,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+R09,Reverse fastener kit A4-80,A4_FAST,1,4.5,FINAL_ASSEMBLY,0.4,0.0,1.0,M,UNIT,
+R10,Powder coat bucket interior,S355J2,1,0.0,POWDER_COAT,3.5,0.0,1.0,M,UNIT,
+F01,Main baseframe weldment S355J2,S355J2,1,95.0,TIG_WELD_316,22.0,5.0,0.9,M,UNIT,
+F02,Cross-member set S355J2 (4-off),S355J2,4,18.0,TIG_WELD_316,4.5,3.0,0.9,M,UNIT,
+F03,Hull mounting pad set S355J2 (6-off),S355J2,6,5.5,PLASMA_CUT,0.8,0.0,0.85,M,UNIT,
+F04,Alignment plate set S355J2 (4-off),S355J2,4,4.5,CNC_MILL_3AX,1.5,0.0,1.0,M,UNIT,
+F05,Stiffener plate set S355J2,S355J2,1,22.0,PLASMA_CUT,2.0,0.0,0.85,M,UNIT,
+F06,Vibration mount bracket S355J2 (4-off),S355J2,4,3.5,PLASMA_CUT,0.5,0.0,0.85,M,UNIT,
+F07,Frame fastener & anchor kit A4-80,A4_FAST,1,6.5,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+F08,Sand blast + 2-coat marine epoxy,S355J2,1,0.0,POWDER_COAT,8.0,0.0,1.0,M,UNIT,
+F09,Weld seam NDT frame,S355J2,1,0.0,NDT_INSPECT,3.0,0.0,1.0,M,UNIT,
+SE01,Shaft face seal housing 316L,SS316L,1,9.5,CNC_LATHE_PREC,4.0,2.0,1.0,M,UNIT,
+SE02,Mechanical seal carrier 316L,SS316L,1,7.5,CNC_LATHE_PREC,3.5,2.0,1.0,M,UNIT,
+SE03,Seal housing precision bore,SS316L,1,0.0,PREC_BORE,2.5,2.0,1.0,M,UNIT,
+SE04,PEEK bush set OD50 (4-off),PEEK,4,0.18,CNC_LATHE_PREC,0.5,0.0,1.0,M,UNIT,
+SE05,Primary lip seal pair NBR,NR_RUBBER,2,0.8,CNC_LATHE_PREC,0.4,0.0,1.0,M,UNIT,
+SE06,Secondary O-ring backup kit,NR_RUBBER,4,0.4,FINAL_ASSEMBLY,0.2,0.0,1.0,M,UNIT,
+SE07,Water lube port fitting 316L,SS316L,1,2.5,CNC_LATHE_PREC,1.5,0.0,1.0,M,UNIT,
+SE08,Seal gland follower 316L,SS316L,1,2.2,CNC_LATHE_PREC,1.2,0.0,1.0,M,UNIT,
+SE09,Seal fastener kit A4-80,A4_FAST,1,1.5,FINAL_ASSEMBLY,0.2,0.0,1.0,M,UNIT,
+SE10,Seal assembly pressure test,SS316L,1,0.0,PRESSURE_TEST,1.5,0.0,1.0,M,UNIT,
+HY01,Hydraulic manifold block 316L machined,SS316L,1,6.5,CNC_MILL_3AX,4.5,2.0,1.0,M,UNIT,
+HY02,Steering cylinder supply tube 316L,SS316L_TUBE,1,3.8,TIG_WELD_316,2.5,0.0,0.9,M,UNIT,
+HY03,Reverse cylinder supply tube 316L,SS316L_TUBE,1,3.5,TIG_WELD_316,2.5,0.0,0.9,M,UNIT,
+HY04,Return line tube set 316L (3-off),SS316L_TUBE,3,1.5,TIG_WELD_316,1.0,0.0,0.9,M,UNIT,
+HY05,Pressure relief valve body 316L,SS316L,1,2.8,CNC_LATHE_PREC,2.0,0.0,1.0,M,UNIT,
+HY06,Tube fitting set machined 316L (12-off),SS316L,12,0.15,CNC_LATHE_PREC,0.3,0.0,1.0,M,UNIT,
+HY07,O-ring & seal kit hydraulic NBR,NR_RUBBER,1,0.5,FINAL_ASSEMBLY,0.2,0.0,1.0,M,UNIT,
+HY08,Hydraulic system flush & pressure test,SS316L,1,0.0,PRESSURE_TEST,3.0,0.0,1.0,M,UNIT,
+HY09,NDT weld inspection hydraulic,SS316L_TUBE,1,0.0,NDT_INSPECT,1.5,0.0,1.0,M,UNIT,
+HW01,M30 stud & nut set housing bolting,A4_FAST,1,9.5,FINAL_ASSEMBLY,0.6,0.0,1.0,M,UNIT,
+HW02,M24 stud & nut set impeller side,A4_FAST,1,7.5,FINAL_ASSEMBLY,0.5,0.0,1.0,M,UNIT,
+HW03,M20 cap screw set cover plates,A4_FAST,1,5.5,FINAL_ASSEMBLY,0.4,0.0,1.0,M,UNIT,
+HW04,M16 socket head screw set general,A4_FAST,1,4.0,FINAL_ASSEMBLY,0.3,0.0,1.0,M,UNIT,
+HW05,M12 fastener set brackets & clips,A4_FAST,1,2.8,FINAL_ASSEMBLY,0.2,0.0,1.0,M,UNIT,
+HW06,Pin & retaining ring set 316L,SS316L,1,3.5,CNC_LATHE_PREC,1.0,0.0,1.0,M,UNIT,
+HW07,Lifting eye bolt set 316L (4-off),SS316L,4,1.8,CNC_LATHE_PREC,0.5,0.0,1.0,M,UNIT,
+HW08,Rating plate & name plate 316L,SS316L,1,0.5,CNC_MILL_3AX,0.5,0.0,1.0,M,UNIT,
+QA01,Dynamic balance impeller G2.5 final,NAB,1,0.0,DYN_BALANCE,5.0,0.0,1.0,M,UNIT,
+QA02,Dynamic balance complete rotor,SS174PH,1,0.0,DYN_BALANCE,4.0,0.0,1.0,M,UNIT,
+QA03,Unit hydrostatic pressure test,SS316L,1,0.0,PRESSURE_TEST,6.0,0.0,1.0,M,UNIT,
+QA04,Flow performance acceptance test,SS316L,1,0.0,PRESSURE_TEST,12.0,0.0,1.0,M,UNIT,
+QA05,Final dimensional survey + NDT,SS316L,1,0.0,NDT_INSPECT,8.0,0.0,1.0,M,UNIT,
+QA06,Shaft + impeller MPI/UT inspection,SS174PH,1,0.0,NDT_INSPECT,5.0,0.0,1.0,M,UNIT,
+QA07,Casting radiography x-ray (3 castings),NAB_CAST,1,0.0,NDT_INSPECT,7.0,0.0,1.0,M,UNIT,
+QA08,Final assembly alignment & FAT,SS316L,1,0.0,FINAL_ASSEMBLY,32.0,4.0,1.0,M,UNIT,

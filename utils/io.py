@@ -16,13 +16,19 @@ SCHEMA_PROCESSES = {
     "margin_pct": "float64",
 }
 SCHEMA_BOM = {
-    "line_id": "string",
-    "part_name": "string",
-    "material_id": "string",
-    "qty": "Int64",
-    "mass_kg": "float64",
-    "process_route": "string",
-    "runtime_h": "float64",
+    "line_id":               "string",
+    "part_name":             "string",
+    "material_id":           "string",
+    "qty":                   "Int64",
+    "mass_kg":               "float64",
+    "process_route":         "string",
+    "runtime_h":             "float64",
+    # Optional enrichment columns — safe defaults applied in pricing.py
+    "setup_h":               "float64",   # amortisable setup time per job
+    "yield_factor":          "float64",   # purchase mass = mass_kg / yield_factor
+    "make_buy":              "string",    # M=manufactured, B=bought-out
+    "cost_type":             "string",    # UNIT / NRE / TOOLING
+    "subcontract_price_eur": "float64",   # overrides internal process rate when set
 }
 SCHEMA_QUOTES = {
     "supplier": "string",

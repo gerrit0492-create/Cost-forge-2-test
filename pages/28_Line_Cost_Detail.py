@@ -20,11 +20,7 @@ st.caption("Full cost breakdown per BOM line — material purchase, machine time
 def _load() -> pd.DataFrame | None:
     try:
         mats = apply_best_quotes(load_materials(), load_quotes())
-        df = compute_costs(mats, load_processes(), load_bom())
-        qty = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
-        df["machine_cost"] = qty * df["runtime_h"] * df["machine_rate_eur_h"]
-        df["labour_cost"]  = qty * df["runtime_h"] * df["labor_rate_eur_h"]
-        return df
+        return compute_costs(mats, load_processes(), load_bom())
     except Exception as exc:
         st.error(f"Could not load BOM data: {exc}")
         return None
@@ -115,13 +111,15 @@ view = view.sort_values(sort_col, ascending=(sort_col == "line_id"))
 st.caption(f"Showing {len(view)} of {len(df)} BOM lines")
 
 # ── KPI summary of filtered view ─────────────────────────────────────────────
-k1, k2, k3, k4, k5, k6 = st.columns(6)
+dry_kg = (pd.to_numeric(view["qty"], errors="coerce").fillna(1) * view["mass_kg"].fillna(0)).sum()
+k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
 k1.metric("Material (purchase)", f"€ {view['material_cost'].sum():,.0f}")
 k2.metric("Machine cost",        f"€ {view['machine_cost'].sum():,.0f}")
 k3.metric("Labour cost",         f"€ {view['labour_cost'].sum():,.0f}")
 k4.metric("Overhead",            f"€ {view['overhead'].sum():,.0f}")
 k5.metric("Your cost",           f"€ {view['base_cost'].sum():,.0f}")
 k6.metric("Sell price (incl. margin)", f"€ {view['total_cost'].sum():,.0f}")
+k7.metric("Dry weight",          f"{dry_kg:,.0f} kg")
 
 st.divider()
 
@@ -164,19 +162,22 @@ st.dataframe(table, use_container_width=True, hide_index=True)
 st.divider()
 st.subheader("Subsystem totals")
 
+qty_all = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
+df["_line_mass"] = qty_all * df["mass_kg"].fillna(0)
+
 agg = (
     df.groupby("subsystem")[["material_cost", "machine_cost", "labour_cost",
-                              "overhead", "base_cost", "margin", "total_cost"]]
+                              "overhead", "base_cost", "margin", "total_cost", "_line_mass"]]
     .sum()
     .reset_index()
 )
-agg["name"] = agg["subsystem"].map(lambda p: subsystem_names.get(p, p))
-agg["OH%"]  = (agg["overhead"] / agg["base_cost"] * 100).map(lambda x: f"{x:.1f}%")
+agg["name"]    = agg["subsystem"].map(lambda p: subsystem_names.get(p, p))
+agg["OH%"]     = (agg["overhead"] / agg["base_cost"] * 100).map(lambda x: f"{x:.1f}%")
 agg["Margin%"] = (agg["margin"] / agg["base_cost"] * 100).map(lambda x: f"{x:.1f}%")
 agg["Share%"]  = (agg["total_cost"] / df["total_cost"].sum() * 100).map(lambda x: f"{x:.1f}%")
 
 agg_display = agg.rename(columns={
-    "name": "Subsystem",
+    "name":          "Subsystem",
     "material_cost": "Purchase €",
     "machine_cost":  "Machine €",
     "labour_cost":   "Labour €",
@@ -184,15 +185,17 @@ agg_display = agg.rename(columns={
     "base_cost":     "Your cost €",
     "margin":        "Margin €",
     "total_cost":    "Sell price €",
+    "_line_mass":    "Mass (kg)",
 })
 for col in ["Purchase €", "Machine €", "Labour €", "Overhead €",
             "Your cost €", "Margin €", "Sell price €"]:
     agg_display[col] = agg_display[col].map(lambda x: f"€ {x:,.0f}")
+agg_display["Mass (kg)"] = agg_display["Mass (kg)"].map(lambda x: f"{x:,.0f}")
 
 st.dataframe(
     agg_display[["Subsystem", "Purchase €", "Machine €", "Labour €",
                  "Overhead €", "Your cost €", "OH%", "Margin €", "Margin%",
-                 "Sell price €", "Share%"]],
+                 "Sell price €", "Mass (kg)", "Share%"]],
     use_container_width=True,
     hide_index=True,
 )

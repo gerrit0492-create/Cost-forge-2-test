@@ -196,5 +196,128 @@ def main() -> None:
             use_container_width=True,
         )
 
+    # ── Dry weight by subsystem ───────────────────────────────────────────────
+    st.divider()
+    st.subheader("⚖️ Dry weight summary")
+
+    qty_s = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
+    total_kg = (qty_s * df["mass_kg"].fillna(0)).sum()
+    st.metric("Total dry weight", f"{total_kg:,.0f} kg")
+
+    if "subsystem" not in df.columns:
+        from utils.completeness import WATERJET_SUBSYSTEMS as _WS
+        def _prefix(lid):
+            u = str(lid).upper()
+            for p in sorted(_WS, key=len, reverse=True):
+                if u.startswith(p):
+                    return p
+            return "?"
+        df["subsystem"] = df["line_id"].apply(_prefix)
+
+    wt_grp = (
+        df.assign(line_mass=qty_s * df["mass_kg"].fillna(0))
+        .groupby("subsystem")["line_mass"]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()
+        .rename(columns={"subsystem": "Subsystem", "line_mass": "Mass (kg)"})
+    )
+    wt_grp["Share %"] = (wt_grp["Mass (kg)"] / total_kg * 100).map(lambda x: f"{x:.1f}%")
+    wt_grp["Mass (kg)"] = wt_grp["Mass (kg)"].map(lambda x: f"{x:,.1f}")
+
+    col_wt, col_wttbl = st.columns([2, 1])
+    with col_wt:
+        wt_chart = df.assign(line_mass=qty_s * df["mass_kg"].fillna(0)).groupby("subsystem")["line_mass"].sum()
+        st.bar_chart(wt_chart)
+    with col_wttbl:
+        st.dataframe(wt_grp, use_container_width=True, hide_index=True)
+
+    # ── Material purchase summary ─────────────────────────────────────────────
+    st.divider()
+    st.subheader("🧱 Material purchase summary")
+    st.caption("Total purchase quantity and cost per material — for procurement / PO planning.")
+
+    purch = df.copy()
+    purch["purchase_kg"] = qty_s * (purch["mass_kg"].fillna(0) / purch.get("yield_factor", 1).fillna(1).clip(lower=0.05))
+    purch_grp = (
+        purch.groupby("material_id")
+        .agg(purchase_kg=("purchase_kg", "sum"), material_cost=("material_cost", "sum"))
+        .reset_index()
+        .sort_values("material_cost", ascending=False)
+    )
+    if "supplier" in purch.columns:
+        sup = purch.groupby("material_id")["supplier"].first().reset_index()
+        purch_grp = purch_grp.merge(sup, on="material_id", how="left")
+    if "lead_time_days" in purch.columns:
+        lt = purch.groupby("material_id")["lead_time_days"].max().reset_index()
+        purch_grp = purch_grp.merge(lt, on="material_id", how="left")
+
+    purch_grp.rename(columns={
+        "material_id": "Material", "purchase_kg": "Purchase qty (kg)",
+        "material_cost": "Purchase cost (€)", "supplier": "Supplier",
+        "lead_time_days": "Lead time (days)",
+    }, inplace=True)
+    st.dataframe(
+        purch_grp.style.format({
+            "Purchase qty (kg)": "{:,.1f}", "Purchase cost (€)": "€ {:,.2f}",
+        }),
+        use_container_width=True, hide_index=True,
+    )
+
+    # ── Manufacturing hours by process ────────────────────────────────────────
+    st.divider()
+    st.subheader("🕐 Manufacturing hours by process centre")
+    st.caption("Total shop hours consumed — for capacity planning and subcontract RFQs.")
+
+    qty_n = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
+    hours_grp = (
+        df.assign(total_h=qty_n * df["runtime_h"].fillna(0))
+        .groupby("process_route")
+        .agg(total_h=("total_h", "sum"), process_cost=("process_cost", "sum"))
+        .reset_index()
+        .sort_values("total_h", ascending=False)
+        .rename(columns={
+            "process_route": "Process", "total_h": "Total hours",
+            "process_cost": "Process cost (€)",
+        })
+    )
+    col_h, col_htbl = st.columns([2, 1])
+    with col_h:
+        st.bar_chart(hours_grp.set_index("Process")["Total hours"])
+    with col_htbl:
+        st.dataframe(
+            hours_grp.style.format({
+                "Total hours": "{:,.1f} h", "Process cost (€)": "€ {:,.2f}",
+            }),
+            use_container_width=True, hide_index=True,
+        )
+
+    # ── Lead time analysis ────────────────────────────────────────────────────
+    st.divider()
+    st.subheader("⏱️ Procurement lead time analysis")
+
+    if "lead_time_days" in df.columns:
+        lt_df = (
+            df[["material_id", "lead_time_days"]].dropna()
+            .groupby("material_id")["lead_time_days"].max()
+            .reset_index()
+            .sort_values("lead_time_days", ascending=False)
+            .rename(columns={"material_id": "Material", "lead_time_days": "Lead time (days)"})
+        )
+        if "supplier" in df.columns:
+            sup = df.groupby("material_id")["supplier"].first().reset_index().rename(
+                columns={"material_id": "Material", "supplier": "Supplier"})
+            lt_df = lt_df.merge(sup, on="Material", how="left")
+
+        max_lt = lt_df["Lead time (days)"].max()
+        gating = lt_df[lt_df["Lead time (days)"] == max_lt]["Material"].tolist()
+        st.warning(
+            f"**Critical path material:** {', '.join(gating)} — **{int(max_lt)} days** lead time.  \n"
+            "Order this material first to avoid delivery delays."
+        )
+        st.dataframe(lt_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("Lead time data not available — add supplier quotes with `lead_time_days` to see this analysis.")
+
 
 guard(main)

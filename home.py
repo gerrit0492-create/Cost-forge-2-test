@@ -86,7 +86,12 @@ def dashboard() -> None:
     st.title("🛠️ Cost Forge 2")
     if name:
         st.subheader(f"📦 {name}")
-    st.caption("Click a card to navigate to the page.")
+
+    hdr1, hdr2 = st.columns([6, 1])
+    hdr1.caption("Click a card to navigate to the page.")
+    if hdr2.button("🔄 Refresh", help="Clear all cached data"):
+        st.cache_data.clear()
+        st.rerun()
 
     # ── KPI row ───────────────────────────────────────────────────────────────
     kpi = _kpis()
