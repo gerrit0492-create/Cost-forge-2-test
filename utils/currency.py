@@ -10,6 +10,7 @@ CURRENCIES: dict[str, tuple[str, float]] = {
     "SEK (kr)": ("kr", 11.40),
     "SGD ($)":  ("S$",  1.465),
     "AUD ($)":  ("A$",  1.660),
+    "INR (₹)":  ("₹",  90.50),
 }
 
 _DEFAULT = "EUR (€)"
