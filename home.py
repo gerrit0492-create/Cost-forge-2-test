@@ -33,6 +33,7 @@ _P = {
     "quotesheet": st.Page("pages/29_Quote_Sheet.py",           title="Quote Sheet",      icon="🧾"),
     "borescale": st.Page("pages/30_Bore_Scale.py",            title="Bore Scale",       icon="📐"),
     "prepost":   st.Page("pages/31_Pre_Post.py",              title="Pre / Post",       icon="📊"),
+    "itemcost":  st.Page("pages/32_Item_Costing.py",          title="Item Costing",     icon="🔢"),
     "debug":    st.Page("pages/00_Debug.py",                   title="Debug",            icon="🐛"),
     "diagnose": st.Page("pages/0_Diagnose.py",                 title="Diagnose",         icon="🔍"),
 }
@@ -192,6 +193,11 @@ def dashboard() -> None:
     with c4:
         _card(_P["prepost"],    "📊", "Pre / Post",
               "Compare budget estimate against recorded actuals — variance per line and per subsystem.")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        _card(_P["itemcost"],   "🔢", "Item Costing",
+              "Price a single part: material, yield, process, overhead, surcharges, volume discount breaks.")
 
     st.divider()
 
