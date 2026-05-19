@@ -37,6 +37,7 @@ _P = {
     "borescale":  st.Page("pages/30_Bore_Scale.py",             title="Waterjet Size Scale", icon="📐"),
     "prepost":    st.Page("pages/31_Pre_Post.py",               title="Pre / Post",          icon="📊"),
     "itemcost":   st.Page("pages/32_Item_Costing.py",           title="Item Costing",        icon="🔢"),
+    "stakeholder":st.Page("pages/33_Stakeholder_Report.py",    title="Stakeholder Report",  icon="📋"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -397,7 +398,7 @@ def dashboard() -> None:
     # ── 4 · Quote ─────────────────────────────────────────────────────────────
     st.subheader("4️⃣ Quote")
     st.caption("Build a professional customer quotation with commercial terms, classification and margin control.")
-    c1, c2, c3, _ = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
         _card(_P["quotesheet"], "🧾", "Quote Sheet",
               "Full internal cost analysis + styled customer quote preview + quality checks.")
@@ -407,6 +408,9 @@ def dashboard() -> None:
     with c3:
         _card(_P["rapport"],    "📑", "Report",
               "Generate a structured Markdown cost report.")
+    with c4:
+        _card(_P["stakeholder"],"📋", "Stakeholder Report",
+              "Conclusive multi-section report — executive summary, cost, procurement and risk register.")
 
     st.divider()
 
