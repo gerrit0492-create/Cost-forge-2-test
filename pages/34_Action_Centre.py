@@ -66,7 +66,8 @@ def _compute_checks():
 
     zero_mass_lines = []
     if "mass_kg" in bom.columns:
-        mask2 = pd.to_numeric(bom["mass_kg"], errors="coerce").fillna(0) <= 0
+        has_material = bom["material_id"].notna() & (bom["material_id"].astype(str).str.strip() != "")
+        mask2 = has_material & (pd.to_numeric(bom["mass_kg"], errors="coerce").fillna(0) <= 0)
         zero_mass_lines = bom[mask2]["line_id"].tolist()
 
     comp_score    = completeness_score(bom)
@@ -284,17 +285,18 @@ def main() -> None:
     #  FIX SECTION 3b — ZERO MASS BOM LINES
     # ══════════════════════════════════════════════════════════════════════════
     _section(f"{_badge(not c['zero_mass_lines'])} Fix BOM lines with zero or missing mass (kg)")
+    st.caption("Service lines (NDT, assembly, painting, etc.) have no material_id and are excluded — only physical parts are checked.")
 
     if not c["zero_mass_lines"]:
-        st.success("All BOM lines have a valid mass_kg value.")
+        st.success("All material-based BOM lines have a valid mass_kg value.")
     else:
         st.warning(
-            f"{len(c['zero_mass_lines'])} BOM line(s) have mass_kg = 0 or blank — "
-            "dry weight and €/kg calculations will be incorrect."
+            f"{len(c['zero_mass_lines'])} material-based BOM line(s) have mass_kg = 0 or blank — "
+            "dry weight and €/kg calculations will be incorrect for these parts."
         )
         st.markdown(
             "Enter the correct **mass in kg** for each line. "
-            "Use part drawings, weighing scales or material datasheet."
+            "Use part drawings, weighing scales or the material datasheet."
         )
         bom = c["bom"].copy()
         mass_mask = pd.to_numeric(bom["mass_kg"], errors="coerce").fillna(0) <= 0
