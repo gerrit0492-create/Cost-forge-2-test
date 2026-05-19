@@ -196,19 +196,35 @@ if margin_pct < 10:
          ("→ Routing Costs",    "pages/16_Routing_Kosten.py")],
     ))
 if maturity in ("RoM (±30%)", "Budget (±15%)"):
+    _next = "Budget (±15%)" if maturity == "RoM (±30%)" else "Definitive (±5%)"
+    _steps_by_maturity = {
+        "RoM (±30%)": [
+            "**BOM scope**: Verify all major subsystems are represented — open the BOM completeness grid below and confirm no *critical* subsystem is missing.",
+            "**Material prices**: Every material must have a non-zero base price. Check → **Data Quality → Materials** tab, *Zero / negative prices* metric must be 0.",
+            "**Process routes assigned**: All BOM lines must have a process route. Check → **Data Quality → BOM** tab, *Unmatched process routes* must be 0.",
+            "**Weight basis**: Confirm mass_kg is filled for every BOM line (not 0 or blank). Check → **Data Quality → BOM** tab.",
+            f"**Advance maturity**: Once all 4 points above are ✅, open the dashboard sidebar and change maturity to *{_next}*.",
+        ],
+        "Budget (±15%)": [
+            "**Data Quality score ≥ 8/10**: Open **Data Quality** — the overall health bar must show at least 8/10 checks passed.",
+            "**Quote coverage ≥ 80%**: At least 80 % of materials must have a valid, non-expired supplier quote. Check → **Supplier Quotes → Coverage Gaps** — the coverage metric must show ≥ 80 %.",
+            "**No expired quotes**: **Supplier Quotes → Quote status** must show zero 🔴 Expired rows. Renew any outstanding quotes first.",
+            "**Process hours reviewed**: Open **Routing Costs** and confirm runtime_h values are based on actual routing data, not placeholders.",
+            "**Overhead % and margin % approved**: Open **Presets** and verify the rates are signed off by project management — not default values.",
+            "**Surcharges and classification**: If a classification society applies, confirm the correct society and surcharge % is set in **Quote Sheet → Production** settings.",
+            f"**Advance maturity**: Once all 6 points above are ✅, open the dashboard sidebar and change maturity to *{_next}*. For *Firm*, also confirm a customer PO or LOI is in hand and back-to-back supply contracts cover the top 5 spend materials.",
+        ],
+    }
     risks.append((
         "🟡 Low",
         "Estimate maturity is not firm",
-        f"Current maturity: {maturity}",
-        "Numbers carry inherent uncertainty at this maturity level. Do not issue as a firm commercial quotation.",
-        [
-            "Complete the BOM with confirmed part numbers, quantities and weights.",
-            "Obtain supplier quotes for all materials (see *Materials without a valid quote* above if applicable).",
-            "Lock overhead % and margin % in **Presets** with the approved project rates.",
-            "Once BOM and quotes are confirmed, change the estimate maturity to *Definitive* or *Firm* in the dashboard sidebar.",
-        ],
-        [("→ Presets",      "pages/03_Presets.py"),
-         ("→ Data Quality", "pages/05_Data_Quality.py")],
+        f"Current: {maturity} — target next level: {_next}",
+        f"At {maturity} the sell price could vary by the stated tolerance. Issuing this as a firm quotation exposes the company to potential loss if actual costs land at the high end of the range.",
+        _steps_by_maturity[maturity],
+        [("→ Data Quality",   "pages/05_Data_Quality.py"),
+         ("→ Supplier Quotes","pages/07_Supplier_Quotes.py"),
+         ("→ Routing Costs",  "pages/16_Routing_Kosten.py"),
+         ("→ Presets",        "pages/03_Presets.py")],
     ))
 if target_cost > 0 and total_sell > target_cost * 1.05:
     gap_pct = (total_sell - target_cost) / target_cost * 100
