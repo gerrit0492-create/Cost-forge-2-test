@@ -36,6 +36,13 @@ def compute_costs(
     qty = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
     n   = max(int(num_units), 1)
 
+    # Fill NaN from unmatched merges — service lines and unmatched routes get 0
+    for _col in ["mass_kg", "price_eur_per_kg",
+                 "machine_rate_eur_h", "labor_rate_eur_h",
+                 "overhead_pct", "margin_pct"]:
+        if _col in df.columns:
+            df[_col] = pd.to_numeric(df[_col], errors="coerce").fillna(0)
+
     # ── Optional BOM columns with safe defaults ───────────────────────────────
     def _col(name: str, default) -> pd.Series:
         if name in df.columns:

@@ -74,9 +74,16 @@ def business_rules(mats: pd.DataFrame, procs: pd.DataFrame, bom: pd.DataFrame) -
             "margin_pct moet tussen 0 en 1 liggen.",
         )
     )
-    rules.append(Rule("qty_min_1",    within(mat_bom, "qty",      1,         None), "qty moet >= 1 zijn."))
-    rules.append(Rule("mass_positive", within(mat_bom, "mass_kg",  0.000001, None), "mass_kg moet > 0 zijn."))
-    rules.append(Rule("runtime_nonneg", within(bom,    "runtime_h", 0.0,     None), "runtime_h moet >= 0 zijn."))
+    rules.append(Rule("qty_min_1",    within(mat_bom, "qty",      1,    None), "qty moet >= 1 zijn."))
+    # mass_kg = 0 is valid for service operations (NDT, balance, assembly, chrome, bore, etc.)
+    # Only flag lines where mass_kg is truly missing (null), not explicitly zero.
+    mass_null = (
+        mat_bom["mass_kg"].isna().any()
+        if "mass_kg" in mat_bom.columns else False
+    )
+    rules.append(Rule("mass_provided", not mass_null,
+                      "mass_kg ontbreekt voor sommige materiaalregels — voer de gewichten in."))
+    rules.append(Rule("runtime_nonneg", within(bom,    "runtime_h", 0.0,  None), "runtime_h moet >= 0 zijn."))
     rules.append(
         Rule(
             "mat_price_pos",

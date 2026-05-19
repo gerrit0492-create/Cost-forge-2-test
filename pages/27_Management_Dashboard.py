@@ -225,7 +225,10 @@ def main() -> None:
         .reset_index()
         .rename(columns={"subsystem": "Subsystem", "line_mass": "Mass (kg)"})
     )
-    wt_grp["Share %"] = (wt_grp["Mass (kg)"] / total_kg * 100).map(lambda x: f"{x:.1f}%")
+    wt_grp["Share %"] = (
+        (wt_grp["Mass (kg)"] / total_kg * 100).map(lambda x: f"{x:.1f}%")
+        if total_kg > 0 else "—"
+    )
     wt_grp["Mass (kg)"] = wt_grp["Mass (kg)"].map(lambda x: f"{x:,.1f}")
 
     col_wt, col_wttbl = st.columns([2, 1])

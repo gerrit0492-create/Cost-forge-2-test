@@ -42,11 +42,11 @@ def main() -> None:
                                     "labor_rate_eur_h", "overhead_pct", "margin_pct"])
     p_pos   = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
 
-    # BOM — mass/qty checks only on material-based lines (service/NDT/assembly lines have no mass)
+    # BOM — qty check on material-based lines only; mass_kg=0 is valid for service ops
     mat_bom = material_lines(bom)
     b_miss  = check_missing(bom, ["line_id", "material_id", "qty",
                                    "mass_kg", "process_route", "runtime_h"])
-    b_pos   = check_positive(mat_bom, ["qty", "mass_kg"])
+    b_pos   = check_positive(mat_bom, ["qty"])   # mass_kg=0 allowed (NDT/assembly/service)
     b_no_route = (
         bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
         if "process_route" in bom.columns and "process_id" in procs.columns else []
