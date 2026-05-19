@@ -219,10 +219,12 @@ def main() -> None:
             st.subheader("Rate comparison across process routes")
             rate_cols = [c for c in ["machine_rate_eur_h", "labor_rate_eur_h"] if c in procs.columns]
             if rate_cols:
+                renamed = procs.set_index("process_id")[rate_cols].rename(
+                    columns={"machine_rate_eur_h": "Machine €/h", "labor_rate_eur_h": "Labour €/h"}
+                )
+                sort_col = "Machine €/h" if "machine_rate_eur_h" in rate_cols else renamed.columns[0]
                 st.dataframe(
-                    procs.set_index("process_id")[rate_cols].rename(
-                        columns={"machine_rate_eur_h": "Machine €/h", "labor_rate_eur_h": "Labour €/h"}
-                    ).sort_values("Machine €/h" if "Machine €/h" in rate_cols else rate_cols[0], ascending=False),
+                    renamed.sort_values(sort_col, ascending=False),
                     use_container_width=True,
                 )
 
@@ -276,9 +278,9 @@ def main() -> None:
             st.success("✅ All business rules passed.")
         else:
             st.error("Business rule violations detected:")
-            failed = {k: v for k, v in rules.items() if not v.get("ok", True)}
-            for rule, detail in failed.items():
-                st.warning(f"**{rule}**: {detail.get('message', str(detail))}")
+            for rule in rules:
+                if not rule.ok:
+                    st.warning(f"**{rule.name}**: {rule.msg}")
 
 
 guard(main)
