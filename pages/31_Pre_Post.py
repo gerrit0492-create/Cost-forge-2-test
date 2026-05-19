@@ -7,7 +7,7 @@ import streamlit as st
 
 from utils.completeness import WATERJET_SUBSYSTEMS
 from utils.currency import fmt, fmt_delta
-from utils.io import load_bom, load_materials, load_processes, load_quotes
+from utils.io import load_bom, load_materials, load_processes, load_quotes, save_sheet, df_to_excel_bytes
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
@@ -44,7 +44,7 @@ col_src, col_up = st.columns([3, 2])
 with col_src:
     src = st.radio(
         "Actuals source",
-        ["Use saved actuals (data/actuals.csv)", "Upload actuals CSV"],
+        ["Use saved actuals (cost_forge.xlsx)", "Upload actuals CSV"],
         horizontal=True,
         label_visibility="collapsed",
     )
@@ -56,14 +56,8 @@ if src == "Upload actuals CSV":
 
 @st.cache_data(ttl=30)
 def _load_saved_actuals() -> pd.DataFrame:
-    try:
-        df = pd.read_csv("data/actuals.csv")
-        for c in ["actual_material_cost", "actual_process_cost", "actual_total_cost"]:
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
-        return df
-    except FileNotFoundError:
-        return pd.DataFrame()
+    from utils.io import load_actuals
+    return load_actuals()
 
 
 if uploaded:
@@ -132,11 +126,11 @@ edited = st.data_editor(
 )
 
 # Save button
-if st.button("💾 Save actuals to data/actuals.csv"):
+if st.button("💾 Save actuals to workbook"):
     save_cols = ["line_id", "actual_material_cost", "actual_process_cost",
                  "actual_total_cost", "notes", "status"]
-    edited[save_cols].to_csv("data/actuals.csv", index=False)
-    st.success("Actuals saved.")
+    save_sheet(edited[save_cols], "actuals")
+    st.success("Actuals saved to cost_forge.xlsx.")
     st.cache_data.clear()
 
 st.divider()
@@ -282,10 +276,10 @@ template_df["status"]               = "not_started"
 
 with dl1:
     st.download_button(
-        "⬇️ Download actuals template (CSV)",
-        data=template_df.drop(columns=["part_name"]).to_csv(index=False),
-        file_name="actuals_template.csv",
-        mime="text/csv",
+        "⬇️ Download actuals template (Excel)",
+        data=df_to_excel_bytes(template_df.drop(columns=["part_name"]), "Actuals"),
+        file_name="actuals_template.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
         help="Fill in actuals and upload back above.",
     )
@@ -300,10 +294,10 @@ report_cols = ["line_id", "part_name", "status", "budget_total",
 
 with dl2:
     st.download_button(
-        "⬇️ Download pre/post report (CSV)",
-        data=report[report_cols].to_csv(index=False),
-        file_name="pre_post_report.csv",
-        mime="text/csv",
+        "⬇️ Download pre/post report (Excel)",
+        data=df_to_excel_bytes(report[report_cols], "Pre-Post"),
+        file_name="pre_post_report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
         help="Full budget vs actuals comparison.",
     )
