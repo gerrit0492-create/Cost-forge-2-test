@@ -37,6 +37,7 @@ def _proc_row(pid: str) -> pd.Series:
 
 # ── Yield factor hints ────────────────────────────────────────────────────────
 YIELD_HINTS = {
+    # Original routes
     "5AX_MILL_IMP":   0.35,
     "CNC_LATHE_PREC": 0.60,
     "CNC_MILL_3AX":   0.75,
@@ -52,6 +53,37 @@ YIELD_HINTS = {
     "DYN_BALANCE":     1.00,
     "HARD_CHROME":     1.00,
     "POWDER_COAT":     1.00,
+    # Extended routes
+    "CNC_LATHE_GEN":  0.65,
+    "CNC_MILL_4AX":   0.70,
+    "TURN_MILL":      0.60,
+    "DEEP_HOLE_DRILL":0.88,
+    "HONING":         0.95,
+    "LAPPING":        0.96,
+    "JIG_BORE":       0.90,
+    "THREAD_GRIND":   0.92,
+    "GEAR_CUT":       0.80,
+    "MIG_WELD":       0.92,
+    "PIPE_WELD":      0.90,
+    "WELD_OVERLAY":   0.88,
+    "LASER_WELD":     0.95,
+    "LASER_CUT":      0.92,
+    "FLAME_CUT":      0.82,
+    "PRESS_BRAKE":    0.96,
+    "ROLL_FORM":      0.94,
+    "INVEST_CAST":    0.65,
+    "CENTRIFUGAL":    0.70,
+    "FORGING":        0.75,
+    "HEAT_TREAT":     1.00,
+    "SHOT_PEEN":      1.00,
+    "HOT_DIP_GALV":   1.00,
+    "NITRIDING":      1.00,
+    "RUBBER_BOND":    0.95,
+    "CMM_INSPECT":    1.00,
+    "RADIOGRAPHY":    1.00,
+    "FLOW_TEST":      1.00,
+    "LEAK_TEST":      1.00,
+    "VIBRATION_TEST": 1.00,
 }
 
 SURFACE_TREATMENTS = {
