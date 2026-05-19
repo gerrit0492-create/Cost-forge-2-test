@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
 from utils.pricing import compute_costs
@@ -44,6 +46,40 @@ for comm in commodities:
     commodity_deltas[comm] = delta / 100.0
 
 st.sidebar.divider()
+st.sidebar.subheader("Production location")
+
+LABOUR_PRESETS: dict[str, float] = {
+    "— custom —":         1.00,
+    "Netherlands":        1.00,
+    "Germany":            1.15,
+    "Belgium":            1.05,
+    "United Kingdom":     0.95,
+    "Poland":             0.45,
+    "Czechia":            0.50,
+    "Romania":            0.38,
+    "Turkey":             0.42,
+    "South Korea":        0.60,
+    "Japan":              0.85,
+    "Singapore":          0.80,
+    "China (coastal)":    0.35,
+    "India":              0.28,
+    "Brazil":             0.40,
+    "USA (Gulf Coast)":   1.10,
+    "Australia":          1.20,
+    "Norway":             1.30,
+}
+
+location = st.sidebar.selectbox(
+    "Manufacturing location",
+    list(LABOUR_PRESETS.keys()),
+    help="Sets a labour rate multiplier relative to Netherlands baseline (€58/h).",
+    key="location_preset",
+)
+location_mult = LABOUR_PRESETS[location]
+if location != "— custom —":
+    st.sidebar.caption(f"Labour multiplier: **{location_mult:.2f}×** vs NL baseline")
+
+st.sidebar.divider()
 st.sidebar.subheader("Process rates")
 labour_delta  = st.sidebar.slider("Labour rate ±%",  -50, 50, 0, 5) / 100.0
 machine_delta = st.sidebar.slider("Machine rate ±%", -50, 50, 0, 5) / 100.0
@@ -57,7 +93,8 @@ if "commodity" in mats_s.columns:
             mats_s.loc[mats_s["commodity"] == comm, "price_eur_per_kg"] *= (1 + delta)
 
 procs_s = procs_base.copy()
-procs_s["labor_rate_eur_h"]   *= (1 + labour_delta)
+# location preset × slider adjustment both applied to labour
+procs_s["labor_rate_eur_h"]   *= location_mult * (1 + labour_delta)
 procs_s["machine_rate_eur_h"] *= (1 + machine_delta)
 procs_s["margin_pct"]         += margin_delta
 
@@ -68,14 +105,17 @@ delta_pct  = delta_abs / total_base * 100 if total_base else 0
 
 # ── KPI comparison ────────────────────────────────────────────────────────────
 st.subheader("Cost impact")
-k1, k2, k3, k4 = st.columns(4)
-k1.metric("Baseline selling price", f"€ {total_base:,.0f}")
-k2.metric("Scenario selling price", f"€ {total_s:,.0f}",
-          delta=f"€ {delta_abs:+,.0f} ({delta_pct:+.1f}%)")
+k1, k2, k3, k4, k5 = st.columns(5)
+k1.metric("Baseline selling price", fmt(total_base))
+k2.metric("Scenario selling price", fmt(total_s),
+          delta=f"{fmt_delta(delta_abs)} ({delta_pct:+.1f}%)")
 k3.metric("Material Δ",
-          f"€ {df_s['material_cost'].sum() - df_base['material_cost'].sum():+,.0f}")
+          fmt_delta(df_s['material_cost'].sum() - df_base['material_cost'].sum()))
 k4.metric("Process Δ",
-          f"€ {df_s['process_cost'].sum() - df_base['process_cost'].sum():+,.0f}")
+          fmt_delta(df_s['process_cost'].sum() - df_base['process_cost'].sum()))
+k5.metric("Location",
+          location if location != "— custom —" else "Custom",
+          delta=f"Labour ×{location_mult:.2f}" if location != "— custom —" else None)
 
 st.divider()
 
@@ -97,8 +137,8 @@ if "commodity" in df_base.columns and "commodity" in df_s.columns:
     with col_tbl:
         st.dataframe(
             comm_df.style.format({
-                "Baseline €": "€ {:,.0f}", "Scenario €": "€ {:,.0f}",
-                "Delta €": "€ {:+,.0f}", "Delta %": "{:+.1f}%",
+                "Baseline €": lambda x: fmt(x), "Scenario €": lambda x: fmt(x),
+                "Delta €": lambda x: fmt_delta(x), "Delta %": "{:+.1f}%",
             }),
             use_container_width=True,
         )
@@ -118,8 +158,8 @@ cmp["Delta %"] = (cmp["Delta €"] / cmp["Baseline €"].replace(0, float("nan")
 
 st.dataframe(
     cmp.style.format({
-        "Baseline €": "€ {:,.2f}", "Scenario €": "€ {:,.2f}",
-        "Delta €": "€ {:+,.2f}", "Delta %": "{:+.1f}%",
+        "Baseline €": lambda x: fmt(x, 2), "Scenario €": lambda x: fmt(x, 2),
+        "Delta €": lambda x: fmt_delta(x, 2), "Delta %": "{:+.1f}%",
     }),
     use_container_width=True, hide_index=True,
 )

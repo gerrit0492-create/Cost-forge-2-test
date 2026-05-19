@@ -5,6 +5,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
@@ -39,11 +41,11 @@ def main() -> None:
     # ── KPI row ───────────────────────────────────────────────────────────────
     st.subheader("💶 Total Overview")
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("Total Price", f"€ {total:,.2f}")
-    k2.metric("Material Cost", f"€ {mat_sum:,.2f}", _pct(mat_sum, total))
-    k3.metric("Process Cost", f"€ {proc_sum:,.2f}", _pct(proc_sum, total))
-    k4.metric("Overhead", f"€ {oh_sum:,.2f}", _pct(oh_sum, total))
-    k5.metric("Margin", f"€ {mar_sum:,.2f}", _pct(mar_sum, total))
+    k1.metric("Total Price", fmt(total, 2))
+    k2.metric("Material Cost", fmt(mat_sum, 2), _pct(mat_sum, total))
+    k3.metric("Process Cost", fmt(proc_sum, 2), _pct(proc_sum, total))
+    k4.metric("Overhead", fmt(oh_sum, 2), _pct(oh_sum, total))
+    k5.metric("Margin", fmt(mar_sum, 2), _pct(mar_sum, total))
 
     # ── Cost composition bar ──────────────────────────────────────────────────
     st.divider()
@@ -67,7 +69,7 @@ def main() -> None:
         st.bar_chart(comp.set_index("Cost type")["Amount (€)"])
     with col_table:
         st.dataframe(
-            comp.style.format({"Amount (€)": "€ {:,.2f}", "Share (%)": "{:.1f}%"}),
+            comp.style.format({"Amount (€)": lambda x: fmt(x, 2), "Share (%)": "{:.1f}%"}),
             use_container_width=True,
             hide_index=True,
         )
@@ -101,7 +103,7 @@ def main() -> None:
                         "total_cost": "Total",
                     }
                 )
-                .style.format("€ {:,.2f}"),
+                .style.format(lambda x: fmt(x, 2)),
                 use_container_width=True,
             )
     else:
@@ -130,7 +132,7 @@ def main() -> None:
                     "overhead": "Overhead",
                     "total_cost": "Total",
                 }
-            ).style.format("€ {:,.2f}"),
+            ).style.format(lambda x: fmt(x, 2)),
             use_container_width=True,
         )
 
@@ -157,11 +159,11 @@ def main() -> None:
     )
     st.dataframe(
         top10.style.format({
-            "material_cost": "€ {:,.2f}",
-            "process_cost":  "€ {:,.2f}",
-            "overhead":      "€ {:,.2f}",
-            "margin":        "€ {:,.2f}",
-            "total_cost":    "€ {:,.2f}",
+            "material_cost": lambda x: fmt(x, 2),
+            "process_cost":  lambda x: fmt(x, 2),
+            "overhead":      lambda x: fmt(x, 2),
+            "margin":        lambda x: fmt(x, 2),
+            "total_cost":    lambda x: fmt(x, 2),
             "mass_kg":       "{:.2f} kg",
         }),
         use_container_width=True,
@@ -192,7 +194,7 @@ def main() -> None:
     with st.expander("📄 Full line detail"):
         cost_cols = ["material_cost", "process_cost", "overhead", "margin", "total_cost"]
         st.dataframe(
-            detail.style.format({c: "€ {:,.2f}" for c in cost_cols if c in detail.columns}),
+            detail.style.format({c: lambda x: fmt(x, 2) for c in cost_cols if c in detail.columns}),
             use_container_width=True,
         )
 
@@ -259,7 +261,7 @@ def main() -> None:
     }, inplace=True)
     st.dataframe(
         purch_grp.style.format({
-            "Purchase qty (kg)": "{:,.1f}", "Purchase cost (€)": "€ {:,.2f}",
+            "Purchase qty (kg)": "{:,.1f}", "Purchase cost (€)": lambda x: fmt(x, 2),
         }),
         use_container_width=True, hide_index=True,
     )
@@ -287,7 +289,7 @@ def main() -> None:
     with col_htbl:
         st.dataframe(
             hours_grp.style.format({
-                "Total hours": "{:,.1f} h", "Process cost (€)": "€ {:,.2f}",
+                "Total hours": "{:,.1f} h", "Process cost (€)": lambda x: fmt(x, 2),
             }),
             use_container_width=True, hide_index=True,
         )

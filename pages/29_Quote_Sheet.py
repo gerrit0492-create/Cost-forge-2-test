@@ -5,6 +5,8 @@ import datetime
 import pandas as pd
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 from utils.completeness import WATERJET_SUBSYSTEMS
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
@@ -128,19 +130,19 @@ total_marg  = work["margin"].sum()
 total_sell  = work["total_cost"].sum() + cert_surcharge
 
 k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Material (purchase)", f"€ {total_mat:,.0f}")
-k2.metric("Machine + Labour",    f"€ {total_mach + total_lab:,.0f}")
-k3.metric("Overhead",            f"€ {total_oh:,.0f}")
-k4.metric("Your cost",           f"€ {total_base:,.0f}")
-k5.metric("Selling price",       f"€ {total_sell:,.0f}",
-          delta=f"Margin € {total_marg:,.0f} ({total_marg/total_base*100:.1f}%)" if total_base else None)
+k1.metric("Material (purchase)", fmt(total_mat))
+k2.metric("Machine + Labour",    fmt(total_mach + total_lab))
+k3.metric("Overhead",            fmt(total_oh))
+k4.metric("Your cost",           fmt(total_base))
+k5.metric("Selling price",       fmt(total_sell),
+          delta=f"Margin {fmt(total_marg)} ({total_marg/total_base*100:.1f}%)" if total_base else None)
 k6.metric("Dry weight",          f"{total_mass:,.0f} kg")
 
 if cert_surcharge > 0:
     st.info(
-        f"**{cert_class} certification surcharge: € {cert_surcharge:,.0f}** added to selling price  \n"
+        f"**{cert_class} certification surcharge: {fmt(cert_surcharge)}** added to selling price  \n"
         f"(NDT ×{cert_cfg['ndt_mult']}, pressure test ×{cert_cfg['test_mult']}, "
-        f"cert. fee € {cert_cfg['fee_eur']:,})"
+        f"cert. fee {fmt(cert_cfg['fee_eur'])})"
     )
 
 if num_units > 1:
@@ -161,14 +163,14 @@ agg = (
     .reset_index()
 )
 agg["Subsystem"]   = agg["subsystem"].map(lambda p: subsystem_names.get(p, p))
-agg["Purchase €"]  = agg["material_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Machine €"]   = agg["machine_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Labour €"]    = agg["labour_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Overhead €"]  = agg["overhead"].map(lambda x: f"€ {x:,.0f}")
-agg["Your cost €"] = agg["base_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Margin €"]    = agg["margin"].map(lambda x: f"€ {x:,.0f}")
+agg["Purchase €"]  = agg["material_cost"].map(lambda x: fmt(x))
+agg["Machine €"]   = agg["machine_cost"].map(lambda x: fmt(x))
+agg["Labour €"]    = agg["labour_cost"].map(lambda x: fmt(x))
+agg["Overhead €"]  = agg["overhead"].map(lambda x: fmt(x))
+agg["Your cost €"] = agg["base_cost"].map(lambda x: fmt(x))
+agg["Margin €"]    = agg["margin"].map(lambda x: fmt(x))
 agg["Margin %"]    = (agg["margin"] / agg["base_cost"] * 100).map(lambda x: f"{x:.1f}%")
-agg["Sell price €"]= agg["total_cost"].map(lambda x: f"€ {x:,.0f}")
+agg["Sell price €"]= agg["total_cost"].map(lambda x: fmt(x))
 agg["Mass (kg)"]   = agg["_line_mass"].map(lambda x: f"{x:,.0f}")
 agg["Share %"]     = (agg["total_cost"] / work["total_cost"].sum() * 100).map(lambda x: f"{x:.1f}%")
 
@@ -206,7 +208,7 @@ with st.expander("Full BOM line detail", expanded=False):
     for col in ["Purchase €", "Machine €", "Labour €", "Overhead €",
                 "Your cost €", "Margin €", "Sell price €"]:
         if col in lt.columns:
-            lt[col] = lt[col].map(lambda x: f"€ {x:,.2f}")
+            lt[col] = lt[col].map(lambda x: fmt(x, 2))
     st.dataframe(lt, use_container_width=True, hide_index=True)
 
 st.divider()

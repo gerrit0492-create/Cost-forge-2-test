@@ -29,6 +29,7 @@ SCHEMA_BOM = {
     "make_buy":              "string",    # M=manufactured, B=bought-out
     "cost_type":             "string",    # UNIT / NRE / TOOLING
     "subcontract_price_eur": "float64",   # overrides internal process rate when set
+    "scale_exp":             "float64",   # bore scaling exponent: 0=fixed, 1=linear, 2=area, 3=volume
 }
 SCHEMA_QUOTES = {
     "supplier": "string",

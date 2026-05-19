@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 from utils.completeness import (
     WATERJET_SUBSYSTEMS,
     common_missing,
@@ -238,11 +240,11 @@ _TEMPLATE["subcontract_price_eur"] = float("nan")
 
 def _metric_row(df: pd.DataFrame) -> None:
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Material cost", f"EUR {df['material_cost'].sum():,.2f}")
-    c2.metric("Process cost",  f"EUR {df['process_cost'].sum():,.2f}")
-    c3.metric("Overhead",      f"EUR {df['overhead'].sum():,.2f}")
-    c4.metric("Margin",        f"EUR {df['margin'].sum():,.2f}")
-    c5.metric("**TOTAL**",     f"EUR {df['total_cost'].sum():,.2f}")
+    c1.metric("Material cost", fmt(df['material_cost'].sum(), 2))
+    c2.metric("Process cost",  fmt(df['process_cost'].sum(), 2))
+    c3.metric("Overhead",      fmt(df['overhead'].sum(), 2))
+    c4.metric("Margin",        fmt(df['margin'].sum(), 2))
+    c5.metric("**TOTAL**",     fmt(df['total_cost'].sum(), 2))
 
 
 def _completeness_panel(bom: pd.DataFrame) -> None:

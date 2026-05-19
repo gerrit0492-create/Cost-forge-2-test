@@ -6,6 +6,8 @@ from utils.project import load_project_name
 
 
 def home_button() -> None:
+    from utils.currency import currency_selector
+    currency_selector()
     col_home, col_project = st.columns([1, 6])
     col_home.markdown("[🏠 ← Home](/)")
     name = load_project_name()

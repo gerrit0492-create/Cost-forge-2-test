@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 st.set_page_config(page_title="Cost Forge 2", layout="wide", page_icon="🛠️")
 
 # ── All pages defined once ───────────────────────────────────────────────────
@@ -29,6 +31,7 @@ _P = {
     "mgmt":     st.Page("pages/27_Management_Dashboard.py",    title="Management",       icon="📊"),
     "linedet":  st.Page("pages/28_Line_Cost_Detail.py",        title="Line Cost Detail", icon="🔍"),
     "quotesheet": st.Page("pages/29_Quote_Sheet.py",           title="Quote Sheet",      icon="🧾"),
+    "borescale": st.Page("pages/30_Bore_Scale.py",            title="Bore Scale",       icon="📐"),
     "debug":    st.Page("pages/00_Debug.py",                   title="Debug",            icon="🐛"),
     "diagnose": st.Page("pages/0_Diagnose.py",                 title="Diagnose",         icon="🔍"),
 }
@@ -97,11 +100,11 @@ def dashboard() -> None:
     kpi = _kpis()
     if kpi:
         k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
-        k1.metric("Total",    f"€ {kpi['total']:,.0f}")
-        k2.metric("Material", f"€ {kpi['mat']:,.0f}")
-        k3.metric("Process",  f"€ {kpi['proc']:,.0f}")
-        k4.metric("Overhead", f"€ {kpi['overhead']:,.0f}")
-        k5.metric("Margin",   f"€ {kpi['margin']:,.0f}")
+        k1.metric("Total",    fmt(kpi['total']))
+        k2.metric("Material", fmt(kpi['mat']))
+        k3.metric("Process",  fmt(kpi['proc']))
+        k4.metric("Overhead", fmt(kpi['overhead']))
+        k5.metric("Margin",   fmt(kpi['margin']))
         k6.metric("BOM lines",  kpi["lines"])
         k7.metric("Materials",  kpi["materials"])
     else:
@@ -174,13 +177,16 @@ def dashboard() -> None:
         _card(_P["calc"],    "💸", "Calculation",
               "Detailed calculation per BOM line.")
 
-    c1, c2 = st.columns(2)
+    c1, c2, c3 = st.columns(3)
     with c1:
         _card(_P["linedet"],    "🔍", "Line Cost Detail",
               "Full cost breakdown per line — purchase, machine, labour, overhead, margin with error checks.")
     with c2:
         _card(_P["quotesheet"], "🧾", "Quote Sheet",
               "Internal cost vs selling price — generate a customer quote with optional margin override.")
+    with c3:
+        _card(_P["borescale"],  "📐", "Bore Scale",
+              "Scale BOM cost and mass to a different bore diameter using per-line scaling exponents.")
 
     st.divider()
 

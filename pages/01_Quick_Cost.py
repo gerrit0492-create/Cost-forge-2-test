@@ -3,6 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from utils.currency import fmt, fmt_delta
+
 from utils.completeness import WATERJET_SUBSYSTEMS
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
@@ -83,11 +85,11 @@ total_mass = (
     (pd.to_numeric(view["qty"], errors="coerce").fillna(1) * view["mass_kg"].fillna(0)).sum()
 )
 k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Material (purchase)", f"€ {view['material_cost'].sum():,.0f}")
-k2.metric("Process",             f"€ {view['process_cost'].sum():,.0f}")
-k3.metric("Overhead",            f"€ {view['overhead'].sum():,.0f}")
-k4.metric("Your cost",           f"€ {view['base_cost'].sum():,.0f}")
-k5.metric("Selling price",       f"€ {view['total_cost'].sum():,.0f}")
+k1.metric("Material (purchase)", fmt(view['material_cost'].sum()))
+k2.metric("Process",             fmt(view['process_cost'].sum()))
+k3.metric("Overhead",            fmt(view['overhead'].sum()))
+k4.metric("Your cost",           fmt(view['base_cost'].sum()))
+k5.metric("Selling price",       fmt(view['total_cost'].sum()))
 k6.metric("Dry weight",          f"{total_mass:,.0f} kg")
 
 st.divider()
@@ -116,7 +118,7 @@ table.rename(columns=display_cols, inplace=True)
 for col in ["Purchase €", "Machine €", "Labour €", "Process €",
             "Overhead €", "Your cost €", "Margin €", "Sell price €"]:
     if col in table.columns:
-        table[col] = table[col].map(lambda x: f"€ {x:,.2f}" if pd.notna(x) else "—")
+        table[col] = table[col].map(lambda x: fmt(x, 2) if pd.notna(x) else "—")
 
 st.dataframe(table, use_container_width=True, hide_index=True)
 
@@ -142,12 +144,12 @@ agg = (
     .reset_index()
 )
 agg["Subsystem"]   = agg["subsystem"].map(lambda p: subsystem_names.get(p, p))
-agg["Purchase €"]  = agg["material_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Process €"]   = agg["process_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Overhead €"]  = agg["overhead"].map(lambda x: f"€ {x:,.0f}")
-agg["Your cost €"] = agg["base_cost"].map(lambda x: f"€ {x:,.0f}")
-agg["Margin €"]    = agg["margin"].map(lambda x: f"€ {x:,.0f}")
-agg["Sell price €"]= agg["total_cost"].map(lambda x: f"€ {x:,.0f}")
+agg["Purchase €"]  = agg["material_cost"].map(lambda x: fmt(x))
+agg["Process €"]   = agg["process_cost"].map(lambda x: fmt(x))
+agg["Overhead €"]  = agg["overhead"].map(lambda x: fmt(x))
+agg["Your cost €"] = agg["base_cost"].map(lambda x: fmt(x))
+agg["Margin €"]    = agg["margin"].map(lambda x: fmt(x))
+agg["Sell price €"]= agg["total_cost"].map(lambda x: fmt(x))
 agg["Mass kg"]     = agg["dry_kg"].map(lambda x: f"{x:,.0f}")
 
 st.dataframe(
