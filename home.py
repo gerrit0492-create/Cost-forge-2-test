@@ -31,7 +31,7 @@ _P = {
     "mgmt":     st.Page("pages/27_Management_Dashboard.py",    title="Management",       icon="📊"),
     "linedet":  st.Page("pages/28_Line_Cost_Detail.py",        title="Line Cost Detail", icon="🔍"),
     "quotesheet": st.Page("pages/29_Quote_Sheet.py",           title="Quote Sheet",      icon="🧾"),
-    "borescale": st.Page("pages/30_Bore_Scale.py",            title="Bore Scale",       icon="📐"),
+    "borescale": st.Page("pages/30_Bore_Scale.py",            title="Waterjet Size Scale", icon="📐"),
     "prepost":   st.Page("pages/31_Pre_Post.py",              title="Pre / Post",       icon="📊"),
     "itemcost":  st.Page("pages/32_Item_Costing.py",          title="Item Costing",     icon="🔢"),
     "debug":    st.Page("pages/00_Debug.py",                   title="Debug",            icon="🐛"),
@@ -188,8 +188,8 @@ def dashboard() -> None:
         _card(_P["quotesheet"], "🧾", "Quote Sheet",
               "Internal cost vs selling price — generate a customer quote with optional margin override.")
     with c3:
-        _card(_P["borescale"],  "📐", "Bore Scale",
-              "Scale BOM cost and mass to a different bore diameter using per-line scaling exponents.")
+        _card(_P["borescale"],  "📐", "Waterjet Size Scale",
+              "Scale MWJ-720 BOM cost and mass to any size from MWJ-410 to MWJ-2120 using per-line scaling exponents.")
     with c4:
         _card(_P["prepost"],    "📊", "Pre / Post",
               "Compare budget estimate against recorded actuals — variance per line and per subsystem.")

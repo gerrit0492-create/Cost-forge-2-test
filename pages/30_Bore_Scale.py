@@ -4,18 +4,22 @@ import pandas as pd
 import streamlit as st
 
 from utils.currency import fmt, fmt_delta
-from utils.io import load_bom, load_materials, load_processes, load_quotes
+from utils.io import load_bom, load_materials, load_processes, load_quotes, df_to_excel_bytes
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
 
-BASE_BORE_MM = 720  # reference design bore diameter
+BASE_BORE_MM = 720  # reference design — scale ratio 1.000
 
-st.set_page_config(page_title="Bore Scale", layout="wide", page_icon="📐")
+# Standard waterjet sizes (nominal impeller bore diameter in mm)
+STANDARD_SIZES = [410, 500, 550, 600, 650, 720, 800, 900, 1000, 1100, 1200, 1350, 1500, 1650, 1800, 2000, 2120]
+
+st.set_page_config(page_title="Waterjet Size Scale", layout="wide", page_icon="📐")
 home_button()
-st.title("📐 Bore Scale")
+st.title("📐 Waterjet Size Scale")
 st.caption(
-    f"Scale the MWJ-{BASE_BORE_MM} BOM to a different bore diameter using per-line scaling exponents. "
+    f"Scale the MWJ-{BASE_BORE_MM} BOM to any waterjet bore size (410 – 2120 mm). "
+    f"MWJ-{BASE_BORE_MM} is the reference unit at scale ratio **1.000**. "
     "Exponent 3 = volume (castings), 2 = area (rings/plates), 1 = linear (seals/tubes), 0 = fixed (fasteners/testing)."
 )
 
@@ -26,47 +30,69 @@ if st.button("🔄 Refresh", help="Clear cache and reload"):
 # ── Load baseline ─────────────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def _load():
-    try:
-        mats = apply_best_quotes(load_materials(), load_quotes())
-        procs = load_processes()
-        bom = load_bom()
-        df = compute_costs(mats, procs, bom)
-        return mats, procs, bom, df
-    except Exception as exc:
-        st.error(f"Could not load data: {exc}")
-        return None, None, None, None
+    mats  = apply_best_quotes(load_materials(), load_quotes())
+    procs = load_processes()
+    bom   = load_bom()
+    df    = compute_costs(mats, procs, bom)
+    return mats, procs, bom, df
 
 
-mats, procs, bom, df_base = _load()
+try:
+    mats, procs, bom, df_base = _load()
+except Exception as exc:
+    st.error(f"Could not load data: {exc}")
+    st.stop()
+
 if df_base is None:
     st.stop()
 
-# ── Target bore selector ──────────────────────────────────────────────────────
-st.subheader("Target bore diameter")
-c1, c2 = st.columns([3, 1])
-target_bore = c1.slider(
-    "Target bore (mm)", min_value=400, max_value=1200, value=BASE_BORE_MM, step=10
+# ── Target size selector ──────────────────────────────────────────────────────
+st.subheader("Target waterjet size")
+
+sz1, sz2, sz3 = st.columns([2, 2, 1])
+
+target_bore = sz1.slider(
+    "Bore diameter (mm)",
+    min_value=410, max_value=2120,
+    value=BASE_BORE_MM, step=10,
+    help="Drag to any size between MWJ-410 and MWJ-2120.",
 )
-c2.metric("Scale ratio", f"{target_bore / BASE_BORE_MM:.3f}×")
+
+# Snap to nearest standard size button
+snap_label = min(STANDARD_SIZES, key=lambda s: abs(s - target_bore))
+if sz2.button(f"Snap to nearest standard: MWJ-{snap_label}"):
+    target_bore = snap_label
+
+ratio = target_bore / BASE_BORE_MM
+sz3.metric("Scale ratio", f"{ratio:.3f}×")
+
+# Standard sizes quick-select
+st.caption("**Standard sizes:**  "
+           + "  |  ".join(
+               f"**MWJ-{s}**" if s == target_bore
+               else (f"`MWJ-{s}`" if s == BASE_BORE_MM else f"MWJ-{s}")
+               for s in STANDARD_SIZES
+           ))
 
 if target_bore == BASE_BORE_MM:
-    st.info(f"Target bore equals reference bore ({BASE_BORE_MM} mm) — no scaling applied.")
+    st.info(f"Target equals reference MWJ-{BASE_BORE_MM} — scale ratio 1.000, no changes applied.")
 
 st.divider()
 
 # ── Apply bore scaling ────────────────────────────────────────────────────────
-ratio = target_bore / BASE_BORE_MM
 bom_scaled = bom.copy()
 
 if "scale_exp" not in bom_scaled.columns:
-    bom_scaled["scale_exp"] = 2.0  # default area scaling if column missing
+    bom_scaled["scale_exp"] = 2.0
+
+# Ensure numeric, fill missing with area default
+bom_scaled["scale_exp"] = pd.to_numeric(bom_scaled["scale_exp"], errors="coerce").fillna(2.0)
 
 bom_scaled["mass_kg"] = (
     bom_scaled["mass_kg"] * ratio ** bom_scaled["scale_exp"]
 ).round(3)
 
-# Runtime also scales with volume/area (machining time ∝ mass roughly)
-# Use half the scale_exp for time since feeds&speeds partially compensate
+# Runtime scales at half the geometric exponent (feeds/speeds partially compensate)
 bom_scaled["runtime_h"] = (
     bom_scaled["runtime_h"] * ratio ** (bom_scaled["scale_exp"] * 0.5)
 ).round(3)
@@ -85,30 +111,30 @@ base_sell  = df_base["total_cost"].sum()
 scale_sell = df_scaled["total_cost"].sum()
 
 k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric(f"Sell price {BASE_BORE_MM} mm", fmt(base_sell))
-k2.metric(f"Sell price {target_bore} mm",  fmt(scale_sell),
+k1.metric(f"Sell price MWJ-{BASE_BORE_MM}", fmt(base_sell))
+k2.metric(f"Sell price MWJ-{target_bore}",  fmt(scale_sell),
           delta=fmt_delta(scale_sell - base_sell))
 k3.metric("Material Δ",
           fmt_delta(df_scaled["material_cost"].sum() - df_base["material_cost"].sum()))
 k4.metric("Process Δ",
           fmt_delta(df_scaled["process_cost"].sum() - df_base["process_cost"].sum()))
-k5.metric(f"Dry weight {BASE_BORE_MM} mm", f"{base_mass:,.0f} kg")
-k6.metric(f"Dry weight {target_bore} mm",  f"{scaled_mass:,.0f} kg",
+k5.metric(f"Dry weight MWJ-{BASE_BORE_MM}", f"{base_mass:,.0f} kg")
+k6.metric(f"Dry weight MWJ-{target_bore}",  f"{scaled_mass:,.0f} kg",
           delta=f"{scaled_mass - base_mass:+,.0f} kg")
 
 st.divider()
 
 # ── Cost per kg ───────────────────────────────────────────────────────────────
-if scaled_mass > 0:
-    cpk_base  = base_sell  / base_mass  if base_mass  else 0
+if scaled_mass > 0 and base_mass > 0:
+    cpk_base  = base_sell  / base_mass
     cpk_scale = scale_sell / scaled_mass
     ca1, ca2 = st.columns(2)
-    ca1.metric("€/kg (baseline)", f"{cpk_base:,.1f}")
-    ca2.metric("€/kg (scaled)",   f"{cpk_scale:,.1f}",
+    ca1.metric(f"€/kg  MWJ-{BASE_BORE_MM}", f"{cpk_base:,.1f}")
+    ca2.metric(f"€/kg  MWJ-{target_bore}",  f"{cpk_scale:,.1f}",
                delta=f"{cpk_scale - cpk_base:+,.1f}")
     st.divider()
 
-# ── Scaling exponent legend ───────────────────────────────────────────────────
+# ── Scaling exponent guide ────────────────────────────────────────────────────
 with st.expander("Scaling exponent guide", expanded=False):
     st.markdown("""
 | Exponent | Scaling law | Typical parts |
@@ -122,23 +148,29 @@ with st.expander("Scaling exponent guide", expanded=False):
 # ── Per-line comparison table ─────────────────────────────────────────────────
 st.subheader("Line-by-line comparison")
 
+scale_exp_col = (
+    bom["scale_exp"].values
+    if "scale_exp" in bom.columns
+    else pd.Series([2.0] * len(bom)).values
+)
+
 cmp = pd.DataFrame({
-    "Line ID":        df_base["line_id"],
-    "Component":      df_base["part_name"] if "part_name" in df_base.columns else "",
-    "Scale exp":      bom["scale_exp"].values if "scale_exp" in bom.columns else 2.0,
-    f"Mass {BASE_BORE_MM} mm (kg)": bom["mass_kg"].round(2).values,
-    f"Mass {target_bore} mm (kg)":  bom_scaled["mass_kg"].round(2).values,
-    f"Cost {BASE_BORE_MM} mm":      df_base["total_cost"].round(2),
-    f"Cost {target_bore} mm":       df_scaled["total_cost"].round(2),
+    "Line ID":                     df_base["line_id"],
+    "Component":                   df_base["part_name"] if "part_name" in df_base.columns else "",
+    "Scale exp":                   scale_exp_col,
+    f"Mass MWJ-{BASE_BORE_MM} (kg)": bom["mass_kg"].round(2).values,
+    f"Mass MWJ-{target_bore} (kg)":  bom_scaled["mass_kg"].round(2).values,
+    f"Cost MWJ-{BASE_BORE_MM}":      df_base["total_cost"].round(2),
+    f"Cost MWJ-{target_bore}":       df_scaled["total_cost"].round(2),
 })
-cmp["Cost Δ"] = (cmp[f"Cost {target_bore} mm"] - cmp[f"Cost {BASE_BORE_MM} mm"]).round(2)
+cmp["Cost Δ"] = (cmp[f"Cost MWJ-{target_bore}"] - cmp[f"Cost MWJ-{BASE_BORE_MM}"]).round(2)
 cmp["Cost Δ%"] = (
-    cmp["Cost Δ"] / cmp[f"Cost {BASE_BORE_MM} mm"].replace(0, float("nan")) * 100
+    cmp["Cost Δ"] / cmp[f"Cost MWJ-{BASE_BORE_MM}"].replace(0, float("nan")) * 100
 ).round(1)
 
-for col in [f"Cost {BASE_BORE_MM} mm", f"Cost {target_bore} mm"]:
+for col in [f"Cost MWJ-{BASE_BORE_MM}", f"Cost MWJ-{target_bore}"]:
     cmp[col] = cmp[col].map(lambda x: fmt(x, 2))
-cmp["Cost Δ"] = cmp["Cost Δ"].map(lambda x: fmt_delta(x, 2))
+cmp["Cost Δ"]  = cmp["Cost Δ"].map(lambda x: fmt_delta(x, 2))
 cmp["Cost Δ%"] = cmp["Cost Δ%"].map(lambda x: f"{x:+.1f}%" if pd.notna(x) else "—")
 
 st.dataframe(cmp, use_container_width=True, hide_index=True)
@@ -146,12 +178,11 @@ st.dataframe(cmp, use_container_width=True, hide_index=True)
 st.divider()
 
 # ── Download scaled BOM ───────────────────────────────────────────────────────
-from utils.io import df_to_excel_bytes
 excel_scaled = df_to_excel_bytes(bom_scaled, "BOM")
 st.download_button(
-    f"⬇️ Download scaled BOM ({target_bore} mm)",
+    f"⬇️ Download scaled BOM — MWJ-{target_bore} (Excel)",
     data=excel_scaled,
-    file_name=f"bom_scaled_{target_bore}mm.xlsx",
+    file_name=f"bom_mwj{target_bore}.xlsx",
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     use_container_width=True,
     help="Scaled BOM with adjusted mass_kg and runtime_h — review before use.",
