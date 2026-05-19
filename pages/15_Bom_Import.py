@@ -17,7 +17,7 @@ from utils.completeness import (
     record_bom_load,
 )
 from utils.docx_export import make_offer_docx
-from utils.io import load_materials, load_processes, load_quotes
+from utils.io import load_materials, load_processes, load_quotes, save_sheet, df_to_excel_bytes, WORKBOOK as BOM_WORKBOOK
 from utils.nav import home_button
 from utils.pdf_export import make_offer_pdf
 from utils.pricing import compute_costs
@@ -25,7 +25,7 @@ from utils.project import load_project_name, save_project_name
 from utils.quotes import apply_best_quotes
 from utils.safe import guard
 
-BOM_PATH = Path("data/bom.csv")
+BOM_PATH = BOM_WORKBOOK
 
 REQUIRED_COLS = ["line_id", "material_id", "qty", "mass_kg", "process_route", "runtime_h"]
 
@@ -385,7 +385,7 @@ def _run_calculation(bom: pd.DataFrame, mats: pd.DataFrame, procs: pd.DataFrame,
     st.dataframe(df[avail_cols].round(4), use_container_width=True, hide_index=True)
 
     # ── Save + haptic feedback ────────────────────────────────────────────────
-    BOM_PATH.write_text(bom.to_csv(index=False), encoding="utf-8")
+    save_sheet(bom, "bom")
     st.toast(f"✅ BOM saved — {len(bom)} lines · EUR {df['total_cost'].sum():,.0f} total", icon="💾")
 
     # Self-learning: record this load
@@ -394,17 +394,17 @@ def _run_calculation(bom: pd.DataFrame, mats: pd.DataFrame, procs: pd.DataFrame,
     if pct == 100:
         st.balloons()
 
-    st.caption(f"BOM saved as `{BOM_PATH}` — all other pages now use this BOM.")
+    st.caption("BOM saved to `data/cost_forge.xlsx` (BOM sheet) — all other pages now use this BOM.")
 
     # ── Exports ───────────────────────────────────────────────────────────────
     st.divider()
     st.subheader("⬇️ Export results")
     e1, e2, e3 = st.columns(3)
     e1.download_button(
-        "CSV — full calculation",
-        df[avail_cols].round(4).to_csv(index=False).encode(),
-        file_name="calculation.csv",
-        mime="text/csv",
+        "Excel — full calculation",
+        df_to_excel_bytes(df[avail_cols].round(4), "Calculation"),
+        file_name="calculation.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
     e2.download_button(
         "DOCX — quote",
@@ -453,10 +453,10 @@ def main() -> None:
     )
     col_dl, col_info = st.columns([1, 3])
     col_dl.download_button(
-        label="⬇️  Download BOM template (.csv)",
-        data=_TEMPLATE.to_csv(index=False).encode(),
-        file_name="bom_template_mwj720_complete.csv",
-        mime="text/csv",
+        label="⬇️  Download BOM template (.xlsx)",
+        data=df_to_excel_bytes(_TEMPLATE, "BOM"),
+        file_name="bom_template_mwj720_complete.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
     )
     col_info.markdown(
@@ -498,12 +498,15 @@ def main() -> None:
     with tab_upload:
         up = st.file_uploader(
             "Drag the file here or click to browse",
-            type=["csv"],
-            help="Upload a CSV with the 6 required columns shown above.",
+            type=["csv", "xlsx"],
+            help="Upload a CSV or Excel file with the 6 required columns shown above.",
         )
         if up:
             try:
-                bom = pd.read_csv(up)
+                if up.name.endswith(".xlsx"):
+                    bom = pd.read_excel(up)
+                else:
+                    bom = pd.read_csv(up)
             except Exception as e:
                 st.error(f"CSV could not be read: {e}")
                 return
@@ -514,7 +517,8 @@ def main() -> None:
     with tab_saved:
         if BOM_PATH.exists():
             try:
-                saved_bom = pd.read_csv(BOM_PATH)
+                from utils.io import load_bom as _load_saved
+                saved_bom = _load_saved()
                 score = completeness_score(saved_bom)
                 pct   = int(score * 100)
                 st.info(

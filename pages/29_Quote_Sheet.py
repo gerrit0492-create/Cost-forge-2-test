@@ -8,7 +8,7 @@ import streamlit as st
 from utils.currency import fmt, fmt_delta
 
 from utils.completeness import WATERJET_SUBSYSTEMS
-from utils.io import load_bom, load_materials, load_processes, load_quotes
+from utils.io import load_bom, load_materials, load_processes, load_quotes, df_to_excel_bytes
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.project import load_project_name
@@ -258,19 +258,19 @@ customer_sheet = pd.concat([customer_sheet, total_row], ignore_index=True)
 dl1, dl2 = st.columns(2)
 with dl1:
     st.download_button(
-        "⬇️ Internal cost detail (CSV)",
-        data=internal_df.to_csv(index=False),
-        file_name=f"{quote_number}_internal_cost.csv",
-        mime="text/csv",
+        "⬇️ Internal cost detail (Excel)",
+        data=df_to_excel_bytes(internal_df, "Internal Cost"),
+        file_name=f"{quote_number}_internal_cost.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
         help="Full cost breakdown — keep confidential.",
     )
 with dl2:
     st.download_button(
-        "⬇️ Customer quote sheet (CSV)",
-        data=customer_sheet.to_csv(index=False),
-        file_name=f"{quote_number}_quote.csv",
-        mime="text/csv",
+        "⬇️ Customer quote sheet (Excel)",
+        data=df_to_excel_bytes(customer_sheet, "Quote"),
+        file_name=f"{quote_number}_quote.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
         help="Selling prices only — safe to share with customer.",
     )

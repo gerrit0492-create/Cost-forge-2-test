@@ -1,6 +1,19 @@
+from __future__ import annotations
+
+import io
 from pathlib import Path
 
 import pandas as pd
+
+WORKBOOK = Path("data") / "cost_forge.xlsx"
+
+SHEET_MAP = {
+    "bom":       "BOM",
+    "materials": "Materials",
+    "processes": "Processes",
+    "quotes":    "Quotes",
+    "actuals":   "Actuals",
+}
 
 SCHEMA_MATERIALS = {
     "material_id": "string",
@@ -23,13 +36,12 @@ SCHEMA_BOM = {
     "mass_kg":               "float64",
     "process_route":         "string",
     "runtime_h":             "float64",
-    # Optional enrichment columns — safe defaults applied in pricing.py
-    "setup_h":               "float64",   # amortisable setup time per job
-    "yield_factor":          "float64",   # purchase mass = mass_kg / yield_factor
-    "make_buy":              "string",    # M=manufactured, B=bought-out
-    "cost_type":             "string",    # UNIT / NRE / TOOLING
-    "subcontract_price_eur": "float64",   # overrides internal process rate when set
-    "scale_exp":             "float64",   # bore scaling exponent: 0=fixed, 1=linear, 2=area, 3=volume
+    "setup_h":               "float64",
+    "yield_factor":          "float64",
+    "make_buy":              "string",
+    "cost_type":             "string",
+    "subcontract_price_eur": "float64",
+    "scale_exp":             "float64",
 }
 SCHEMA_QUOTES = {
     "supplier": "string",
@@ -39,43 +51,89 @@ SCHEMA_QUOTES = {
     "valid_until": "string",
     "preferred": "Int64",
 }
+SCHEMA_ACTUALS = {
+    "line_id":                "string",
+    "actual_material_cost":   "float64",
+    "actual_process_cost":    "float64",
+    "actual_total_cost":      "float64",
+    "notes":                  "string",
+    "status":                 "string",
+}
 
 
-def paths():
-    d = Path("data")
-    return {
-        "materials": d / "materials.csv",
-        "processes": d / "processes.csv",
-        "bom": d / "bom.csv",
-        "quotes": d / "quotes.csv",
-    }
-
-
-def _read_csv(p, schema=None):
-    p = Path(p)
-    if not p.exists():
-        raise FileNotFoundError(f"CSV file not found: {p}")
-    if schema is None:
-        return pd.read_csv(p)
-    dtypes = {k: v for k, v in schema.items() if v != "Int64"}
-    df = pd.read_csv(p, dtype=dtypes)
-    for c, t in schema.items():
-        if t == "Int64" and c in df.columns:
-            df[c] = df[c].astype("Int64")
+def _apply_schema(df: pd.DataFrame, schema: dict) -> pd.DataFrame:
+    for col, dtype in schema.items():
+        if col not in df.columns:
+            continue
+        if dtype == "Int64":
+            df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+        elif dtype == "float64":
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+        else:
+            df[col] = df[col].astype(dtype)
     return df
 
 
-def load_materials():
-    return _read_csv(paths()["materials"], SCHEMA_MATERIALS)
+def _read(sheet_key: str, schema: dict) -> pd.DataFrame:
+    if WORKBOOK.exists():
+        df = pd.read_excel(WORKBOOK, sheet_name=SHEET_MAP[sheet_key])
+    else:
+        csv = Path("data") / f"{sheet_key}.csv"
+        if not csv.exists():
+            raise FileNotFoundError(f"Neither {WORKBOOK} nor {csv} found")
+        df = pd.read_csv(csv)
+    return _apply_schema(df, schema)
 
 
-def load_processes():
-    return _read_csv(paths()["processes"], SCHEMA_PROCESSES)
+def save_sheet(df: pd.DataFrame, sheet_key: str) -> None:
+    """Write df to the named sheet in cost_forge.xlsx, preserving other sheets."""
+    sheet = SHEET_MAP[sheet_key]
+    if WORKBOOK.exists():
+        with pd.ExcelWriter(WORKBOOK, engine="openpyxl", mode="a", if_sheet_exists="replace") as w:
+            df.to_excel(w, sheet_name=sheet, index=False)
+    else:
+        with pd.ExcelWriter(WORKBOOK, engine="openpyxl") as w:
+            df.to_excel(w, sheet_name=sheet, index=False)
 
 
-def load_bom():
-    return _read_csv(paths()["bom"], SCHEMA_BOM)
+def df_to_excel_bytes(df: pd.DataFrame, sheet_name: str = "Sheet1") -> bytes:
+    """Serialise a single DataFrame to Excel bytes for st.download_button."""
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as w:
+        df.to_excel(w, sheet_name=sheet_name, index=False)
+    return buf.getvalue()
 
 
-def load_quotes():
-    return _read_csv(paths()["quotes"], SCHEMA_QUOTES)
+def workbook_bytes() -> bytes:
+    """Return the full workbook as bytes for download."""
+    return WORKBOOK.read_bytes()
+
+
+# ── Public loaders ────────────────────────────────────────────────────────────
+
+def load_materials() -> pd.DataFrame:
+    return _read("materials", SCHEMA_MATERIALS)
+
+
+def load_processes() -> pd.DataFrame:
+    return _read("processes", SCHEMA_PROCESSES)
+
+
+def load_bom() -> pd.DataFrame:
+    return _read("bom", SCHEMA_BOM)
+
+
+def load_quotes() -> pd.DataFrame:
+    return _read("quotes", SCHEMA_QUOTES)
+
+
+def load_actuals() -> pd.DataFrame:
+    try:
+        return _read("actuals", SCHEMA_ACTUALS)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_ACTUALS.keys()))
+
+
+# Keep for backwards compat (Download Center used it)
+def paths() -> dict:
+    return {k: WORKBOOK for k in SHEET_MAP}

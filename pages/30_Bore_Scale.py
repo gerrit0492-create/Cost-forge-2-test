@@ -146,12 +146,13 @@ st.dataframe(cmp, use_container_width=True, hide_index=True)
 st.divider()
 
 # ── Download scaled BOM ───────────────────────────────────────────────────────
-csv_scaled = bom_scaled.to_csv(index=False)
+from utils.io import df_to_excel_bytes
+excel_scaled = df_to_excel_bytes(bom_scaled, "BOM")
 st.download_button(
-    f"⬇️ Download scaled BOM CSV ({target_bore} mm)",
-    data=csv_scaled,
-    file_name=f"bom_scaled_{target_bore}mm.csv",
-    mime="text/csv",
+    f"⬇️ Download scaled BOM ({target_bore} mm)",
+    data=excel_scaled,
+    file_name=f"bom_scaled_{target_bore}mm.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     use_container_width=True,
     help="Scaled BOM with adjusted mass_kg and runtime_h — review before use.",
 )
