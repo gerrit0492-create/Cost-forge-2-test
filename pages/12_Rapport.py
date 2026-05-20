@@ -3,6 +3,7 @@ import streamlit as st
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
+from utils.nav import home_button
 from utils.safe import guard
 
 _COLS = ["line_id", "material_id", "qty", "material_cost", "process_cost", "overhead", "margin", "total_cost"]
@@ -18,6 +19,7 @@ def _to_markdown(df: "pd.DataFrame") -> str:  # noqa: F821
 
 
 def main():
+    home_button()
     st.title("📑 Rapport (Markdown)")
     mats   = load_materials()
     procs  = load_processes()

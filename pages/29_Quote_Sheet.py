@@ -12,11 +12,16 @@ from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.project import load_project_name
 from utils.quotes import apply_best_quotes, expired_quote_materials
+from utils.style import inject_css, page_header
 
 st.set_page_config(page_title="Quote Sheet", layout="wide", page_icon="🧾")
+inject_css()
 home_button()
-st.title("🧾 Quote Sheet")
-st.caption("Internal cost analysis · customer-facing quote preview · data quality checks.")
+page_header(
+    title="Quote Sheet",
+    icon="🧾",
+    caption="Internal cost analysis · customer-facing quote preview · data quality checks.",
+)
 
 _, hdr2 = st.columns([6, 1])
 if hdr2.button("🔄 Refresh"):

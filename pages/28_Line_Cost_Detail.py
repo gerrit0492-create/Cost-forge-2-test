@@ -10,22 +10,23 @@ from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
+from utils.style import inject_css, page_header
 
 
 st.set_page_config(page_title="Line Cost Detail", layout="wide", page_icon="🔍")
+inject_css()
 home_button()
-st.title("🔍 Line Cost Detail")
-st.caption("Full cost breakdown per BOM line — material purchase, machine time, labour, overhead, margin.")
+page_header(
+    title="Line Cost Detail",
+    icon="🔍",
+    caption="Full cost breakdown per BOM line — material purchase, machine time, labour, overhead, margin.",
+)
 
 
 @st.cache_data(ttl=30)
-def _load() -> pd.DataFrame | None:
-    try:
-        mats = apply_best_quotes(load_materials(), load_quotes())
-        return compute_costs(mats, load_processes(), load_bom())
-    except Exception as exc:
-        st.error(f"Could not load BOM data: {exc}")
-        return None
+def _load() -> pd.DataFrame:
+    mats = apply_best_quotes(load_materials(), load_quotes())
+    return compute_costs(mats, load_processes(), load_bom())
 
 
 def _subsystem_prefix(line_id: str) -> str:
@@ -42,18 +43,12 @@ def _error_check(df: pd.DataFrame) -> list[str]:
     if zero_qty:
         issues.append(f"Zero qty on lines: {', '.join(str(x) for x in zero_qty)}")
 
-    no_price = df[df["price_eur_per_kg"].isna() | (df["price_eur_per_kg"] == 0)]
+    # Only flag lines that have a material_id but no price — service lines with no material are fine
+    has_mat = df["material_id"].notna() & (df["material_id"].astype(str).str.strip() != "")
+    no_price = df[has_mat & (df["price_eur_per_kg"].isna() | (df["price_eur_per_kg"] == 0))]
     if len(no_price):
         issues.append(f"Missing material price on {len(no_price)} line(s): "
                       + ", ".join(no_price["line_id"].astype(str).tolist()))
-
-    zero_mass_non_test = df[
-        (df["mass_kg"].fillna(0) == 0) &
-        (~df["process_route"].isin(["FINAL_ASSEMBLY", "NDT_INSPECT", "PRESSURE_TEST", "DYN_BALANCE"]))
-    ]
-    if len(zero_mass_non_test):
-        issues.append(f"Zero mass on non-test lines: "
-                      + ", ".join(zero_mass_non_test["line_id"].astype(str).tolist()))
 
     high_oh = df[df["overhead_pct"] > 0.40]
     if len(high_oh):
@@ -66,8 +61,10 @@ def _error_check(df: pd.DataFrame) -> list[str]:
     return issues
 
 
-df = _load()
-if df is None:
+try:
+    df = _load()
+except Exception as exc:
+    st.error(f"Could not load BOM data: {exc}")
     st.stop()
 
 df["subsystem"] = df["line_id"].apply(_subsystem_prefix)

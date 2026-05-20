@@ -3,10 +3,12 @@ import streamlit as st
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
+from utils.nav import home_button
 from utils.safe import guard
 
 
 def main():
+    home_button()
     st.title("💸 Calculatie (compat)")
     mats = load_materials()
     procs = load_processes()

@@ -15,6 +15,7 @@ from utils.history import (
     load_materials,
     save_snapshot_current,
 )
+from utils.nav import home_button
 from utils.safe import guard
 
 
@@ -39,6 +40,7 @@ def _date_bounds(df: pd.DataFrame) -> tuple[Optional[pd.Timestamp], Optional[pd.
 
 
 def main():
+    home_button()
     st.title("📈 Materiaal-historie & snapshots")
 
     mats = load_materials()

@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 import pandas as pd
 import streamlit as st
 
+from utils.nav import home_button
 from utils.safe import guard
 
 
@@ -65,6 +66,7 @@ def write_and_snapshot(df: pd.DataFrame, target: Path, history_prefix: str):
 
 
 def main():
+    home_button()
     st.title("🔗 Google Sheet (edit URL) → CSV import + snapshot")
 
     edit_url = st.text_input("Plak je Google Sheets *edit* URL hier", value="")

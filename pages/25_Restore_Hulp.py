@@ -1,8 +1,10 @@
 from pathlib import Path
 
 import streamlit as st
+from utils.nav import home_button
 
 H = Path("data/history")
+home_button()
 st.title("🆘 Restore Hulp (read-only)")
 if not H.exists():
     st.info("Nog geen snapshots in data/history/. Draai eerst de Weekly Market Update.")

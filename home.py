@@ -6,8 +6,10 @@ import pandas as pd
 import streamlit as st
 
 from utils.currency import fmt, fmt_delta
+from utils.style import inject_css
 
 st.set_page_config(page_title="Cost Forge 2", layout="wide", page_icon="🛠️")
+inject_css()
 
 # ── All pages ─────────────────────────────────────────────────────────────────
 _P = {
@@ -181,18 +183,16 @@ def dashboard() -> None:
     name = meta.get("name", "")
     badge_icon, badge_tip = MATURITY_OPTIONS[maturity]
 
-    title_col, btn_col = st.columns([8, 1])
-    with title_col:
-        st.markdown(f"# 🛠️ Cost Forge 2")
-        if name:
-            mat_icon = MATURITY_OPTIONS[maturity][0]
-            st.markdown(
-                f"**📦 {name}** &nbsp; "
-                f"<span title='{badge_tip}' style='background:#1e2a3a; border-radius:4px; "
-                f"padding:2px 10px; font-size:0.85em;'>{mat_icon} {maturity}</span>",
-                unsafe_allow_html=True,
-            )
-    if btn_col.button("🔄 Refresh", help="Clear all cached data"):
+    from utils.style import page_header
+    page_header(
+        title="Cost Forge 2",
+        icon="🛠️",
+        caption="Marine waterjet cost engineering platform",
+        project=name,
+        maturity=maturity,
+        right_html=f"<b>{badge_icon} {maturity}</b><br><small>{badge_tip}</small>",
+    )
+    if st.button("🔄 Refresh", help="Clear all cached data"):
         st.cache_data.clear()
         st.rerun()
 

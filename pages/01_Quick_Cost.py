@@ -10,12 +10,17 @@ from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes, expired_quote_materials
+from utils.style import inject_css, page_header
 
 
 st.set_page_config(page_title="Quick Cost", layout="wide", page_icon="⚡")
+inject_css()
 home_button()
-st.title("⚡ Quick Cost")
-st.caption("Fast overview of the active BOM with best supplier prices applied.")
+page_header(
+    title="Quick Cost",
+    icon="⚡",
+    caption="Fast overview of the active BOM with best supplier prices applied.",
+)
 
 if st.button("🔄 Refresh", help="Clear cache and reload all data"):
     st.cache_data.clear()
@@ -23,20 +28,18 @@ if st.button("🔄 Refresh", help="Clear cache and reload all data"):
 
 # ── Load & compute ────────────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
-def _load() -> pd.DataFrame | None:
-    try:
-        mats   = load_materials()
-        procs  = load_processes()
-        bom    = load_bom()
-        quotes = load_quotes()
-        return compute_costs(apply_best_quotes(mats, quotes), procs, bom)
-    except Exception as exc:
-        st.error(f"Could not load data: {exc}")
-        return None
+def _load() -> pd.DataFrame:
+    mats   = load_materials()
+    procs  = load_processes()
+    bom    = load_bom()
+    quotes = load_quotes()
+    return compute_costs(apply_best_quotes(mats, quotes), procs, bom)
 
 
-df = _load()
-if df is None:
+try:
+    df = _load()
+except Exception as exc:
+    st.error(f"Could not load data: {exc}")
     st.stop()
 
 # ── Expired quote warning ─────────────────────────────────────────────────────

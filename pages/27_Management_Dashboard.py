@@ -12,6 +12,7 @@ from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
 from utils.nav import home_button
 from utils.safe import guard
+from utils.style import inject_css, page_header
 
 
 def _pct(part: float, total: float) -> str:
@@ -19,10 +20,12 @@ def _pct(part: float, total: float) -> str:
 
 
 def main() -> None:
+    inject_css()
     home_button()
-    st.title("📊 Management Dashboard — Cost Breakdown")
-    st.caption(
-        "Overview of material, process, overhead and margin costs for management and procurement."
+    page_header(
+        title="Management Dashboard",
+        icon="📊",
+        caption="Overview of material, process, overhead and margin costs for management and procurement.",
     )
 
     mats = load_materials()

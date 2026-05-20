@@ -13,9 +13,16 @@ from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.project import load_project_meta
 from utils.quotes import apply_best_quotes, best_quotes, expired_quote_materials
+from utils.style import inject_css, page_header
 
 st.set_page_config(page_title="Stakeholder Report", layout="wide", page_icon="📋")
+inject_css()
 home_button()
+page_header(
+    title="Stakeholder Report",
+    icon="📋",
+    caption="Executive summary · cost breakdown · procurement status · risk register",
+)
 
 _, btn = st.columns([6, 1])
 if btn.button("🔄 Refresh"):

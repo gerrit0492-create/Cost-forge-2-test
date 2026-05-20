@@ -2,8 +2,10 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from utils.nav import home_button
 
 H = Path("data/history")
+home_button()
 st.title("🚨 Anomalie Overzicht")
 
 if not H.exists():

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from utils.nav import home_button
 
 URL_FILE = Path("data/market_factors_url.txt")
 LOCAL_CSV = Path("data/market_factors.csv")
@@ -30,6 +31,7 @@ def try_read_local():
         return f"Kon lokaal CSV niet lezen: {e}"
 
 
+home_button()
 st.title("🧩 Market Setup (iPhone-proof)")
 st.caption(
     "Plak je Google Sheet CSV-link hier, of upload handmatig een CSV. De wekelijkse update gebruikt eerst de URL, anders de lokale CSV."

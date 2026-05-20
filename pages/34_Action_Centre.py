@@ -11,6 +11,7 @@ from utils.nav import home_button
 from utils.project import load_project_meta, save_project_meta
 from utils.quotes import expired_quote_materials
 from utils.safe import guard
+from utils.style import inject_css, page_header
 from utils.validators import all_rules_ok, business_rules, check_missing, check_positive, material_lines
 
 MATURITY_OPTIONS = ["RoM (±30%)", "Budget (±15%)", "Definitive (±5%)", "Firm"]
@@ -92,9 +93,13 @@ def _section(label: str):
 
 def main() -> None:
     st.set_page_config(page_title="Action Centre", layout="wide", page_icon="🔧")
+    inject_css()
     home_button()
-    st.title("🔧 Action Centre")
-    st.caption("Fix all open issues in one place — editable tables save directly to the workbook.")
+    page_header(
+        title="Action Centre",
+        icon="🔧",
+        caption="Fix all open issues in one place — editable tables save directly to the workbook.",
+    )
 
     if st.button("🔄 Re-check all"):
         st.cache_data.clear()
