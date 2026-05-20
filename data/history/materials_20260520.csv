@@ -1,0 +1,17 @@
+material_id,description,commodity,price_eur_per_kg
+NAB,Nickel Aluminium Bronze CW307G (wrought),Marine Bronze,14.2
+NAB_CAST,Cast Nickel Aluminium Bronze C95800,Marine Bronze,16.5
+SS316L,Stainless steel 316L plate/bar,Marine Stainless,4.8
+SS2205,Duplex stainless 2205 (1.4462),Duplex Stainless,7.2
+SS174PH,17-4PH stainless bar (H900 condition),Precipitation Hardened SS,22.0
+AL6082,Aluminium 6082-T6 marine grade,Marine Aluminium,4.8
+AL5083,Aluminium 5083-H111 anti-corrosion,Marine Aluminium,5.1
+S355J2,Carbon steel S355J2+N plate,Carbon Steel,1.35
+HDPE,HDPE marine grade sheet,Polymer,3.2
+NR_RUBBER,Nitrile rubber sheet NBR 70,Elastomer,8.5
+A4_FAST,A4-80 stainless fastener set (per kg),Fastener,16.0
+TI_GR2,Titanium Grade 2 commercially pure,Titanium,30.0
+SS904L,Super austenitic 904L bar/plate,Super Austenitic SS,18.0
+CUNI90,Copper-Nickel 90/10 tube/bar,Copper-Nickel,14.5
+PEEK,PEEK polymer bar (wear applications),High-Perf Polymer,88.0
+SS316L_TUBE,Stainless 316L seamless tube,Marine Stainless,7.2
