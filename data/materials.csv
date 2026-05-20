@@ -1,17 +1,23 @@
-material_id,description,commodity,price_eur_per_kg
-NAB,Nickel Aluminium Bronze CW307G (wrought),Marine Bronze,14.2
-NAB_CAST,Cast Nickel Aluminium Bronze C95800,Marine Bronze,16.5
-SS316L,Stainless steel 316L plate/bar,Marine Stainless,4.8
-SS2205,Duplex stainless 2205 (1.4462),Duplex Stainless,7.2
-SS174PH,17-4PH stainless bar (H900 condition),Precipitation Hardened SS,22.0
-AL6082,Aluminium 6082-T6 marine grade,Marine Aluminium,4.8
-AL5083,Aluminium 5083-H111 anti-corrosion,Marine Aluminium,5.1
-S355J2,Carbon steel S355J2+N plate,Carbon Steel,1.35
-HDPE,HDPE marine grade sheet,Polymer,3.2
-NR_RUBBER,Nitrile rubber sheet NBR 70,Elastomer,8.5
-A4_FAST,A4-80 stainless fastener set (per kg),Fastener,16.0
-TI_GR2,Titanium Grade 2 commercially pure,Titanium,30.0
-SS904L,Super austenitic 904L bar/plate,Super Austenitic SS,18.0
-CUNI90,Copper-Nickel 90/10 tube/bar,Copper-Nickel,14.5
-PEEK,PEEK polymer bar (wear applications),High-Perf Polymer,88.0
-SS316L_TUBE,Stainless 316L seamless tube,Marine Stainless,7.2
+source,commodity,unit,price,currency,fx_to_eur,effective_date,url,notes
+outokumpu,Staal,Plaat,1.25,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Staal,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,RVS,Plaat,2.85,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,RVS,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,1.4462,Plaat,3.31,EUR,1,Mon Sep 08 2025 16:16:56 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+outokumpu,RVS Super Duplex,Plaat,2.85,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:32 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:33 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Gietstuk,2.5,EUR,1,Mon Sep 08 2025 15:54:34 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:35 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:36 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+outokumpu,Titanium,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Koper,Plaat,2.3,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Koper,Gietstuk,2.3,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+MCB,Messing,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Gietijzer,Gietstuk,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Sfero Gietijzer,Gietstuk,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Nylon,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Delrin,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Teflon,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Polyethyleen,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Kunststof,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
