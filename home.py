@@ -53,6 +53,7 @@ _P = {
     "closeout":   st.Page("pages/42_Project_Closeout.py",      title="Project Close-out",     icon="📁"),
     "spareparts": st.Page("pages/43_Spare_Parts.py",           title="Spare Parts",           icon="🔩"),
     "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
+    "cockpit":    st.Page("pages/45_Command_Centre.py",          title="Command Centre",      icon="🎯"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -476,6 +477,16 @@ def dashboard() -> None:
         _card(_P["waterfall"],  "🌊", "Full Cost Summary",
               "Complete waterfall: all cost elements from BOM to delivery.")
 
+    st.divider()
+
+    # ── Command Centre call-out ───────────────────────────────────────────────
+    st.info(
+        "**🎯 Want everything in one screen?** "
+        "Open the **Command Centre** for a live cockpit view of all key metrics, "
+        "signals and workflow shortcuts.",
+        icon="🎯",
+    )
+    st.page_link(_P["cockpit"], label="→ Open Command Centre", use_container_width=False)
     st.divider()
 
     # ── 7 · Contract & project lifecycle ──────────────────────────────────────
