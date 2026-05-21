@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import textwrap
+import zipfile
 from datetime import date
 
 import pandas as pd
@@ -261,120 +262,393 @@ def _build_scope_table(df_costs: pd.DataFrame) -> pd.DataFrame:
 
 
 # ── Document builders ─────────────────────────────────────────────────────────
-def _build_submission_excel(scope_ic: pd.DataFrame, meta: dict,
-                             contract_value: float, ic_pct: float) -> bytes:
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as w:
-        pd.DataFrame([
-            ["Project",            meta.get("name", "")],
-            ["Customer",           meta.get("customer", "")],
-            ["Contract value (€)", f"{contract_value:,.0f}"],
-            ["Declared IC%",       f"{ic_pct * 100:.2f}%"],
-            ["Date",               str(date.today())],
-            ["Method",             "Value-based (IC% = Indian value / Total value × 100)"],
-            ["Basis",              "Internal cost records; available for CA certification on request"],
-        ], columns=["Field", "Value"]).to_excel(w, sheet_name="IC Summary", index=False)
-
-        clean = pd.DataFrame({
-            "Scope / Subsystem":          scope_ic["scope_name"],
-            "Manufacturing origin":       _safe_col(scope_ic, "origin", "Imported"),
-            "Indian manufacturer":        _safe_col(scope_ic, "indian_supplier"),
-            "IC fraction claimed":        _safe_col(scope_ic, "ic_value_pct", 0.0).map(
-                                              lambda x: f"{float(x or 0)*100:.0f}%"),
-            "Origin declaration received":_safe_col(scope_ic, "declaration_rxd", "Pending"),
-            "Declaration ref / date":     _safe_col(scope_ic, "declaration_ref"),
-            "HS Code (representative)":   _safe_col(scope_ic, "hs_code"),
-            "Notes":                      _safe_col(scope_ic, "notes"),
-        })
-        clean.to_excel(w, sheet_name="Scope Origin Register", index=False)
-
-        decl = scope_ic[_safe_col(scope_ic, "origin", "Imported").isin(
-            ["Indian", "Partially Indian"])].copy()
-        pd.DataFrame({
-            "Scope":                 _safe_col(decl, "scope_name"),
-            "Indian manufacturer":   _safe_col(decl, "indian_supplier"),
-            "Declaration received?": _safe_col(decl, "declaration_rxd", "Pending"),
-            "Reference / date":      _safe_col(decl, "declaration_ref"),
-        }).to_excel(w, sheet_name="Declaration Tracker", index=False)
-
-    return buf.getvalue()
-
 
 def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
-                  indian_val: float, imported_val: float) -> str:
+                  indian_val: float, imported_val: float,
+                  procurement_cat: str, threshold: float,
+                  surveying_agency: str, company_name: str) -> str:
     today = date.today().strftime("%d %B %Y")
     return textwrap.dedent(f"""\
-    CERTIFICATE OF INDIGENOUS CONTENT
+    ══════════════════════════════════════════════════════════════════════
+    CERTIFICATE OF INDIGENOUS CONTENT (IC%)
+    ══════════════════════════════════════════════════════════════════════
 
     Date: {today}
+    Issuing CA Firm: [CA FIRM NAME AND REGISTRATION NUMBER]
 
-    To Whom It May Concern,
+    To: {surveying_agency or "The Competent Authority / Surveying Agency"}
 
-    This is to certify that we have examined the books of accounts, invoices,
-    purchase orders and internal cost records of the above-referenced project:
+    Subject: Certification of Indigenous Content for supply against
+             Project: {meta.get("name", "[PROJECT NAME]")}
 
-        Project:              {meta.get("name", "[PROJECT NAME]")}
-        Customer / end user:  {meta.get("customer", "[CUSTOMER NAME]")}
-        Total contract value: EUR {contract_value:,.0f}
+    ── Project details ───────────────────────────────────────────────────
 
-    The Indigenous Content (IC) is calculated as follows, in accordance with
-    the value-based methodology prescribed under the applicable procurement policy:
+    Seller / Supplier:    {company_name or meta.get("name", "[COMPANY NAME]")}
+    Customer / end user:  {meta.get("customer", "[CUSTOMER NAME]")}
+    Procurement category: {procurement_cat}
+    Required IC%:         {threshold * 100:.1f}%
+    Contract value:       EUR {contract_value:,.0f}
 
-        Total assessed value:     EUR {contract_value:,.0f}
-        Value of imported inputs: EUR {imported_val:,.0f}
-        Value of Indian inputs:   EUR {indian_val:,.0f}
-        Indigenous Content (IC):  {ic_pct * 100:.2f}%
+    ── IC% Calculation ───────────────────────────────────────────────────
 
-    IC% = (Indian input value / Total contract value) × 100
+    Calculation method: Value-based
+    Formula: IC% = (Value of Indian inputs / Total contract value) × 100
 
-    Individual supplier prices and purchase records are available for inspection
-    by the competent authority upon written request, maintained per statutory requirements.
+        Total contract value:     EUR {contract_value:>12,.0f}
+        Less: value of imports:   EUR {imported_val:>12,.0f}
+        ─────────────────────────────────────────────
+        Indian input value:       EUR {indian_val:>12,.0f}
+        ─────────────────────────────────────────────
+        DECLARED INDIGENOUS CONTENT: {ic_pct * 100:.2f}%
+
+    Result: {"✓ MEETS" if ic_pct >= threshold else "✗ DOES NOT MEET"} the required IC% of {threshold*100:.1f}%
+
+    ── Basis of certification ────────────────────────────────────────────
+
+    We have examined the books of accounts, purchase orders, invoices and
+    internal cost records of the above-referenced project. Individual
+    supplier prices and purchase records are maintained per statutory
+    requirements and are available for inspection by the competent
+    authority upon written request.
+
+    The manufacturing origin of each scope / assembly has been verified
+    against supplier declarations held on file. A Scope Origin Register
+    listing all assemblies and their manufacturing origin (without
+    commercial pricing) is enclosed as Annex A.
+
+    ── Declaration ───────────────────────────────────────────────────────
+
+    We certify that the information provided above is true, accurate and
+    complete to the best of our knowledge, based on records made available
+    to us. This certificate is issued solely for the purpose of IC%
+    compliance verification.
 
     Authorised signatory:
 
     Name:           _______________________________
-    Firm:           _______________________________  [CA Firm, Reg No.]
+    Designation:    Partner / Proprietor
+    CA Firm:        _______________________________
+    Reg. No.:       _______________________________
     Membership No.: _______________________________
-    Date:           _______________________________
-    Seal:
+    Place:          _______________________________
+    Date:           {today}
+    Seal / Stamp:
     """)
 
 
-def _manufacturer_decl_text(supplier_name: str, scope: str,
-                              hs_code: str, project: str) -> str:
+def _decl_text(supplier_name: str, scope_list: str, hs_list: str,
+               project: str, customer: str, company_name: str,
+               surveying_agency: str) -> str:
     today = date.today().strftime("%d %B %Y")
     return textwrap.dedent(f"""\
+    ══════════════════════════════════════════════════════════════════════
     MANUFACTURER'S DECLARATION OF DOMESTIC ORIGIN
+    ══════════════════════════════════════════════════════════════════════
 
     Date: {today}
 
-    To: [Buyer / Authorised Representative]
+    To: {company_name or "[BUYER NAME]"}
+    Attn: {surveying_agency or "Authorised IC Verification Representative"}
 
-    We, {supplier_name or "[SUPPLIER NAME]"}, hereby declare that the goods /
-    assemblies described below are manufactured in India and qualify as
-    Domestically Manufactured Goods under applicable Indian procurement policy:
+    Subject: Declaration of Domestic Manufacturing Origin
+             Project: {project}  |  Customer: {customer}
 
-        Scope / assembly:  {scope}
-        HS Code:           {hs_code or "[HS Code]"}
-        Project reference: {project}
+    ── Identity of Manufacturer ──────────────────────────────────────────
 
-    We confirm that:
-    1. The manufacturing facility is located in India.
-    2. The goods are not imported and re-labelled.
-    3. The IC value fraction claimed reflects actual manufacturing performed in India.
-    4. Records supporting this declaration are maintained for not less than 7 years.
+    Company name:     {supplier_name}
+    Registered in:    India
+    Manufacturing location: India (address available on request)
 
-    This declaration is made without disclosing commercial pricing, which is
-    proprietary, and is provided solely to support the buyer's IC compliance filing.
+    ── Goods / Assemblies Covered ────────────────────────────────────────
 
-    Authorised signatory:
+    Scope / assembly:  {scope_list}
+    HS Code(s):        {hs_list or "[HS codes — see Scope Register]"}
+    Project reference: {project}
+
+    ── Declaration ───────────────────────────────────────────────────────
+
+    We, {supplier_name}, hereby unconditionally declare that:
+
+    1. The goods / assemblies listed above are manufactured at our
+       facility located in India.
+
+    2. The goods are not imported products that have been re-labelled,
+       repackaged, or minimally processed in India.
+
+    3. The Indigenous Content fraction attributed to our supply reflects
+       actual manufacturing and value-addition operations performed by us
+       in India.
+
+    4. We hold records (production records, material traceability, process
+       documentation) to substantiate this declaration and will make them
+       available for inspection by DGQA or any other competent authority
+       upon receipt of a formal written request.
+
+    5. We undertake to maintain these records for a period of not less
+       than seven (7) years from the date of supply.
+
+    This declaration is issued without disclosing commercial pricing,
+    which is proprietary information. It is provided solely to support
+    the buyer's Indigenous Content compliance filing under the applicable
+    Indian procurement policy.
+
+    Authorised Signatory:
 
     Name:        _______________________________
     Designation: _______________________________
-    Company:     {supplier_name or "[SUPPLIER NAME]"}
-    Date:        _______________________________
-    Seal:
+    Company:     {supplier_name}
+    Date:        {today}
+    Place:       _______________________________
+    Seal / Stamp:
     """)
+
+
+def _build_surveyor_excel(scope_ic: pd.DataFrame, meta: dict,
+                           contract_value: float, ic_pct: float,
+                           indian_val: float, imported_val: float,
+                           threshold: float, procurement_cat: str,
+                           company_name: str, surveying_agency: str) -> bytes:
+    """
+    Single Excel workbook — all surveyor-facing data, no prices.
+    Sheets: Cover | IC Calculation | Scope Register | Declaration Tracker | HS Code Reference
+    """
+    today = date.today().strftime("%d %B %Y")
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as w:
+
+        # ── Sheet 1: Cover ────────────────────────────────────────────────
+        pd.DataFrame([
+            ["INDIGENOUS CONTENT COMPLIANCE SUBMISSION", ""],
+            ["", ""],
+            ["Project",               meta.get("name", "")],
+            ["Customer / end user",   meta.get("customer", "")],
+            ["Seller / supplier",     company_name or meta.get("name", "")],
+            ["Surveying agency",      surveying_agency or ""],
+            ["Procurement category",  procurement_cat],
+            ["", ""],
+            ["DECLARED IC%",          f"{ic_pct * 100:.2f}%"],
+            ["Required IC%",          f"{threshold * 100:.1f}%"],
+            ["Status",                "COMPLIANT" if ic_pct >= threshold else "NON-COMPLIANT"],
+            ["", ""],
+            ["Date of submission",    today],
+            ["Calculation method",    "Value-based (IC% = Indian value / Total value × 100)"],
+            ["", ""],
+            ["DOCUMENTS ENCLOSED", ""],
+            ["Annex A", "IC Calculation (this sheet — Sheet 2)"],
+            ["Annex B", "Scope Origin Register (Sheet 3)"],
+            ["Annex C", "Declaration Tracker (Sheet 4)"],
+            ["Annex D", "HS Code Reference (Sheet 5)"],
+            ["Annex E", "CA Certificate (separate TXT file — to be signed)"],
+            ["Annex F", "Manufacturer Origin Declarations (separate TXT files — to be signed)"],
+        ], columns=["Field", "Value"]).to_excel(w, sheet_name="Cover", index=False)
+
+        # ── Sheet 2: IC Calculation ───────────────────────────────────────
+        pd.DataFrame([
+            ["INDIGENOUS CONTENT CALCULATION",          ""],
+            ["", ""],
+            ["Total contract value (€)",                f"{contract_value:,.0f}"],
+            ["Value of Indian inputs (€)",              f"{indian_val:,.0f}"],
+            ["Value of imported inputs (€)",            f"{imported_val:,.0f}"],
+            ["", ""],
+            ["Declared IC%",                            f"{ic_pct * 100:.2f}%"],
+            ["Required IC%",                            f"{threshold * 100:.1f}%"],
+            ["IC% surplus / shortfall",
+             f"+{(ic_pct - threshold)*100:.2f}pp COMPLIANT" if ic_pct >= threshold
+             else f"{(ic_pct - threshold)*100:.2f}pp SHORTFALL"],
+            ["", ""],
+            ["Formula",
+             "IC% = (Indian input value / Total contract value) × 100"],
+            ["Basis",
+             "Internal cost records; available for CA certification. "
+             "Individual supplier prices not disclosed."],
+            ["", ""],
+            ["Scope breakdown", ""],
+        ] + [
+            [f"  {r['scope_name']}",
+             f"{float(r.get('ic_value_pct', 0) or 0)*100:.0f}% Indian  "
+             f"(cost weight: {float(r.get('cost_eur', 0) or 0) / contract_value * 100:.1f}%)"]
+            for _, r in scope_ic.iterrows()
+        ], columns=["Item", "Value"]).to_excel(w, sheet_name="IC Calculation", index=False)
+
+        # ── Sheet 3: Scope Origin Register (no prices) ───────────────────
+        pd.DataFrame({
+            "Scope / Subsystem":          _safe_col(scope_ic, "scope_name"),
+            "Manufacturing origin":       _safe_col(scope_ic, "origin", "Imported"),
+            "IC fraction claimed":        _safe_col(scope_ic, "ic_value_pct", 0.0).map(
+                                              lambda x: f"{float(x or 0)*100:.0f}%"),
+            "Indian manufacturer":        _safe_col(scope_ic, "indian_supplier"),
+            "HS Code":                    _safe_col(scope_ic, "hs_code"),
+            "BOM lines in scope":         _safe_col(scope_ic, "lines", 0),
+            "Origin declaration received":_safe_col(scope_ic, "declaration_rxd", "Pending"),
+            "Declaration ref / date":     _safe_col(scope_ic, "declaration_ref"),
+            "Notes":                      _safe_col(scope_ic, "notes"),
+        }).to_excel(w, sheet_name="Scope Register (Annex B)", index=False)
+
+        # ── Sheet 4: Declaration Tracker ─────────────────────────────────
+        indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
+            ["Indian", "Partially Indian"])
+        decl = scope_ic[indian_mask].copy()
+        pd.DataFrame({
+            "Scope / Subsystem":         _safe_col(decl, "scope_name"),
+            "Indian manufacturer":       _safe_col(decl, "indian_supplier"),
+            "IC fraction":               _safe_col(decl, "ic_value_pct", 0.0).map(
+                                             lambda x: f"{float(x or 0)*100:.0f}%"),
+            "Declaration received?":     _safe_col(decl, "declaration_rxd", "Pending"),
+            "Reference / date":          _safe_col(decl, "declaration_ref"),
+            "Action required":           _safe_col(decl, "declaration_rxd", "Pending").map(
+                lambda s: "✓ Complete" if s == "Yes"
+                else ("Send declaration for signature" if s == "Pending"
+                      else ("Not required" if s == "Not required" else "Obtain declaration"))),
+        }).to_excel(w, sheet_name="Declaration Tracker (Annex C)", index=False)
+
+        # ── Sheet 5: HS Code Reference ────────────────────────────────────
+        pd.DataFrame({
+            "Scope / Subsystem": _safe_col(scope_ic, "scope_name"),
+            "HS Code":           _safe_col(scope_ic, "hs_code"),
+            "Origin":            _safe_col(scope_ic, "origin", "Imported"),
+            "Purpose":           "Bill of Entry cross-reference / customs classification",
+        }).to_excel(w, sheet_name="HS Code Reference (Annex D)", index=False)
+
+    return buf.getvalue()
+
+
+def _build_surveyor_zip(scope_ic: pd.DataFrame, meta: dict,
+                         contract_value: float, ic_pct: float,
+                         indian_val: float, imported_val: float,
+                         threshold: float, procurement_cat: str,
+                         company_name: str, surveying_agency: str,
+                         project: str) -> bytes:
+    """
+    Build a complete ZIP package containing every document the surveyor needs.
+    No prices anywhere in any file.
+    """
+    buf = io.BytesIO()
+    folder = f"IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat()}"
+
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+
+        # ── 01 Excel workbook (Annexes A–D) ──────────────────────────────
+        excel_bytes = _build_surveyor_excel(
+            scope_ic, meta, contract_value, ic_pct, indian_val, imported_val,
+            threshold, procurement_cat, company_name, surveying_agency,
+        )
+        zf.writestr(f"{folder}/01_IC_Submission_Package.xlsx", excel_bytes)
+
+        # ── 02 CA Certificate draft ───────────────────────────────────────
+        ca_text = _ca_cert_text(
+            meta, contract_value, ic_pct, indian_val, imported_val,
+            procurement_cat, threshold, surveying_agency, company_name,
+        )
+        zf.writestr(f"{folder}/02_CA_Certificate_Draft_(Annex_E).txt", ca_text)
+
+        # ── 03 Manufacturer declarations (one per supplier) ───────────────
+        customer = meta.get("customer", "")
+        indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
+            ["Indian", "Partially Indian"])
+        indian_rows = scope_ic[indian_mask].copy()
+
+        # Group by supplier
+        suppliers = {}
+        for _, r in indian_rows.iterrows():
+            sup = str(r.get("indian_supplier") or "").strip()
+            if not sup:
+                continue
+            if sup not in suppliers:
+                suppliers[sup] = {"scopes": [], "hs_codes": []}
+            suppliers[sup]["scopes"].append(str(r.get("scope_name", "")))
+            hs = str(r.get("hs_code", "") or "").strip()
+            if hs and hs not in suppliers[sup]["hs_codes"]:
+                suppliers[sup]["hs_codes"].append(hs)
+
+        if suppliers:
+            for i, (sup_name, data) in enumerate(suppliers.items(), start=1):
+                decl = _decl_text(
+                    supplier_name=sup_name,
+                    scope_list="; ".join(data["scopes"]),
+                    hs_list="; ".join(data["hs_codes"]),
+                    project=project,
+                    customer=customer,
+                    company_name=company_name,
+                    surveying_agency=surveying_agency,
+                )
+                safe_name = sup_name.replace(" ", "_").replace("/", "-")[:50]
+                zf.writestr(
+                    f"{folder}/03_Declarations/Declaration_{i:02d}_{safe_name}.txt",
+                    decl,
+                )
+        else:
+            zf.writestr(
+                f"{folder}/03_Declarations/README.txt",
+                "No Indian manufacturers entered yet.\n"
+                "Add Indian manufacturer names in the IC Register tab, "
+                "then re-generate this package.\n",
+            )
+
+        # ── 04 README / submission instructions ───────────────────────────
+        readme = textwrap.dedent(f"""\
+        IC SUBMISSION PACKAGE — CONTENTS AND INSTRUCTIONS
+        ══════════════════════════════════════════════════
+
+        Project:   {project}
+        Customer:  {customer}
+        Generated: {date.today().strftime("%d %B %Y")}
+        Declared IC%: {ic_pct*100:.2f}%  (Required: {threshold*100:.1f}%)
+
+        ── FILES IN THIS PACKAGE ────────────────────────────────────────
+
+        01_IC_Submission_Package.xlsx
+            Annex A  Cover page & compliance status
+            Annex B  Scope Origin Register (all scopes, NO prices)
+            Annex C  IC% Calculation (value breakdown)
+            Annex D  Declaration Tracker (signature status per scope)
+            Annex E  HS Code Reference (for Bill of Entry cross-check)
+
+        02_CA_Certificate_Draft_(Annex_E).txt
+            Template for your Chartered Accountant to adapt and sign.
+            CA certifies IC% from internal books — individual supplier
+            prices are NOT disclosed in this document.
+
+        03_Declarations/Declaration_XX_SupplierName.txt
+            One declaration per Indian manufacturer (Annex F).
+            Each supplier must SIGN and STAMP their declaration before
+            submission. No purchase prices appear in any declaration.
+
+        ── SUBMISSION PROCESS ───────────────────────────────────────────
+
+        Step 1  Email the declaration TXT files to each Indian supplier.
+                They sign, stamp and return — takes 1–3 working days.
+
+        Step 2  Give the CA Certificate draft to your Chartered Accountant
+                with your internal cost records. They certify and sign —
+                allows them to verify IC% without disclosing prices to
+                the surveyor.
+
+        Step 3  Submit the complete package to {surveying_agency or "the surveying agency"}:
+                  • 01_IC_Submission_Package.xlsx  (all annexes)
+                  • 02_CA_Certificate.pdf          (signed by CA)
+                  • 03_Declarations/ folder        (signed by each supplier)
+
+        ── WHAT YOU DO NOT SUBMIT ───────────────────────────────────────
+
+        ✗  Your supplier quote book
+        ✗  Individual purchase prices
+        ✗  Your cost build-up or margin
+        ✗  Internal financial records
+
+        The surveyor verifies ORIGIN, not PRICE. The CA certificate
+        bridges the gap — they verify the numbers, you keep the prices.
+
+        ── BACKUP METHOD (Bill of Entry) ────────────────────────────────
+
+        For every imported scope, file a Bill of Entry with Indian Customs
+        when the goods arrive. The customs-cleared import value becomes the
+        official record of what was imported. Everything in the contract
+        value not on a BoE is deemed Indian. This method is irrefutable
+        and requires no supplier cooperation.
+        """)
+        zf.writestr(f"{folder}/00_README_Submission_Instructions.txt", readme)
+
+    return buf.getvalue()
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -440,9 +714,15 @@ def main() -> None:
     if contract_value == 0:
         contract_value = total_bom_value
 
-    st.sidebar.text_input("Your company name (for declarations)")
-    st.sidebar.text_input("Surveying / certifying agency",
-                          placeholder="e.g. DGQA / BV / DNV")
+    st.session_state["_lc_company"] = st.sidebar.text_input(
+        "Your company name (for declarations)",
+        value=st.session_state.get("_lc_company", ""),
+    )
+    st.session_state["_lc_agency"] = st.sidebar.text_input(
+        "Surveying / certifying agency",
+        placeholder="e.g. DGQA / BV / DNV",
+        value=st.session_state.get("_lc_agency", ""),
+    )
     st.sidebar.divider()
     st.sidebar.info(
         "**No quote book needed. Three methods:**\n\n"
@@ -679,113 +959,131 @@ def main() -> None:
         st.dataframe(scope_disp, use_container_width=True, hide_index=True)
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 3 — SUBMISSION DOCUMENTS
+    # TAB 3 — SURVEYOR SUBMISSION PACKAGE
     # ══════════════════════════════════════════════════════════════════════════
     with tabs[2]:
-        st.subheader("Submission documents — no prices revealed")
-        st.info(
-            "None of these documents contain individual supplier prices. "
-            "Your quote book stays internal — only your CA firm sees it.",
-            icon="🔒",
+        st.subheader("📦 Surveyor submission package")
+
+        # ── Process overview ──────────────────────────────────────────────────
+        st.markdown(
+            """
+**One button generates everything the surveyor needs.** No prices in any file.
+
+| # | You do | Time |
+|---|--------|------|
+| 1️⃣ | Download the package below | Now |
+| 2️⃣ | Email each supplier their `Declaration_XX_SupplierName.txt` — they sign & stamp and return | 1–3 days |
+| 3️⃣ | Give your CA the `CA_Certificate_Draft.txt` + internal cost records — they certify & sign | 2–5 days |
+| 4️⃣ | Submit signed CA cert + signed declarations + the Excel to the surveying agency | Done |
+            """
         )
 
-        doc_col1, doc_col2 = st.columns(2)
-
-        with doc_col1:
-            with st.container(border=True):
-                st.markdown("**📄 Document A — Scope Origin Register**")
-                st.caption(
-                    "Excel: IC Summary, Scope Origin Register (no prices), "
-                    "Declaration Tracker. Hand to the surveying company."
-                )
-                try:
-                    excel_bytes = _build_submission_excel(
-                        edited, meta, contract_value, ic_pct_calc)
-                    st.download_button(
-                        "⬇️ Download Scope Origin Register (Excel)",
-                        data=excel_bytes,
-                        file_name="india_ic_submission_package.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        use_container_width=True, type="primary",
-                    )
-                except Exception as e:
-                    st.error(f"Could not generate: {e}")
-
-        with doc_col2:
-            with st.container(border=True):
-                st.markdown("**📜 Document B — CA Certificate Draft**")
-                st.caption(
-                    "Template for your CA to adapt and sign. "
-                    "CA certifies IC% from your books; quotes stay with you."
-                )
-                st.download_button(
-                    "⬇️ Download CA Certificate Template (TXT)",
-                    data=_ca_cert_text(meta, contract_value, ic_pct_calc,
-                                       indian_val, imported_val),
-                    file_name="ca_certificate_draft.txt",
-                    mime="text/plain",
-                    use_container_width=True,
-                )
-
-        st.divider()
-        st.markdown("**🏭 Document C — Manufacturer's Origin Declarations**")
-        st.caption(
-            "One declaration per Indian supplier — they sign and stamp it. "
-            "No price. Accepted by DGQA and classification societies."
-        )
-
-        indian_rows = edited[edited["origin"].isin(["Indian", "Partially Indian"])].copy()
-        if indian_rows.empty:
-            st.info("No scopes tagged as Indian yet — update the IC Register tab first.")
-        else:
-            suppliers_with_name = sorted(set(
-                s for s in indian_rows["indian_supplier"].fillna("").tolist() if s.strip()
+        # ── Package contents preview ──────────────────────────────────────────
+        with st.expander("📋 What's inside the ZIP"):
+            indian_scope_rows = edited[edited["origin"].isin(["Indian", "Partially Indian"])]
+            named_suppliers = sorted(set(
+                s for s in indian_scope_rows["indian_supplier"].fillna("").tolist() if s.strip()
             ))
-            if not suppliers_with_name:
-                st.warning("Fill in **Indian manufacturer** names in the IC Register to generate declarations.")
-            else:
-                sel_supplier = st.selectbox(
-                    "Select supplier to generate declaration for",
-                    options=suppliers_with_name,
-                )
-                sup_rows = indian_rows[
-                    indian_rows["indian_supplier"].fillna("") == sel_supplier
-                ]
-                scope_list = "; ".join(sup_rows["scope_name"].fillna("").tolist())
-                hs_list    = "; ".join(sup_rows["hs_code"].fillna("").tolist())
-                decl_text  = _manufacturer_decl_text(sel_supplier, scope_list,
-                                                      hs_list, project)
-                with st.expander("Preview declaration text"):
-                    st.text(decl_text)
-                st.download_button(
-                    f"⬇️ Download declaration — {sel_supplier}",
-                    data=decl_text,
-                    file_name=f"origin_declaration_{sel_supplier.replace(' ', '_')}.txt",
-                    mime="text/plain",
-                )
+            st.markdown(
+                f"""
+```
+IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat()}/
+│
+├── 00_README_Submission_Instructions.txt   ← Step-by-step instructions
+│
+├── 01_IC_Submission_Package.xlsx           ← Hand this to the surveyor (no prices)
+│     Sheet 1: Cover — project, IC%, compliance status
+│     Sheet 2: IC Calculation — value breakdown, formula, result
+│     Sheet 3: Scope Register — all scopes, origin, HS code (Annex B)
+│     Sheet 4: Declaration Tracker — who signed what (Annex C)
+│     Sheet 5: HS Code Reference — for Bill of Entry cross-check (Annex D)
+│
+├── 02_CA_Certificate_Draft_(Annex_E).txt   ← Give to your CA to sign (Annex E)
+│
+└── 03_Declarations/                        ← Send each file to the named supplier
+{"".join(f"      Declaration_{i+1:02d}_{s.replace(' ', '_')[:40]}.txt{chr(10)}" for i, s in enumerate(named_suppliers)) if named_suppliers else "      (No Indian manufacturers entered yet — add in IC Register tab)"}```
+                """
+            )
 
         st.divider()
-        st.markdown("**🔐 Document D — Internal IC Workbook (CA eyes only — CONFIDENTIAL)**")
-        st.caption("Full cost detail — give ONLY to your CA firm, never to the surveyor.")
+
+        # ── Status check before generating ───────────────────────────────────
+        warnings = []
+        if not named_suppliers:
+            warnings.append("⚠️ No Indian manufacturer names entered — declarations will be empty. "
+                            "Add names in the IC Register tab first.")
+        if ic_pct_calc < threshold:
+            warnings.append(f"⚠️ Declared IC% ({_pct(ic_pct_calc)}) is below the "
+                            f"required {_pct(threshold)} — package will show NON-COMPLIANT.")
+        pending_decls = int((indian_scope_rows["declaration_rxd"] == "Pending").sum())
+        if pending_decls:
+            warnings.append(f"ℹ️ {pending_decls} declaration(s) still pending — "
+                            "included in package but not yet signed. Update status in IC Register after receiving.")
+
+        for w_msg in warnings:
+            st.warning(w_msg)
+
+        # ── Single download button ─────────────────────────────────────────────
+        try:
+            zip_bytes = _build_surveyor_zip(
+                scope_ic=edited,
+                meta=meta,
+                contract_value=contract_value,
+                ic_pct=ic_pct_calc,
+                indian_val=indian_val,
+                imported_val=imported_val,
+                threshold=threshold,
+                procurement_cat=procurement_cat,
+                company_name=st.session_state.get("_lc_company", ""),
+                surveying_agency=st.session_state.get("_lc_agency", ""),
+                project=project,
+            )
+            zip_name = (
+                f"IC_Submission_{(project or 'Project').replace(' ', '_')}"
+                f"_{date.today().isoformat()}.zip"
+            )
+            st.download_button(
+                label="⬇️ Download complete surveyor package (ZIP)",
+                data=zip_bytes,
+                file_name=zip_name,
+                mime="application/zip",
+                type="primary",
+                use_container_width=True,
+                help="Contains: Excel workbook (all annexes) + CA Certificate draft + "
+                     "one Origin Declaration per Indian supplier. No prices in any file.",
+            )
+            st.caption(
+                f"📦 Package: `{zip_name}` — "
+                f"{len(named_suppliers)} supplier declaration(s), "
+                f"IC% = {_pct(ic_pct_calc)}"
+            )
+        except Exception as e:
+            st.error(f"Could not generate package: {e}")
+
+        st.divider()
+
+        # ── Confidential internal workbook (separate, CA only) ────────────────
+        st.markdown("**🔐 Internal IC workbook — CA eyes only (CONFIDENTIAL, do not submit)**")
+        st.caption(
+            "Contains actual BOM costs per scope. Give ONLY to your CA firm — "
+            "they use it to verify and sign the CA Certificate. Never submit to the surveyor."
+        )
 
         def _internal_excel() -> bytes:
-            buf = io.BytesIO()
+            ibuf = io.BytesIO()
             out = edited.copy()
             out["IC%"] = out["ic_value_pct"].map(lambda x: f"{float(x or 0)*100:.0f}%")
-            with pd.ExcelWriter(buf, engine="openpyxl") as w:
-                out[[
+            with pd.ExcelWriter(ibuf, engine="openpyxl") as w:
+                out[[c for c in [
                     "scope_name", "cost_eur", "origin", "IC%",
                     "_ic_eur", "_imp_eur", "indian_supplier", "hs_code",
                     "declaration_rxd", "declaration_ref", "notes",
-                ]].rename(columns={
-                    "scope_name": "Scope", "cost_eur": "BOM cost (€)",
-                    "origin": "Origin", "_ic_eur": "IC value (€)",
-                    "_imp_eur": "Import value (€)",
+                ] if c in out.columns]].rename(columns={
+                    "scope_name": "Scope", "cost_eur": "BOM cost (€)", "origin": "Origin",
+                    "_ic_eur": "IC value (€)", "_imp_eur": "Import value (€)",
                     "indian_supplier": "Indian manufacturer", "hs_code": "HS Code",
-                    "declaration_rxd": "Declaration rxd?",
-                    "declaration_ref": "Declaration ref",
+                    "declaration_rxd": "Declaration rxd?", "declaration_ref": "Declaration ref",
                 }).to_excel(w, sheet_name="IC Detail", index=False)
-
                 pd.DataFrame([
                     ["Contract value (€)",   f"{contract_value:,.0f}"],
                     ["Indian content (€)",   f"{indian_val:,.0f}"],
@@ -795,13 +1093,13 @@ def main() -> None:
                     ["Category",             procurement_cat],
                     ["Date",                 str(date.today())],
                 ], columns=["Field", "Value"]).to_excel(w, sheet_name="Summary", index=False)
-            return buf.getvalue()
+            return ibuf.getvalue()
 
         try:
             st.download_button(
                 "⬇️ Download internal IC workbook (CONFIDENTIAL — CA eyes only)",
                 data=_internal_excel(),
-                file_name="india_ic_internal_CONFIDENTIAL.xlsx",
+                file_name="india_ic_CONFIDENTIAL_CA_only.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         except Exception as e:
