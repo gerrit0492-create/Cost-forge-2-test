@@ -47,6 +47,12 @@ _P = {
     "volume":     st.Page("pages/37_Volume_Analysis.py",       title="Volume Analysis",       icon="📈"),
     "escalation": st.Page("pages/38_Escalation_Risk.py",       title="Escalation & Risk",     icon="📉"),
     "waterfall":  st.Page("pages/39_Full_Cost_Summary.py",     title="Full Cost Summary",     icon="🌊"),
+    # ── Contract & project lifecycle ──────────────────────────────────────────
+    "contract":   st.Page("pages/40_Contract_Cashflow.py",     title="Contract & Cash Flow",  icon="💰"),
+    "changeorders":st.Page("pages/41_Change_Orders.py",        title="Change Orders",         icon="🔄"),
+    "closeout":   st.Page("pages/42_Project_Closeout.py",      title="Project Close-out",     icon="📁"),
+    "spareparts": st.Page("pages/43_Spare_Parts.py",           title="Spare Parts",           icon="🔩"),
+    "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -469,6 +475,31 @@ def dashboard() -> None:
     with c5:
         _card(_P["waterfall"],  "🌊", "Full Cost Summary",
               "Complete waterfall: all cost elements from BOM to delivery.")
+
+    st.divider()
+
+    # ── 7 · Contract & project lifecycle ──────────────────────────────────────
+    st.subheader("7️⃣ Contract & Project Lifecycle")
+    st.caption(
+        "From contract signature through delivery and close-out — "
+        "cash flow, change orders, final P&L, spare parts and quote audit trail."
+    )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        _card(_P["contract"],    "💰", "Contract & Cash Flow",
+              "Milestone payments, cash flow timeline, LD, APG, retention and bond costs.")
+    with c2:
+        _card(_P["changeorders"],"🔄", "Change Orders",
+              "Scope variation register — track approved and pending changes and their margin impact.")
+    with c3:
+        _card(_P["closeout"],    "📁", "Project Close-out",
+              "Final P&L, budget vs actuals variance and lessons learned register.")
+    with c4:
+        _card(_P["spareparts"],  "🔩", "Spare Parts",
+              "Generate customer spare parts catalog with recommended quantities and prices.")
+    with c5:
+        _card(_P["revisions"],   "📜", "Quote Revisions",
+              "Snapshot and compare quote revisions — full audit trail for contracts.")
 
     st.divider()
 

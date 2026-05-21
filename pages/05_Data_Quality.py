@@ -6,6 +6,7 @@ import streamlit as st
 from utils.io import load_bom, load_materials, load_processes, load_quotes
 from utils.nav import home_button
 from utils.safe import guard
+from utils.style import inject_css, page_header
 from utils.validators import all_rules_ok, business_rules, check_missing, check_positive, material_lines
 
 
@@ -15,9 +16,13 @@ def _health(ok: bool) -> str:
 
 def main() -> None:
     st.set_page_config(page_title="Data Quality", layout="wide", page_icon="✅")
+    inject_css()
     home_button()
-    st.title("✅ Data Quality")
-    st.caption("Health check across BOM, materials, processes and supplier quotes — with actionable fix guidance.")
+    page_header(
+        title="Data Quality",
+        icon="✅",
+        caption="Health check across BOM, materials, processes and supplier quotes — with actionable fix guidance.",
+    )
 
     _, btn = st.columns([6, 1])
     if btn.button("🔄 Refresh"):
@@ -69,14 +74,57 @@ def main() -> None:
         mat_ids     = set(mats["material_id"].unique()) if not mats.empty else set()
         q_no_cover  = sorted(mat_ids - quoted_ids)
 
+    # ── New: duplicate & orphan checks ────────────────────────────────────────
+    # Duplicate material IDs
+    m_dupe_ids = (
+        mats[mats.duplicated("material_id", keep=False)]["material_id"].unique().tolist()
+        if not mats.empty and "material_id" in mats.columns else []
+    )
+    # BOM lines referencing a material_id not in Materials (orphaned BOM lines already in b_no_mat)
+    # Materials in Materials sheet not referenced anywhere in BOM (unused materials)
+    bom_mat_ids  = set(bom["material_id"].dropna().unique()) if "material_id" in bom.columns else set()
+    all_mat_ids  = set(mats["material_id"].dropna().unique()) if not mats.empty else set()
+    m_unused     = sorted(all_mat_ids - bom_mat_ids)
+
+    # Duplicate BOM line IDs
+    b_dupe_ids = (
+        bom[bom.duplicated("line_id", keep=False)]["line_id"].unique().tolist()
+        if not bom.empty and "line_id" in bom.columns else []
+    )
+    # Contradictory yield factors (same material_id, different yield_factor on different lines)
+    b_yield_conflict = []
+    if "yield_factor" in bom.columns and "material_id" in bom.columns:
+        yf_by_mat = (
+            bom[bom["material_id"].notna()]
+            .groupby("material_id")["yield_factor"]
+            .nunique()
+        )
+        b_yield_conflict = yf_by_mat[yf_by_mat > 1].index.tolist()
+
+    # Materials without MOQ or HS code (advisory only)
+    m_no_moq = (
+        int(mats["moq_kg"].isna().sum()) if "moq_kg" in mats.columns else len(mats)
+    )
+    m_no_hs  = (
+        int(mats["hs_code"].isna().sum() + (mats["hs_code"] == "").sum())
+        if "hs_code" in mats.columns else len(mats)
+    )
+
+    # Processes without tooling consumable rate (advisory)
+    p_no_tooling = (
+        int(procs["tooling_consumable_eur_h"].isna().sum())
+        if "tooling_consumable_eur_h" in procs.columns else len(procs)
+    )
+
     # Business rules
     rules    = business_rules(mats, procs, bom)
     rules_ok = all_rules_ok(rules)
 
     # Overall score
     checks = [
-        not m_miss, not m_pos, not p_miss, not p_pos,
-        not b_miss, not b_pos, not b_no_route, not b_no_mat,
+        not m_miss, not m_pos, not m_dupe_ids,
+        not p_miss, not p_pos,
+        not b_miss, not b_pos, not b_no_route, not b_no_mat, not b_dupe_ids,
         not q_expired, rules_ok,
     ]
     score = sum(checks)
@@ -98,12 +146,13 @@ def main() -> None:
 
     st.divider()
 
-    # ── Four domain tabs ──────────────────────────────────────────────────────
-    tab_mat, tab_bom, tab_proc, tab_quotes_tab = st.tabs([
-        f"{_health(not m_miss and not m_pos)} Materials",
-        f"{_health(not b_miss and not b_pos and not b_no_route and not b_no_mat)} BOM",
+    # ── Five domain tabs ──────────────────────────────────────────────────────
+    tab_mat, tab_bom, tab_proc, tab_quotes_tab, tab_adv = st.tabs([
+        f"{_health(not m_miss and not m_pos and not m_dupe_ids)} Materials",
+        f"{_health(not b_miss and not b_pos and not b_no_route and not b_no_mat and not b_dupe_ids)} BOM",
         f"{_health(not p_miss and not p_pos)} Processes",
         f"{_health(not q_expired)} Quotes",
+        "🔍 Advanced",
     ])
 
     # ── Materials ─────────────────────────────────────────────────────────────
@@ -135,6 +184,14 @@ def main() -> None:
                        "Scenario Planner commodity sliders won't apply to them.")
         else:
             st.success("✅ All materials have a commodity group assigned.")
+
+        if m_dupe_ids:
+            st.error(
+                f"**{len(m_dupe_ids)} duplicate material ID(s):** `{', '.join(str(x) for x in m_dupe_ids)}`  \n"
+                "Duplicate IDs cause unpredictable merge behaviour. Remove duplicates from the Materials sheet."
+            )
+        else:
+            st.success("✅ No duplicate material IDs.")
 
         if not mats.empty and "price_eur_per_kg" in mats.columns:
             st.divider()
@@ -185,6 +242,24 @@ def main() -> None:
                      "Fix: add the missing material in `cost_forge.xlsx → Materials`.")
         else:
             st.success("✅ All BOM material IDs are matched in the Materials table.")
+
+        if b_dupe_ids:
+            st.error(
+                f"**{len(b_dupe_ids)} duplicate BOM line ID(s):** "
+                f"`{', '.join(str(x) for x in b_dupe_ids[:10])}`  \n"
+                "Duplicate line IDs cause incorrect cost aggregation. Fix in the BOM sheet."
+            )
+        else:
+            st.success("✅ No duplicate BOM line IDs.")
+
+        if b_yield_conflict:
+            st.warning(
+                f"⚠️ **{len(b_yield_conflict)} material(s)** have inconsistent yield factors across BOM lines: "
+                f"`{', '.join(str(x) for x in b_yield_conflict)}`  \n"
+                "Different yield factors for the same material suggest a data entry error."
+            )
+        else:
+            st.success("✅ Yield factors are consistent across BOM lines.")
 
         if not bom.empty and "mass_kg" in bom.columns:
             st.divider()
@@ -282,6 +357,68 @@ def main() -> None:
             for rule in rules:
                 if not rule.ok:
                     st.warning(f"**{rule.name}**: {rule.msg}")
+
+    # ── Advanced checks tab ───────────────────────────────────────────────────
+    with tab_adv:
+        st.subheader("Advanced data checks")
+
+        col_a, col_b = st.columns(2)
+
+        with col_a:
+            st.markdown("**Material library completeness**")
+            adv_mat_rows = [
+                ("Materials total",          len(mats),       ""),
+                ("Without MOQ",              m_no_moq,        "⚠️ MOQ excess risk" if m_no_moq else "✅"),
+                ("Without HS tariff code",   m_no_hs,         "⚠️ Duty rate risk" if m_no_hs else "✅"),
+                ("Unused (not in BOM)",      len(m_unused),   "ℹ️ Consider removing" if m_unused else "✅"),
+                ("Duplicate IDs",            len(m_dupe_ids), "🔴 Fix required" if m_dupe_ids else "✅"),
+                ("No commodity group",       m_no_comm,       "⚠️ Scenario Planner gap" if m_no_comm else "✅"),
+            ]
+            st.dataframe(pd.DataFrame(adv_mat_rows, columns=["Check", "Count", "Status"]),
+                         use_container_width=True, hide_index=True)
+
+            if m_unused:
+                with st.expander(f"Unused materials ({len(m_unused)})"):
+                    st.write(m_unused)
+
+        with col_b:
+            st.markdown("**Process route completeness**")
+            adv_proc_rows = [
+                ("Process routes total",           len(procs),       ""),
+                ("Without tooling consumable rate", p_no_tooling,    "⚠️ Cost underestimate" if p_no_tooling else "✅"),
+                ("Rework % not set",
+                 int(procs["rework_pct"].isna().sum()) if "rework_pct" in procs.columns else len(procs),
+                 "⚠️ No rework provision"),
+                ("Energy kW not set",
+                 int(procs["energy_kw"].isna().sum()) if "energy_kw" in procs.columns else len(procs),
+                 "⚠️ Energy cost missing"),
+            ]
+            st.dataframe(pd.DataFrame(adv_proc_rows, columns=["Check", "Count", "Status"]),
+                         use_container_width=True, hide_index=True)
+
+        st.divider()
+        st.subheader("BOM consistency checks")
+        adv_bom_rows = [
+            ("Duplicate BOM line IDs",       len(b_dupe_ids),       "🔴 Fix required" if b_dupe_ids else "✅"),
+            ("Yield factor conflicts",        len(b_yield_conflict), "⚠️ Review" if b_yield_conflict else "✅"),
+            ("Orphaned material references",  len(b_no_mat),         "🔴 Fix required" if b_no_mat else "✅"),
+            ("Orphaned process references",   len(b_no_route),       "🔴 Fix required" if b_no_route else "✅"),
+        ]
+        st.dataframe(pd.DataFrame(adv_bom_rows, columns=["Check", "Count", "Status"]),
+                     use_container_width=True, hide_index=True)
+
+        st.divider()
+        st.subheader("What these mean for your quote")
+        st.info(
+            "**Missing MOQ** → You may purchase excess material on low-quantity lines. "
+            "Add `moq_kg` to Materials sheet and check Management Dashboard for excess cost.  \n\n"
+            "**Missing HS code** → Import duty calculations in Transport module use your manual duty %, "
+            "but wrong HS codes risk customs clearance delays and reclassification.  \n\n"
+            "**Missing tooling rate** → Cutting tool consumption for precision machining (NAB, stainless) "
+            "is a real cost — typically €15–40/hour. Add to the Processes sheet.  \n\n"
+            "**Missing rework %** → Precision parts have a real rework rate (3–5% of process cost). "
+            "Without it your process cost is systematically understated."
+        )
 
 
 guard(main)

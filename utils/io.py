@@ -16,22 +16,34 @@ SHEET_MAP = {
     "transport":  "Transport",
     "nre":        "NRE",
     "risk":       "Risk",
-    "escalation": "Escalation",
-    "outbound":   "Outbound",
+    "escalation":    "Escalation",
+    "outbound":      "Outbound",
+    "milestones":    "Milestones",
+    "cost_timeline": "CostTimeline",
+    "change_orders": "ChangeOrders",
 }
 
 SCHEMA_MATERIALS = {
-    "material_id": "string",
-    "description": "string",
-    "commodity": "string",
-    "price_eur_per_kg": "float64",
+    "material_id":       "string",
+    "description":       "string",
+    "commodity":         "string",
+    "price_eur_per_kg":  "float64",
+    "moq_kg":            "float64",   # minimum order quantity (kg)
+    "hs_code":           "string",    # harmonised tariff code e.g. "8413.50"
+    "lead_supplier":     "string",    # Primary / Sole source / Approved / Conditional
+    "supplier":          "string",    # preferred supplier name (info only)
 }
 SCHEMA_PROCESSES = {
-    "process_id": "string",
-    "machine_rate_eur_h": "float64",
-    "labor_rate_eur_h": "float64",
-    "overhead_pct": "float64",
-    "margin_pct": "float64",
+    "process_id":                "string",
+    "machine_rate_eur_h":        "float64",
+    "labor_rate_eur_h":          "float64",
+    "overhead_pct":              "float64",
+    "margin_pct":                "float64",
+    "tooling_consumable_eur_h":  "float64",  # cutting tools / inserts per runtime hour
+    "rework_pct":                "float64",  # rework provision as fraction of process cost
+    "energy_kw":                 "float64",  # machine power draw (kW)
+    "subcontract_markup_pct":    "float64",  # markup on subcontracted work
+    "labour_grade":              "string",   # e.g. "Senior machinist", "Apprentice"
 }
 SCHEMA_BOM = {
     "line_id":               "string",
@@ -182,6 +194,33 @@ def load_escalation() -> pd.DataFrame:
         return _read("escalation", SCHEMA_ESCALATION)
     except Exception:
         return default_escalation_df()
+
+
+def load_milestones() -> pd.DataFrame:
+    """Load milestone payment schedule (Milestones sheet)."""
+    from utils.contract import SCHEMA_MILESTONES, default_milestones
+    try:
+        return _read("milestones", SCHEMA_MILESTONES)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_MILESTONES.keys()))
+
+
+def load_cost_timeline() -> pd.DataFrame:
+    """Load cost outflow timeline (CostTimeline sheet)."""
+    from utils.contract import SCHEMA_COST_TIMELINE
+    try:
+        return _read("cost_timeline", SCHEMA_COST_TIMELINE)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_COST_TIMELINE.keys()))
+
+
+def load_change_orders() -> pd.DataFrame:
+    """Load change order register (ChangeOrders sheet)."""
+    from utils.change_orders import SCHEMA_CHANGE_ORDERS
+    try:
+        return _read("change_orders", SCHEMA_CHANGE_ORDERS)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_CHANGE_ORDERS.keys()))
 
 
 # Keep for backwards compat (Download Center used it)
