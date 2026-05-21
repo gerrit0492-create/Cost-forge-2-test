@@ -260,6 +260,37 @@ def dashboard() -> None:
         for a in alerts:
             st.warning(a)
 
+        # Marine delivery cost warning
+        try:
+            from utils.io import load_nre, load_risk, load_transport, load_escalation, load_milestones
+            _nre = load_nre(); _rsk = load_risk(); _trn = load_transport()
+            _esc = load_escalation(); _ms  = load_milestones()
+            _marine_done = sum([not _nre.empty, not _rsk.empty, not _trn.empty,
+                                not _esc.empty, not _ms.empty])
+            if _marine_done < 5:
+                _missing_items = [
+                    n for n, df in [("NRE/engineering", _nre), ("risk register", _rsk),
+                                    ("transport rates", _trn), ("escalation", _esc),
+                                    ("milestones", _ms)] if df.empty
+                ]
+                st.error(
+                    f"🚢 **Sell price {fmt(kpi['total'])} is BOM-only — it does NOT include NRE, "
+                    f"logistics, classification, or commissioning.** "
+                    f"Missing: {', '.join(_missing_items)}. "
+                    f"Full delivery cost is typically 30–45% higher. "
+                    f"→ Complete in **Action Centre** before customer submission."
+                )
+            elif not _nre.empty:
+                _nre['_t'] = _nre['hours'] * _nre['rate_eur_h'] + _nre['fixed_eur'].fillna(0)
+                _nre_total = _nre['_t'].sum()
+                st.info(
+                    f"✅ Marine delivery package complete. "
+                    f"NRE: {fmt(_nre_total)} | Risk EV: {fmt((_rsk['probability'] * _rsk['cost_impact_eur']).sum())} | "
+                    f"Full cost waterfall: → **Full Cost Summary**"
+                )
+        except Exception:
+            pass
+
     else:
         st.info("No BOM loaded yet — open **BOM Import** from the sidebar to get started.")
 
@@ -300,11 +331,12 @@ def dashboard() -> None:
         if kpi:
             st.subheader("Cost structure")
             cost_items = [
-                ("Material",   kpi["mat"]),
-                ("MOQ excess", kpi["moq"]),
-                ("Process",    kpi["proc"]),
-                ("Overhead",   kpi["overhead"]),
-                ("Margin",     kpi["margin"]),
+                ("Material",         kpi["mat"]),
+                ("MOQ excess",       kpi["moq"]),
+                ("Pattern/tooling",  kpi.get("pattern", 0.0)),
+                ("Process",          kpi["proc"]),
+                ("Overhead",         kpi["overhead"]),
+                ("Margin",           kpi["margin"]),
             ]
             for label, val in cost_items:
                 share = val / kpi["base_cost"] * 100 if kpi.get("base_cost") else 0

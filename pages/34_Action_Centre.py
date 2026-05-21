@@ -5,7 +5,8 @@ import datetime
 import pandas as pd
 import streamlit as st
 
-from utils.io import load_bom, load_materials, load_processes, load_quotes, save_sheet
+from utils.io import (load_bom, load_materials, load_processes, load_quotes, save_sheet,
+                      load_nre, load_risk, load_transport, load_escalation, load_milestones)
 from utils.completeness import WATERJET_SUBSYSTEMS, completeness_score, detect_subsystems, missing_subsystems
 from utils.nav import home_button
 from utils.project import load_project_meta, save_project_meta
@@ -22,6 +23,11 @@ def _compute_checks():
     procs  = load_processes()
     bom    = load_bom()
     quotes = load_quotes()
+    nre    = load_nre()
+    risk   = load_risk()
+    transport = load_transport()
+    escalation = load_escalation()
+    milestones = load_milestones()
     today  = pd.Timestamp.today().normalize()
 
     m_miss   = check_missing(mats,  ["material_id", "price_eur_per_kg"])
@@ -29,14 +35,18 @@ def _compute_checks():
     p_miss   = check_missing(procs, ["process_id", "machine_rate_eur_h",
                                       "labor_rate_eur_h", "overhead_pct", "margin_pct"])
     p_pos    = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
-    b_miss   = check_missing(bom,   ["line_id", "material_id", "qty",
+    # Service lines (empty material_id) are valid — only check lines that have a material
+    _bom_with_mat = bom[bom["material_id"].fillna("").astype(str).str.strip() != ""] if "material_id" in bom.columns else bom
+    b_miss   = check_missing(_bom_with_mat, ["line_id", "material_id", "qty",
                                       "mass_kg", "process_route", "runtime_h"])
     mat_bom  = material_lines(bom)
     b_pos    = check_positive(mat_bom, ["qty", "mass_kg"])
     b_no_rt  = (bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
                 if "process_route" in bom.columns and "process_id" in procs.columns else [])
-    b_no_mat = (bom[~bom["material_id"].isin(mats["material_id"])]["line_id"].tolist()
-                if "material_id" in bom.columns else [])
+    # Only flag material mismatch for lines that actually have a material_id
+    _bom_has_mat = bom[bom["material_id"].fillna("").astype(str).str.strip() != ""] if "material_id" in bom.columns else bom
+    b_no_mat = (_bom_has_mat[~_bom_has_mat["material_id"].isin(mats["material_id"])]["line_id"].tolist()
+                if "material_id" in _bom_has_mat.columns else [])
 
     if "valid_until" in quotes.columns and not quotes.empty:
         vd = pd.to_datetime(quotes["valid_until"], errors="coerce")
@@ -72,14 +82,28 @@ def _compute_checks():
 
     expired_mats  = expired_quote_materials(quotes)
 
+    # ── Marine completeness checks ───────────────────────────────────────────
+    nre_ok        = not nre.empty and len(nre) >= 3
+    risk_ok       = not risk.empty and len(risk) >= 3
+    transport_ok  = not transport.empty
+    escalation_ok = not escalation.empty
+    milestones_ok = not milestones.empty
+
+    # Check for quote expiry fallback warning
+    n_expired_quotes = len(q_expired_ids)
+
     return dict(
         mats=mats, procs=procs, bom=bom, quotes=quotes, today=today,
+        nre=nre, risk=risk, transport=transport, escalation=escalation, milestones=milestones,
         m_miss=m_miss, m_pos=m_pos, p_miss=p_miss, p_pos=p_pos,
         b_miss=b_miss, b_pos=b_pos, b_no_rt=b_no_rt, b_no_mat=b_no_mat,
         q_expired_ids=q_expired_ids, rules_ok=rules_ok,
         dq_score=dq_score, unquoted=unquoted,
         zero_rt_lines=zero_rt_lines, crit_missing=crit_missing,
         comp_score=comp_score, expired_mats=expired_mats,
+        nre_ok=nre_ok, risk_ok=risk_ok, transport_ok=transport_ok,
+        escalation_ok=escalation_ok, milestones_ok=milestones_ok,
+        n_expired_quotes=n_expired_quotes,
     )
 
 
@@ -112,24 +136,36 @@ def main() -> None:
 
     # ── Overall progress ──────────────────────────────────────────────────────
     checks = {
-        "Expired quotes resolved":         not c["q_expired_ids"],
-        "All materials quoted":             not c["unquoted"],
-        "Data Quality ≥ 8/10":             c["dq_score"] >= 8,
-        "No zero-runtime BOM lines":        not c["zero_rt_lines"],
-        "Critical subsystems present":      not c["crit_missing"],
-        "BOM fields complete":              not c["b_miss"] and not c["b_no_rt"] and not c["b_no_mat"],
-        "Material prices valid":            not c["m_miss"] and not c["m_pos"],
-        "Process rates valid":              not c["p_miss"] and not c["p_pos"],
-        "Business rules pass":              c["rules_ok"],
-        "Estimate maturity ≥ Definitive":   maturity in ("Definitive (±5%)", "Firm"),
+        # BOM & pricing
+        "Expired quotes resolved":             not c["q_expired_ids"],
+        "All materials quoted":                not c["unquoted"],
+        "Data Quality ≥ 8/10":                c["dq_score"] >= 8,
+        "No zero-runtime BOM lines":           not c["zero_rt_lines"],
+        "Critical subsystems present":         not c["crit_missing"],
+        "BOM fields complete":                 not c["b_miss"] and not c["b_no_rt"] and not c["b_no_mat"],
+        "Material prices valid":               not c["m_miss"] and not c["m_pos"],
+        "Process rates valid":                 not c["p_miss"] and not c["p_pos"],
+        "Business rules pass":                 c["rules_ok"],
+        # Marine delivery completeness
+        "NRE / engineering costs entered":     c["nre_ok"],
+        "Risk register populated":             c["risk_ok"],
+        "Transport rates defined":             c["transport_ok"],
+        "Escalation indices set":              c["escalation_ok"],
+        "Contract milestones defined":         c["milestones_ok"],
+        # Estimate maturity
+        "Estimate maturity ≥ Definitive":      maturity in ("Definitive (±5%)", "Firm"),
     }
     n_done  = sum(checks.values())
     n_total = len(checks)
-    pct     = n_done / n_total
+    pct     = n_done / n_total if n_total else 0.0
 
-    col_prog, col_score = st.columns([5, 1])
+    col_prog, col_score, col_marine = st.columns([4, 1, 2])
     col_prog.progress(pct, text=f"{n_done}/{n_total} action items resolved")
     col_score.metric("Resolved", f"{pct*100:.0f}%")
+    marine_done = sum([c["nre_ok"], c["risk_ok"], c["transport_ok"], c["escalation_ok"], c["milestones_ok"]])
+    col_marine.metric("Marine completeness", f"{marine_done}/5",
+                      delta="delivery-ready" if marine_done == 5 else f"{5-marine_done} missing",
+                      delta_color="normal" if marine_done == 5 else "inverse")
 
     if n_done == n_total:
         st.success("✅ All action items resolved — safe to advance estimate maturity.")
@@ -456,6 +492,90 @@ def main() -> None:
         st.cache_data.clear()
         st.success(f"Saved — maturity set to **{new_maturity}**. Click 🔄 Re-check all.")
         st.rerun()
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  FIX SECTION 8 — MARINE DELIVERY COMPLETENESS
+    # ══════════════════════════════════════════════════════════════════════════
+    _section("🚢 Marine delivery completeness — full cost to customer")
+
+    marine_items = [
+        ("NRE / Engineering costs",   c["nre_ok"],        len(c["nre"]),
+         "Engineering hours, CFD, documentation, classification society fees, commissioning. "
+         "Missing NRE understates total project cost by 30-45%.  →  pages/36_Engineering_NRE.py"),
+        ("Risk register",             c["risk_ok"],        len(c["risk"]),
+         "Marine waterjet risks: casting rejects, classification scope creep, FAT failure, "
+         "currency exposure, warranty claims, cavitation damage.  →  pages/38_Escalation_Risk.py"),
+        ("Inbound transport rates",   c["transport_ok"],   len(c["transport"]),
+         "Freight €/kg, packaging, import duties for each material. "
+         "Required for landed material cost and Full Cost Summary.  →  pages/35_Transport_Logistics.py"),
+        ("Commodity escalation",      c["escalation_ok"],  len(c["escalation"]),
+         "NAB copper/nickel price index, SS316L alloy surcharge, labour rate CBA escalation. "
+         "Without escalation, long-lead quotes are exposed to commodity moves.  →  pages/38_Escalation_Risk.py"),
+        ("Contract milestones",       c["milestones_ok"],  len(c["milestones"]),
+         "Milestone payment schedule: advance, material release, FAT, delivery, commissioning. "
+         "Required for cash flow, APG costs, working capital calculation.  →  pages/40_Contract_Cashflow.py"),
+    ]
+
+    all_marine_ok = True
+    for label, ok, count, help_text in marine_items:
+        icon = "✅" if ok else "🔴"
+        badge = f"({count} rows)" if ok else "(empty — not yet populated)"
+        col_a, col_b = st.columns([3, 7])
+        col_a.markdown(f"{icon} **{label}** {badge}")
+        if not ok:
+            col_b.warning(help_text)
+            all_marine_ok = False
+        else:
+            col_b.markdown(f"<span style='color:#888'>{help_text.split('→')[0].strip()}</span>",
+                           unsafe_allow_html=True)
+
+    if all_marine_ok:
+        st.success("✅ All marine delivery cost components are populated.")
+    else:
+        missing_count = sum(1 for _, ok, _, _ in marine_items if not ok)
+        st.error(
+            f"⚠️ **{missing_count} marine cost component(s) not yet populated.** "
+            "The sell price on the dashboard is BOM-only — it **does NOT** include NRE, logistics, "
+            "classification, commissioning, or warranty. The full delivery cost may be 30–45% higher. "
+            "Populate the items above before submitting a customer quotation."
+        )
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════════
+    #  FIX SECTION 9 — QUOTE EXPIRY AUDIT
+    # ══════════════════════════════════════════════════════════════════════════
+    _section(f"{'✅' if not c['q_expired_ids'] else '⚠️'} Quote validity audit")
+
+    if c["n_expired_quotes"] > 0:
+        st.error(
+            f"**{c['n_expired_quotes']} material(s) have expired quotes.** "
+            "The cost model is silently falling back to catalogue prices which may be months old. "
+            "This creates unquantified financial exposure on all open estimates using these materials."
+        )
+        q_df = c["quotes"].copy()
+        if "valid_until" in q_df.columns:
+            vd = pd.to_datetime(q_df["valid_until"], errors="coerce")
+            exp_df = q_df[vd < c["today"]][["material_id","supplier","price_eur_per_kg","valid_until","lead_time_days"]].copy()
+            st.dataframe(exp_df, use_container_width=True, hide_index=True)
+    else:
+        n_q = len(c["quotes"])
+        if n_q > 0:
+            # Show upcoming expirations (within 30 days)
+            q_df = c["quotes"].copy()
+            if "valid_until" in q_df.columns:
+                vd = pd.to_datetime(q_df["valid_until"], errors="coerce")
+                soon = q_df[(vd >= c["today"]) & (vd <= c["today"] + pd.Timedelta(days=30))]
+                if not soon.empty:
+                    st.warning(f"⚠️ {len(soon)} quote(s) expire within 30 days — refresh before customer submission.")
+                    st.dataframe(soon[["material_id","supplier","valid_until"]].reset_index(drop=True),
+                                 use_container_width=True, hide_index=True)
+                else:
+                    st.success(f"All {n_q} quotes are valid and none expire within 30 days.")
+        else:
+            st.warning("No supplier quotes on file. All material prices are catalogue values.")
 
 
 guard(main)

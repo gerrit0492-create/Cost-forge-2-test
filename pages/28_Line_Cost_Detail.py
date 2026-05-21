@@ -43,9 +43,11 @@ def _error_check(df: pd.DataFrame) -> list[str]:
     if zero_qty:
         issues.append(f"Zero qty on lines: {', '.join(str(x) for x in zero_qty)}")
 
-    # Only flag lines that have a material_id but no price — service lines with no material are fine
+    # Only flag lines that have a material_id but no price — service lines and Buy items are fine
+    # Buy items (make_buy='B') use subcontract_price_eur, not price_per_kg
     has_mat = df["material_id"].notna() & (df["material_id"].astype(str).str.strip() != "")
-    no_price = df[has_mat & (df["price_eur_per_kg"].isna() | (df["price_eur_per_kg"] == 0))]
+    is_buy  = df["make_buy"].fillna("M").astype(str).str.upper() == "B" if "make_buy" in df.columns else pd.Series(False, index=df.index)
+    no_price = df[has_mat & ~is_buy & (df["price_eur_per_kg"].isna() | (df["price_eur_per_kg"] == 0))]
     if len(no_price):
         issues.append(f"Missing material price on {len(no_price)} line(s): "
                       + ", ".join(no_price["line_id"].astype(str).tolist()))

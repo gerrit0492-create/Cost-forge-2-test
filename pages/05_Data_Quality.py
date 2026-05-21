@@ -48,17 +48,20 @@ def main() -> None:
     p_pos   = check_positive(procs, ["machine_rate_eur_h", "labor_rate_eur_h"])
 
     # BOM — qty check on material-based lines only; mass_kg=0 is valid for service ops
+    # Service lines (empty material_id) are valid pure-process operations
+    _bom_has_mat = bom[bom["material_id"].fillna("").astype(str).str.strip() != ""] if "material_id" in bom.columns else bom
     mat_bom = material_lines(bom)
-    b_miss  = check_missing(bom, ["line_id", "material_id", "qty",
+    b_miss  = check_missing(_bom_has_mat, ["line_id", "material_id", "qty",
                                    "mass_kg", "process_route", "runtime_h"])
     b_pos   = check_positive(mat_bom, ["qty"])   # mass_kg=0 allowed (NDT/assembly/service)
     b_no_route = (
         bom[~bom["process_route"].isin(procs["process_id"])]["line_id"].tolist()
         if "process_route" in bom.columns and "process_id" in procs.columns else []
     )
+    # Only flag material mismatch for lines that have a material_id set
     b_no_mat = (
-        bom[~bom["material_id"].isin(mats["material_id"])]["line_id"].tolist()
-        if "material_id" in bom.columns else []
+        _bom_has_mat[~_bom_has_mat["material_id"].isin(mats["material_id"])]["line_id"].tolist()
+        if "material_id" in _bom_has_mat.columns else []
     )
 
     # Quotes

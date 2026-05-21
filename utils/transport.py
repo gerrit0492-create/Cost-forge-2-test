@@ -86,7 +86,10 @@ def compute_inbound_costs(
     packaging = line_mass * pkg_kg
 
     merged["inbound_freight_eur"] = (freight + packaging).fillna(0)
-    merged["duties_eur"] = (merged["material_cost"] * duties).fillna(0)
+    # FIX: duties are levied on landed cost (material + freight + packaging),
+    # not on material cost alone. Using material-only basis understates duty by ~10-20%.
+    landed_base = merged["material_cost"].fillna(0) + merged["inbound_freight_eur"]
+    merged["duties_eur"] = (landed_base * duties).fillna(0)
 
     # Drop the helper columns from transport
     drop_cols = ["inbound_eur_kg", "min_freight_eur", "packaging_eur_kg", "duties_pct"]
