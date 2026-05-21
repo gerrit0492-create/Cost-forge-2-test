@@ -8,11 +8,16 @@ import pandas as pd
 WORKBOOK = Path("data") / "cost_forge.xlsx"
 
 SHEET_MAP = {
-    "bom":       "BOM",
-    "materials": "Materials",
-    "processes": "Processes",
-    "quotes":    "Quotes",
-    "actuals":   "Actuals",
+    "bom":        "BOM",
+    "materials":  "Materials",
+    "processes":  "Processes",
+    "quotes":     "Quotes",
+    "actuals":    "Actuals",
+    "transport":  "Transport",
+    "nre":        "NRE",
+    "risk":       "Risk",
+    "escalation": "Escalation",
+    "outbound":   "Outbound",
 }
 
 SCHEMA_MATERIALS = {
@@ -132,6 +137,51 @@ def load_actuals() -> pd.DataFrame:
         return _read("actuals", SCHEMA_ACTUALS)
     except Exception:
         return pd.DataFrame(columns=list(SCHEMA_ACTUALS.keys()))
+
+
+def load_transport() -> pd.DataFrame:
+    """Load inbound transport rates (Transport sheet)."""
+    from utils.transport import SCHEMA_TRANSPORT, default_transport_df
+    try:
+        return _read("transport", SCHEMA_TRANSPORT)
+    except Exception:
+        return default_transport_df()
+
+
+def load_outbound() -> pd.DataFrame:
+    """Load outbound shipping routes (Outbound sheet)."""
+    from utils.transport import SCHEMA_OUTBOUND, default_outbound_df
+    try:
+        return _read("outbound", SCHEMA_OUTBOUND)
+    except Exception:
+        return default_outbound_df()
+
+
+def load_nre() -> pd.DataFrame:
+    """Load NRE / engineering cost items (NRE sheet)."""
+    from utils.nre import SCHEMA_NRE, default_nre_df
+    try:
+        return _read("nre", SCHEMA_NRE)
+    except Exception:
+        return default_nre_df()
+
+
+def load_risk() -> pd.DataFrame:
+    """Load risk register (Risk sheet)."""
+    from utils.escalation import SCHEMA_RISK, default_risk_df
+    try:
+        return _read("risk", SCHEMA_RISK)
+    except Exception:
+        return default_risk_df()
+
+
+def load_escalation() -> pd.DataFrame:
+    """Load escalation indices (Escalation sheet)."""
+    from utils.escalation import SCHEMA_ESCALATION, default_escalation_df
+    try:
+        return _read("escalation", SCHEMA_ESCALATION)
+    except Exception:
+        return default_escalation_df()
 
 
 # Keep for backwards compat (Download Center used it)

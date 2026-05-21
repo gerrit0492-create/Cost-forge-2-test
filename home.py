@@ -41,6 +41,12 @@ _P = {
     "itemcost":   st.Page("pages/32_Item_Costing.py",           title="Item Costing",        icon="🔢"),
     "stakeholder":st.Page("pages/33_Stakeholder_Report.py",    title="Stakeholder Report",  icon="📋"),
     "actions":    st.Page("pages/34_Action_Centre.py",          title="Action Centre",       icon="🔧"),
+    # ── Senior cost engineer toolbox ──────────────────────────────────────────
+    "transport":  st.Page("pages/35_Transport_Logistics.py",   title="Transport & Logistics", icon="🚢"),
+    "nre":        st.Page("pages/36_Engineering_NRE.py",       title="Engineering & NRE",     icon="🔬"),
+    "volume":     st.Page("pages/37_Volume_Analysis.py",       title="Volume Analysis",       icon="📈"),
+    "escalation": st.Page("pages/38_Escalation_Risk.py",       title="Escalation & Risk",     icon="📉"),
+    "waterfall":  st.Page("pages/39_Full_Cost_Summary.py",     title="Full Cost Summary",     icon="🌊"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -438,6 +444,31 @@ def dashboard() -> None:
     with c4:
         _card(_P["prepost"],  "📊", "Pre / Post Export",
               "SAP actuals import and pre/post variance report.")
+
+    st.divider()
+
+    # ── 6 · Senior cost engineer toolbox ─────────────────────────────────────
+    st.subheader("6️⃣ Senior Cost Engineer Toolbox")
+    st.caption(
+        "Complete cost engineering: transport, NRE, volume curves, escalation, "
+        "risk and the full P&L waterfall."
+    )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        _card(_P["transport"],  "🚢", "Transport & Logistics",
+              "Inbound freight, packaging, import duties and outbound shipping.")
+    with c2:
+        _card(_P["nre"],        "🔬", "Engineering & NRE",
+              "Design hours, PM, testing, tooling and commissioning costs.")
+    with c3:
+        _card(_P["volume"],     "📈", "Volume Analysis",
+              "Learning curve, batch pricing and break-even across production volumes.")
+    with c4:
+        _card(_P["escalation"], "📉", "Escalation & Risk",
+              "Commodity price indices, risk register and contingency allowance.")
+    with c5:
+        _card(_P["waterfall"],  "🌊", "Full Cost Summary",
+              "Complete waterfall: all cost elements from BOM to delivery.")
 
     st.divider()
 
