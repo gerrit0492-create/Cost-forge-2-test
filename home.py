@@ -56,6 +56,7 @@ _P = {
     "cockpit":    st.Page("pages/45_Command_Centre.py",          title="Command Centre",      icon="🎯"),
     "india_lc":   st.Page("pages/46_India_Local_Content.py",    title="India Local Content", icon="🇮🇳"),
     "carbon":     st.Page("pages/47_Carbon_Energy.py",          title="Carbon & Energy",     icon="🌱"),
+    "stakeholder":st.Page("pages/48_Stakeholder_Package.py",   title="Stakeholder Package", icon="📊"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -440,6 +441,18 @@ def dashboard() -> None:
     # ── 5 · Export & deliver ──────────────────────────────────────────────────
     st.subheader("5️⃣ Export & deliver")
     st.caption("Download documents and source data.")
+
+    # Stakeholder Package — prominent call-out
+    with st.container(border=True):
+        sc1, sc2 = st.columns([3, 1])
+        sc1.markdown(
+            "**📊 Stakeholder Package** — one click generates a **9-tab Excel workbook** "
+            "and a **6-section PDF** covering the full workflow: "
+            "cost waterfall · subsystem breakdown · procurement · energy & carbon · "
+            "India local content · risk register. Ready to email."
+        )
+        sc2.page_link(_P["stakeholder"], label="Open →", use_container_width=True)
+
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         _card(_P["docx"],     "📝", "Quote DOCX",
