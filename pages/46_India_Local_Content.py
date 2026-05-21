@@ -40,96 +40,83 @@ from utils.safe import guard
 from utils.style import inject_css, page_header
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-ORIGIN_OPTIONS  = ["Indian", "Imported", "Partially Indian"]
-DECL_STATUS     = ["Pending", "Yes", "No", "Not required"]
+ORIGIN_OPTIONS = ["Indian", "Imported", "Partially Indian"]
+DECL_STATUS    = ["Pending", "Yes", "No", "Not required"]
 
-# IC thresholds per procurement category (DAP 2020 / Make in India for Defence)
 IC_THRESHOLDS = {
-    "Buy (Indian-IDDM)":          0.50,   # Min 50% IC, design owned by Indian entity
-    "Buy (Indian)":               0.40,   # Min 40% IC
-    "Buy & Make (Indian)":        0.50,   # 50% IC on make portion
-    "Buy & Make":                 0.30,   # 30% IC
-    "Make (Indian)":              0.50,
-    "Strategic Partnership Model": 0.50,
-    "GeM — Class I Local Supplier": 0.50,  # DPIIT GeM portal
+    "Buy (Indian-IDDM)":             0.50,
+    "Buy (Indian)":                  0.40,
+    "Buy & Make (Indian)":           0.50,
+    "Buy & Make":                    0.30,
+    "Make (Indian)":                 0.50,
+    "Strategic Partnership Model":   0.50,
+    "GeM — Class I Local Supplier":  0.50,
     "GeM — Class II Local Supplier": 0.20,
     "Shipbuilding Financial Assistance": 0.30,
-    "Custom / contractual":        0.0,   # Enter manually below
+    "Custom / contractual":          0.0,
 }
 
-# Colour coding
+# ── Helpers ───────────────────────────────────────────────────────────────────
 def _traffic(val: float, threshold: float) -> str:
-    if val >= threshold:
-        return "🟢"
-    if val >= threshold * 0.85:
-        return "🟠"
+    if val >= threshold:        return "🟢"
+    if val >= threshold * 0.85: return "🟠"
     return "🔴"
-
 
 def _pct(val: float) -> str:
     return f"{val * 100:.1f}%"
 
+def _col(df: pd.DataFrame, name: str, default="") -> pd.Series:
+    """Return column if it exists, else a series of default values."""
+    return df[name] if name in df.columns else pd.Series([default] * len(df), index=df.index)
 
-# ── Excel builders ─────────────────────────────────────────────────────────────
+
+# ── Document builders ─────────────────────────────────────────────────────────
 def _build_submission_excel(df_lc: pd.DataFrame, meta: dict,
                              contract_value: float, ic_pct: float) -> bytes:
-    """
-    Clean submission package — BOM with origin data ONLY (no prices).
-    Suitable to hand to the surveying company.
-    """
+    """Clean submission package — BOM with origin data ONLY (no prices)."""
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
-        # Sheet 1: IC Calculation Summary (no individual prices)
-        summary = pd.DataFrame([
-            ["Project",               meta.get("name", "")],
-            ["Customer",              meta.get("customer", "")],
-            ["Contract value (€)",    f"{contract_value:,.0f}"],
-            ["Declared IC%",          f"{ic_pct * 100:.2f}%"],
-            ["Date",                  str(date.today())],
-            ["Calculation method",    "Value-based (IC% = Indian value / Total value × 100)"],
-            ["Basis",                 "Internal cost records, available for CA certification on request"],
-        ], columns=["Field", "Value"])
-        summary.to_excel(w, sheet_name="IC Summary", index=False)
+        # Sheet 1: IC Summary
+        pd.DataFrame([
+            ["Project",            meta.get("name", "")],
+            ["Customer",           meta.get("customer", "")],
+            ["Contract value (€)", f"{contract_value:,.0f}"],
+            ["Declared IC%",       f"{ic_pct * 100:.2f}%"],
+            ["Date",               str(date.today())],
+            ["Calculation method", "Value-based (IC% = Indian value / Total value × 100)"],
+            ["Basis",              "Internal cost records, available for CA certification on request"],
+        ], columns=["Field", "Value"]).to_excel(w, sheet_name="IC Summary", index=False)
 
         # Sheet 2: BOM origin register (no prices)
-        clean = df_lc[["line_id", "part_name", "hs_code", "origin",
-                        "indian_supplier", "declaration_rxd", "declaration_ref",
-                        "ic_value_pct", "notes"]].copy()
-        clean["ic_value_pct"] = clean["ic_value_pct"].map(
-            lambda x: f"{float(x or 0) * 100:.0f}%" if pd.notna(x) else "0%")
-        clean.rename(columns={
-            "line_id":         "Line ID",
-            "part_name":       "Component / part",
-            "hs_code":         "HS Code",
-            "origin":          "Manufacturing origin",
-            "indian_supplier": "Indian manufacturer",
-            "declaration_rxd": "Origin declaration received",
-            "declaration_ref": "Declaration reference",
-            "ic_value_pct":    "IC value claimed (%)",
-            "notes":           "Notes",
-        }, inplace=True)
+        clean = pd.DataFrame({
+            "Line ID":                    _col(df_lc, "line_id"),
+            "Component / part":           _col(df_lc, "part_name"),
+            "HS Code":                    _col(df_lc, "hs_code"),
+            "Manufacturing origin":       _col(df_lc, "origin", "Imported"),
+            "Indian manufacturer":        _col(df_lc, "indian_supplier"),
+            "Origin declaration received":_col(df_lc, "declaration_rxd", "Pending"),
+            "Declaration reference":      _col(df_lc, "declaration_ref"),
+            "IC value claimed (%)":       _col(df_lc, "ic_value_pct", 0.0).map(
+                                              lambda x: f"{float(x or 0) * 100:.0f}%"),
+            "Notes":                      _col(df_lc, "notes"),
+        })
         clean.to_excel(w, sheet_name="BOM Origin Register", index=False)
 
         # Sheet 3: Declaration tracker
-        decl_needed = df_lc[df_lc["origin"].isin(["Indian", "Partially Indian"])].copy()
-        decl_needed = decl_needed[["line_id", "part_name", "indian_supplier",
-                                    "declaration_rxd", "declaration_ref"]].copy()
-        decl_needed.rename(columns={
-            "line_id": "Line ID", "part_name": "Component",
-            "indian_supplier": "Indian manufacturer",
-            "declaration_rxd": "Declaration received?",
-            "declaration_ref": "Reference / date",
-        }, inplace=True)
-        decl_needed.to_excel(w, sheet_name="Declaration Tracker", index=False)
+        mask = _col(df_lc, "origin", "Imported").isin(["Indian", "Partially Indian"])
+        pd.DataFrame({
+            "Line ID":               _col(df_lc, "line_id")[mask].values,
+            "Component":             _col(df_lc, "part_name")[mask].values,
+            "Indian manufacturer":   _col(df_lc, "indian_supplier")[mask].values,
+            "Declaration received?": _col(df_lc, "declaration_rxd", "Pending")[mask].values,
+            "Reference / date":      _col(df_lc, "declaration_ref")[mask].values,
+        }).to_excel(w, sheet_name="Declaration Tracker", index=False)
 
     return buf.getvalue()
 
 
 def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
                   indian_value: float, imported_value: float) -> str:
-    """Draft CA certificate covering letter text."""
-    company = meta.get("name", "[PROJECT NAME]")
-    customer = meta.get("customer", "[CUSTOMER NAME]")
     today = date.today().strftime("%d %B %Y")
     return textwrap.dedent(f"""\
     CERTIFICATE OF INDIGENOUS CONTENT
@@ -141,8 +128,8 @@ def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
     This is to certify that we have examined the books of accounts, invoices,
     purchase orders and internal cost records of the above-referenced project:
 
-        Project:              {company}
-        Customer / end user:  {customer}
+        Project:              {meta.get("name", "[PROJECT NAME]")}
+        Customer / end user:  {meta.get("customer", "[CUSTOMER NAME]")}
         Total contract value: EUR {contract_value:,.0f}
 
     Based on our examination, the Indigenous Content (IC) for this supply is
@@ -176,7 +163,6 @@ def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
 
 def _manufacturer_decl_text(supplier_name: str, component: str,
                               hs_code: str, project: str) -> str:
-    """Manufacturer's Declaration of Domestic Origin template."""
     today = date.today().strftime("%d %B %Y")
     return textwrap.dedent(f"""\
     MANUFACTURER'S DECLARATION OF DOMESTIC ORIGIN
@@ -185,13 +171,12 @@ def _manufacturer_decl_text(supplier_name: str, component: str,
 
     To: [Buyer / Authorised Representative]
 
-    We, {supplier_name or '[SUPPLIER NAME]'}, hereby declare that the
-    goods described below are manufactured in India and qualify as
-    Domestically Manufactured Goods under applicable Indian procurement
-    policy:
+    We, {supplier_name or "[SUPPLIER NAME]"}, hereby declare that the goods
+    described below are manufactured in India and qualify as Domestically
+    Manufactured Goods under applicable Indian procurement policy:
 
         Component description:  {component}
-        HS Code:                {hs_code or '[HS Code]'}
+        HS Code:                {hs_code or "[HS Code]"}
         Project reference:      {project}
 
     We further confirm that:
@@ -210,7 +195,7 @@ def _manufacturer_decl_text(supplier_name: str, component: str,
 
     Name:     _______________________________
     Designation: _______________________________
-    Company:  {supplier_name or '[SUPPLIER NAME]'}
+    Company:  {supplier_name or "[SUPPLIER NAME]"}
     Date:     _______________________________
     Seal:
     """)
@@ -246,7 +231,17 @@ def main() -> None:
         st.error(f"Could not load BOM: {exc}")
         st.stop()
 
-    total_contract_value = float(df["total_cost"].sum())
+    # Ensure required columns exist in cost df (compute_costs may not pass all BOM cols through)
+    for _col_name in ("line_id", "part_name", "material_id", "total_cost"):
+        if _col_name not in df.columns:
+            # Try to pull from BOM directly
+            if _col_name in bom.columns:
+                df = df.merge(bom[["line_id", _col_name]].drop_duplicates("line_id"),
+                              on="line_id", how="left", suffixes=("", "_bom"))
+            else:
+                df[_col_name] = ""
+
+    total_contract_value = float(df["total_cost"].fillna(0).sum())
     lc_df = load_india_lc()
 
     # ── Sidebar ───────────────────────────────────────────────────────────────
@@ -257,7 +252,7 @@ def main() -> None:
         "Procurement category",
         list(IC_THRESHOLDS.keys()),
         index=0,
-        help="Select the applicable Indian procurement category to set the IC threshold.",
+        help="Selects the IC% threshold for the applicable Indian procurement category.",
     )
     auto_threshold = IC_THRESHOLDS[procurement_cat]
     custom_threshold_pct = st.sidebar.number_input(
@@ -265,35 +260,78 @@ def main() -> None:
         min_value=0.0, max_value=100.0,
         value=float(auto_threshold * 100),
         step=1.0,
-        help="Auto-filled from category above. Override if your contract specifies a different figure.",
+        help="Auto-filled from category. Override if your contract specifies a different figure.",
     )
     threshold = custom_threshold_pct / 100.0
 
     contract_override = st.sidebar.number_input(
         "Contract value (€) — override",
         min_value=0.0,
-        value=total_contract_value,
+        value=float(total_contract_value),
         step=10_000.0,
         format="%.0f",
-        help="Defaults to current BOM sell price. Override for the actual signed contract value.",
+        help="Defaults to BOM sell price. Override with actual signed contract value.",
     )
-    contract_value = contract_override if contract_override > 0 else total_contract_value
+    contract_value = float(contract_override) if contract_override > 0 else float(total_contract_value)
 
-    company_name     = st.sidebar.text_input("Your company name (for declarations)")
-    surveying_agency = st.sidebar.text_input("Surveying / certifying agency", placeholder="e.g. DGQA / BV / DNV")
+    st.sidebar.text_input("Your company name (for declarations)")
+    st.sidebar.text_input("Surveying / certifying agency", placeholder="e.g. DGQA / BV / DNV")
 
     st.sidebar.divider()
     st.sidebar.info(
         "**Three accepted methods — no quotes needed:**\n\n"
-        "1️⃣ **CA Certificate** — CA certifies IC% from your books. "
-        "Quotes stay internal.\n\n"
-        "2️⃣ **Origin Declaration** — Indian supplier signs 1-page origin declaration "
-        "(no price). Fully accepted by DGQA & classification societies.\n\n"
-        "3️⃣ **Bill of Entry method** — import customs records confirm what was imported; "
+        "1️⃣ **CA Certificate** — CA certifies IC% from your books. Quotes stay internal.\n\n"
+        "2️⃣ **Origin Declaration** — Indian supplier signs 1-page form (no price). "
+        "Accepted by DGQA & classification societies.\n\n"
+        "3️⃣ **Bill of Entry method** — customs import records confirm what was imported; "
         "balance is deemed domestic.\n\n"
         "Use all three in parallel for maximum defensibility."
     )
 
+    # ── Build seed table BEFORE tabs (used by all four tabs) ─────────────────
+    # Safe hs_code lookup — column may not exist in materials sheet yet
+    if "hs_code" in mats.columns and "material_id" in mats.columns:
+        hs_map = mats.dropna(subset=["material_id"]).set_index("material_id")["hs_code"].to_dict()
+    else:
+        hs_map = {}
+
+    bom_base = df[["line_id", "part_name", "material_id", "total_cost"]].copy()
+    bom_base["hs_code"] = bom_base["material_id"].map(hs_map).fillna("").astype(str)
+
+    if lc_df.empty:
+        seed = bom_base.copy()
+        seed["origin"]          = "Imported"
+        seed["indian_supplier"] = ""
+        seed["declaration_rxd"] = "Pending"
+        seed["declaration_ref"] = ""
+        seed["ic_value_pct"]    = 0.0
+        seed["notes"]           = ""
+    else:
+        # Only pull columns that actually exist in lc_df
+        lc_merge_cols = ["line_id"] + [
+            c for c in ["origin", "indian_supplier", "declaration_rxd",
+                         "declaration_ref", "ic_value_pct", "notes"]
+            if c in lc_df.columns
+        ]
+        seed = bom_base.merge(lc_df[lc_merge_cols], on="line_id", how="left")
+
+        # Ensure all expected columns exist after merge
+        seed["origin"]          = seed.get("origin",          pd.Series(dtype=str)).fillna("Imported")
+        seed["indian_supplier"] = seed.get("indian_supplier",  pd.Series(dtype=str)).fillna("")
+        seed["declaration_rxd"] = seed.get("declaration_rxd",  pd.Series(dtype=str)).fillna("Pending")
+        seed["declaration_ref"] = seed.get("declaration_ref",  pd.Series(dtype=str)).fillna("")
+        seed["ic_value_pct"]    = pd.to_numeric(
+            seed.get("ic_value_pct", pd.Series(dtype=float)), errors="coerce").fillna(0.0)
+        seed["notes"]           = seed.get("notes", pd.Series(dtype=str)).fillna("")
+
+    # Guarantee hs_code column exists (loaded lc_df might overwrite via merge)
+    if "hs_code" not in seed.columns:
+        seed["hs_code"] = ""
+
+    # Ensure total_cost is numeric
+    seed["total_cost"] = pd.to_numeric(seed["total_cost"], errors="coerce").fillna(0.0)
+
+    # ── Tabs ──────────────────────────────────────────────────────────────────
     tabs = st.tabs([
         "📋 IC Register",
         "📊 IC% Dashboard",
@@ -312,35 +350,6 @@ def main() -> None:
             "value is Indian). You do **not** need a supplier price quote — only an origin declaration."
         )
 
-        # Merge BOM cost data with existing LC data
-        bom_base = df[["line_id", "part_name", "material_id", "total_cost"]].copy()
-        bom_base["hs_code"] = bom_base["material_id"].map(
-            mats.set_index("material_id")["hs_code"].to_dict()
-        ).fillna("")
-
-        if lc_df.empty:
-            # Seed from BOM — default all to Imported (conservative)
-            seed = bom_base.copy()
-            seed["origin"]          = "Imported"
-            seed["indian_supplier"] = ""
-            seed["declaration_rxd"] = "Pending"
-            seed["declaration_ref"] = ""
-            seed["ic_value_pct"]    = 0.0
-            seed["notes"]           = ""
-        else:
-            # Merge saved data with current BOM
-            seed = bom_base.merge(
-                lc_df[["line_id", "origin", "indian_supplier", "declaration_rxd",
-                        "declaration_ref", "ic_value_pct", "notes"]],
-                on="line_id", how="left"
-            )
-            seed["origin"]          = seed["origin"].fillna("Imported")
-            seed["indian_supplier"] = seed["indian_supplier"].fillna("")
-            seed["declaration_rxd"] = seed["declaration_rxd"].fillna("Pending")
-            seed["declaration_ref"] = seed["declaration_ref"].fillna("")
-            seed["ic_value_pct"]    = pd.to_numeric(seed["ic_value_pct"], errors="coerce").fillna(0.0)
-            seed["notes"]           = seed["notes"].fillna("")
-
         edited = st.data_editor(
             seed[["line_id", "part_name", "material_id", "hs_code", "total_cost",
                   "origin", "ic_value_pct", "indian_supplier",
@@ -349,22 +358,23 @@ def main() -> None:
                 "line_id":         st.column_config.TextColumn("Line ID", width="small", disabled=True),
                 "part_name":       st.column_config.TextColumn("Component", disabled=True),
                 "material_id":     st.column_config.TextColumn("Material", width="small", disabled=True),
-                "hs_code":         st.column_config.TextColumn("HS Code", width="small"),
+                "hs_code":         st.column_config.TextColumn("HS Code", width="small",
+                                       help="Fill in if blank — needed for Bill of Entry method."),
                 "total_cost":      st.column_config.NumberColumn("Cost (€)", disabled=True, format="%.0f"),
                 "origin":          st.column_config.SelectboxColumn(
-                    "Origin", options=ORIGIN_OPTIONS,
-                    help="Indian = manufactured in India. Imported = sourced outside India. "
-                         "Partially Indian = split."),
+                                       "Origin", options=ORIGIN_OPTIONS,
+                                       help="Indian = manufactured in India. "
+                                            "Imported = sourced outside India. "
+                                            "Partially Indian = split (set IC fraction)."),
                 "ic_value_pct":    st.column_config.NumberColumn(
-                    "IC fraction (0–1)",
-                    min_value=0.0, max_value=1.0, format="%.2f",
-                    help="1.0 = 100% Indian. 0.0 = fully imported. "
-                         "Auto-set: Indian→1.0, Imported→0.0, Partially Indian→enter manually."),
+                                       "IC fraction (0–1)", min_value=0.0, max_value=1.0, format="%.2f",
+                                       help="Auto-set: Indian→1.0, Imported→0.0. "
+                                            "For Partially Indian enter the fraction manually."),
                 "indian_supplier": st.column_config.TextColumn(
-                    "Indian manufacturer",
-                    help="Name of Indian manufacturing company. No price needed."),
+                                       "Indian manufacturer",
+                                       help="Manufacturer name only — no price needed."),
                 "declaration_rxd": st.column_config.SelectboxColumn(
-                    "Declaration rxd?", options=DECL_STATUS),
+                                       "Declaration rxd?", options=DECL_STATUS),
                 "declaration_ref": st.column_config.TextColumn("Declaration ref / date"),
                 "notes":           st.column_config.TextColumn("Notes"),
             },
@@ -374,9 +384,11 @@ def main() -> None:
         )
 
         # Auto-correct ic_value_pct for pure Indian / Imported
+        edited = edited.copy()
+        edited["ic_value_pct"] = pd.to_numeric(edited["ic_value_pct"], errors="coerce").fillna(0.0)
         edited.loc[edited["origin"] == "Indian",   "ic_value_pct"] = 1.0
-        edited.loc[edited["origin"] == "Imported",  "ic_value_pct"] = 0.0
-        # Partially Indian: keep whatever the user entered
+        edited.loc[edited["origin"] == "Imported", "ic_value_pct"] = 0.0
+        edited["total_cost"] = pd.to_numeric(edited["total_cost"], errors="coerce").fillna(0.0)
 
         c_save, c_tip = st.columns([1, 5])
         if c_save.button("💾 Save register", type="primary", use_container_width=True):
@@ -384,11 +396,18 @@ def main() -> None:
                                "indian_supplier", "declaration_rxd", "declaration_ref",
                                "ic_value_pct", "notes"]].copy()
             save_sheet(save_df, "india_lc")
-            st.success("IC register saved.")
+            st.success("✅ IC register saved.")
         c_tip.caption(
-            "💡 **Tip:** You only need to fill in **Indian manufacturer** names for Indian/Partially Indian lines. "
+            "💡 Fill in **Indian manufacturer** names for Indian/Partially Indian lines. "
             "The surveying agency needs the manufacturer name and HS code — NOT your purchase price."
         )
+
+    # Pre-compute IC values used by all remaining tabs
+    ic_eur     = edited["total_cost"] * edited["ic_value_pct"]
+    imp_eur    = edited["total_cost"] * (1 - edited["ic_value_pct"])
+    indian_val = float(ic_eur.sum())
+    ic_pct_calc = indian_val / contract_value if contract_value > 0 else 0.0
+    imported_val = contract_value - indian_val
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 2 — IC% DASHBOARD
@@ -396,83 +415,67 @@ def main() -> None:
     with tabs[1]:
         st.subheader("IC% summary")
 
-        # Calculate IC values
-        edited["_ic_eur"] = (
-            pd.to_numeric(edited["total_cost"], errors="coerce").fillna(0)
-            * pd.to_numeric(edited["ic_value_pct"], errors="coerce").fillna(0)
-        )
-        edited["_imp_eur"] = (
-            pd.to_numeric(edited["total_cost"], errors="coerce").fillna(0)
-            * (1 - pd.to_numeric(edited["ic_value_pct"], errors="coerce").fillna(0))
-        )
-
-        indian_value   = float(edited["_ic_eur"].sum())
-        imported_value = float(edited["_imp_eur"].sum())
-        ic_pct         = indian_value / contract_value if contract_value > 0 else 0.0
-
-        # KPIs
         k1, k2, k3, k4, k5 = st.columns(5)
-        sig = _traffic(ic_pct, threshold)
-        k1.metric("Declared IC%", _pct(ic_pct),
-                  delta=f"{sig} {'Meets' if ic_pct >= threshold else 'Below'} {_pct(threshold)} threshold")
-        k2.metric("Indian content (€)", fmt(indian_value, 0))
-        k3.metric("Imported content (€)", fmt(imported_value, 0))
-        k4.metric("Contract value (€)", fmt(contract_value, 0))
-        k5.metric("IC threshold", _pct(threshold),
+        sig = _traffic(ic_pct_calc, threshold)
+        k1.metric("Declared IC%", _pct(ic_pct_calc),
+                  delta=f"{sig} {'Meets' if ic_pct_calc >= threshold else 'Below'} "
+                        f"{_pct(threshold)} threshold")
+        k2.metric("Indian content (€)",   fmt(indian_val, 0))
+        k3.metric("Imported content (€)", fmt(imported_val, 0))
+        k4.metric("Contract value (€)",   fmt(contract_value, 0))
+        k5.metric("IC threshold",         _pct(threshold),
                   delta=procurement_cat, delta_color="off")
 
-        # Gap analysis
-        if ic_pct < threshold:
-            shortfall_eur = (threshold - ic_pct) * contract_value
+        if ic_pct_calc < threshold:
+            shortfall_eur = (threshold - ic_pct_calc) * contract_value
             st.error(
-                f"⚠️ IC% shortfall: **{_pct(threshold - ic_pct)}** — "
+                f"⚠️ IC% shortfall: **{_pct(threshold - ic_pct_calc)}** — "
                 f"need **{fmt(shortfall_eur, 0)}** more Indian content. "
-                f"See Strategy Adviser tab for options."
+                "See **Strategy Adviser** tab for options."
             )
         else:
-            surplus_pct = ic_pct - threshold
+            surplus = ic_pct_calc - threshold
             st.success(
-                f"✅ IC% exceeds threshold by **{_pct(surplus_pct)}** "
-                f"({fmt(surplus_pct * contract_value, 0)} buffer). "
-                f"Comfortable position — document and file."
+                f"✅ IC% exceeds threshold by **{_pct(surplus)}** "
+                f"({fmt(surplus * contract_value, 0)} buffer). "
+                "Comfortable — focus on documentation."
             )
 
         st.divider()
 
-        # ── Declaration tracker status ──────────────────────────────────────
+        # ── Declaration tracker ───────────────────────────────────────────────
         st.subheader("Origin declaration status")
         indian_lines = edited[edited["origin"].isin(["Indian", "Partially Indian"])].copy()
 
-        d_yes     = (indian_lines["declaration_rxd"] == "Yes").sum()
-        d_pending = (indian_lines["declaration_rxd"] == "Pending").sum()
-        d_no      = (indian_lines["declaration_rxd"] == "No").sum()
+        d_yes     = int((indian_lines["declaration_rxd"] == "Yes").sum())
+        d_pending = int((indian_lines["declaration_rxd"] == "Pending").sum())
+        d_no      = int((indian_lines["declaration_rxd"] == "No").sum())
 
         dc1, dc2, dc3, dc4 = st.columns(4)
         dc1.metric("Lines needing declaration", len(indian_lines))
-        dc2.metric("✅ Received", d_yes,
-                   delta="good" if d_pending == 0 else None, delta_color="normal")
-        dc3.metric("⏳ Pending", d_pending,
-                   delta="chase suppliers" if d_pending > 0 else None,
-                   delta_color="inverse" if d_pending > 0 else "off")
+        dc2.metric("✅ Received",   d_yes)
+        dc3.metric("⏳ Pending",    d_pending,
+                   delta="chase suppliers" if d_pending else None,
+                   delta_color="inverse" if d_pending else "off")
         dc4.metric("❌ Not obtained", d_no,
-                   delta="risk" if d_no > 0 else None,
-                   delta_color="inverse" if d_no > 0 else "off")
+                   delta="risk" if d_no else None,
+                   delta_color="inverse" if d_no else "off")
 
         if d_pending > 0:
-            pending_suppliers = indian_lines[indian_lines["declaration_rxd"] == "Pending"][
-                ["line_id", "part_name", "indian_supplier"]
-            ]
-            st.warning(
-                f"Chase declarations from: "
-                + ", ".join(
-                    f"**{r['indian_supplier'] or r['line_id']}**"
-                    for _, r in pending_suppliers.iterrows()
-                )
-            )
+            names = indian_lines.loc[
+                indian_lines["declaration_rxd"] == "Pending",
+                "indian_supplier"
+            ].fillna("").tolist()
+            line_ids = indian_lines.loc[
+                indian_lines["declaration_rxd"] == "Pending",
+                "line_id"
+            ].fillna("").tolist()
+            labels = [n if n.strip() else lid for n, lid in zip(names, line_ids)]
+            st.warning("Chase declarations from: " + ", ".join(f"**{l}**" for l in labels))
 
         st.divider()
 
-        # ── Origin breakdown chart ──────────────────────────────────────────
+        # ── Origin breakdown chart ─────────────────────────────────────────
         by_origin = (
             edited.groupby("origin")["total_cost"]
             .sum()
@@ -481,28 +484,25 @@ def main() -> None:
         )
         c1, c2 = st.columns([2, 1])
         with c1:
-            st.bar_chart(by_origin.set_index("Origin"), color="#2196F3", height=200)
+            st.bar_chart(by_origin.set_index("Origin")[["Cost (€)"]], color="#2196F3", height=200)
         with c2:
-            by_origin["IC €"] = by_origin.apply(
-                lambda r: r["Cost (€)"] if r["Origin"] == "Indian"
-                else (r["Cost (€)"] * edited.loc[
-                    edited["origin"] == r["Origin"], "ic_value_pct"
-                ].mean() if not edited.loc[edited["origin"] == r["Origin"]].empty else 0),
-                axis=1
-            )
-            by_origin["Cost (€)"] = by_origin["Cost (€)"].map(lambda x: fmt(x, 0))
-            st.dataframe(by_origin[["Origin", "Cost (€)"]], use_container_width=True, hide_index=True)
+            disp = by_origin.copy()
+            disp["Cost (€)"] = disp["Cost (€)"].map(lambda x: fmt(x, 0))
+            st.dataframe(disp, use_container_width=True, hide_index=True)
 
-        # ── Largest imported items ──────────────────────────────────────────
-        top_imported = edited[edited["origin"] == "Imported"].nlargest(8, "total_cost")[
-            ["line_id", "part_name", "material_id", "total_cost"]
-        ].copy()
+        # ── Top imported items ─────────────────────────────────────────────
+        top_imported = (
+            edited[edited["origin"] == "Imported"]
+            .nlargest(8, "total_cost")
+            [["line_id", "part_name", "material_id", "total_cost"]]
+            .copy()
+        )
         if not top_imported.empty:
             with st.expander("🔍 Top imported items — consider Indian alternatives"):
                 top_imported["total_cost"] = top_imported["total_cost"].map(lambda x: fmt(x, 0))
                 st.dataframe(top_imported.rename(columns={
                     "line_id": "Line", "part_name": "Component",
-                    "material_id": "Material", "total_cost": "Value (€)"
+                    "material_id": "Material", "total_cost": "Value (€)",
                 }), use_container_width=True, hide_index=True)
 
     # ══════════════════════════════════════════════════════════════════════════
@@ -517,38 +517,35 @@ def main() -> None:
             icon="🔒",
         )
 
-        ic_pct_calc = (
-            (pd.to_numeric(edited["total_cost"], errors="coerce").fillna(0)
-             * pd.to_numeric(edited["ic_value_pct"], errors="coerce").fillna(0)).sum()
-            / contract_value
-        ) if contract_value > 0 else 0.0
-        indian_val  = ic_pct_calc * contract_value
-        imported_val = contract_value - indian_val
-
         doc_col1, doc_col2 = st.columns(2)
 
-        # ── Document A: BOM Origin Register (Excel) ─────────────────────────
+        # ── Document A: BOM Origin Register (Excel) ──────────────────────────
         with doc_col1:
             with st.container(border=True):
                 st.markdown("**📄 Document A — BOM Origin Register**")
                 st.caption(
-                    "Excel workbook with three sheets: IC Calculation Summary, "
-                    "BOM Origin Register (line-by-line, no prices), "
-                    "and Declaration Tracker. Hand this to the surveying company."
+                    "Excel workbook: IC Calculation Summary, BOM Origin Register "
+                    "(line-by-line, no prices), Declaration Tracker. "
+                    "Hand this to the surveying company."
                 )
                 save_df = edited[["line_id", "part_name", "hs_code", "origin",
                                    "indian_supplier", "declaration_rxd",
                                    "declaration_ref", "ic_value_pct", "notes"]].copy()
-                st.download_button(
-                    "⬇️ Download BOM Origin Register (Excel)",
-                    data=_build_submission_excel(save_df, meta, contract_value, ic_pct_calc),
-                    file_name="india_ic_submission_package.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    use_container_width=True,
-                    type="primary",
-                )
+                try:
+                    excel_bytes = _build_submission_excel(
+                        save_df, meta, contract_value, ic_pct_calc)
+                    st.download_button(
+                        "⬇️ Download BOM Origin Register (Excel)",
+                        data=excel_bytes,
+                        file_name="india_ic_submission_package.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        type="primary",
+                    )
+                except Exception as e:
+                    st.error(f"Could not generate Excel: {e}")
 
-        # ── Document B: Draft CA Certificate ───────────────────────────────
+        # ── Document B: Draft CA Certificate ─────────────────────────────────
         with doc_col2:
             with st.container(border=True):
                 st.markdown("**📜 Document B — Draft CA Certificate**")
@@ -556,8 +553,8 @@ def main() -> None:
                     "Text template for your Chartered Accountant to adapt and sign. "
                     "CA certifies IC% from your books; individual quotes stay with you."
                 )
-                ca_text = _ca_cert_text(meta, contract_value, ic_pct_calc,
-                                        indian_val, imported_val)
+                ca_text = _ca_cert_text(
+                    meta, contract_value, ic_pct_calc, indian_val, imported_val)
                 st.download_button(
                     "⬇️ Download CA Certificate Template (TXT)",
                     data=ca_text,
@@ -568,11 +565,11 @@ def main() -> None:
 
         st.divider()
 
-        # ── Document C: Manufacturer Origin Declarations ─────────────────
+        # ── Document C: Manufacturer Origin Declarations ──────────────────────
         st.markdown("**🏭 Document C — Manufacturer's Origin Declarations**")
         st.caption(
             "Generate one declaration per Indian supplier. The supplier signs and stamps it. "
-            "No price appears. This is legally accepted as origin proof by DGQA and classification societies."
+            "No price appears. Accepted by DGQA and classification societies."
         )
 
         indian_lines2 = edited[edited["origin"].isin(["Indian", "Partially Indian"])].copy()
@@ -580,19 +577,23 @@ def main() -> None:
         if indian_lines2.empty:
             st.info("No lines tagged as Indian yet — update the IC Register tab first.")
         else:
-            # Group by supplier
-            suppliers_in_bom = indian_lines2["indian_supplier"].fillna("").unique()
-            suppliers_in_bom = [s for s in suppliers_in_bom if s.strip()]
-
-            if not suppliers_in_bom:
-                st.warning("Fill in **Indian manufacturer** names in the IC Register to generate declarations.")
+            suppliers_list = sorted(set(
+                s for s in indian_lines2["indian_supplier"].fillna("").tolist()
+                if s.strip()
+            ))
+            if not suppliers_list:
+                st.warning(
+                    "Fill in **Indian manufacturer** names in the IC Register "
+                    "to generate declarations."
+                )
             else:
-                sel_supplier = st.selectbox("Select supplier to generate declaration for",
-                                             options=suppliers_in_bom)
+                sel_supplier = st.selectbox(
+                    "Select supplier to generate declaration for",
+                    options=suppliers_list,
+                )
                 sup_lines = indian_lines2[
                     indian_lines2["indian_supplier"].fillna("") == sel_supplier
                 ]
-                # Use first component for the template; list all in notes
                 component_list = "; ".join(sup_lines["part_name"].fillna("").tolist())
                 hs_list = "; ".join(sup_lines["hs_code"].fillna("").tolist())
 
@@ -610,13 +611,12 @@ def main() -> None:
                     data=decl_text,
                     file_name=f"origin_declaration_{sel_supplier.replace(' ', '_')}.txt",
                     mime="text/plain",
-                    use_container_width=False,
                 )
 
         st.divider()
 
-        # ── Document D: Internal IC workbook (WITH prices, for CA) ────────
-        st.markdown("**🔐 Document D — Internal IC Workbook (for CA only — CONFIDENTIAL)**")
+        # ── Document D: Internal IC workbook (for CA, with prices) ───────────
+        st.markdown("**🔐 Document D — Internal IC Workbook (CA eyes only — CONFIDENTIAL)**")
         st.caption(
             "Full detail with costs — give ONLY to your CA firm, not to the surveyor. "
             "CA uses this to certify the IC% calculation."
@@ -625,28 +625,30 @@ def main() -> None:
         def _internal_excel() -> bytes:
             buf = io.BytesIO()
             out = edited.copy()
-            out["_ic_eur"] = (
-                pd.to_numeric(out["total_cost"], errors="coerce").fillna(0)
-                * pd.to_numeric(out["ic_value_pct"], errors="coerce").fillna(0)
-            )
-            out["_imp_eur"] = out["total_cost"].fillna(0) - out["_ic_eur"]
-            out["ic_value_pct_fmt"] = out["ic_value_pct"].map(
-                lambda x: f"{float(x or 0)*100:.0f}%")
+            out["IC value (€)"]     = out["total_cost"] * out["ic_value_pct"]
+            out["Import value (€)"] = out["total_cost"] - out["IC value (€)"]
+            out["IC%"]              = out["ic_value_pct"].map(
+                lambda x: f"{float(x or 0) * 100:.0f}%")
+            display_cols = {
+                "line_id":          "Line ID",
+                "part_name":        "Component",
+                "material_id":      "Material",
+                "total_cost":       "BOM cost (€)",
+                "origin":           "Origin",
+                "IC%":              "IC%",
+                "IC value (€)":     "IC value (€)",
+                "Import value (€)": "Import value (€)",
+                "indian_supplier":  "Indian manufacturer",
+                "hs_code":          "HS Code",
+                "declaration_rxd":  "Declaration rxd?",
+                "declaration_ref":  "Declaration ref",
+                "notes":            "Notes",
+            }
+            # Only select columns that actually exist
+            sel_cols = [c for c in display_cols if c in out.columns]
             with pd.ExcelWriter(buf, engine="openpyxl") as w:
-                out[["line_id", "part_name", "material_id", "total_cost",
-                     "origin", "ic_value_pct_fmt", "_ic_eur", "_imp_eur",
-                     "indian_supplier", "hs_code", "declaration_rxd",
-                     "declaration_ref", "notes"]].rename(columns={
-                    "line_id": "Line ID", "part_name": "Component",
-                    "material_id": "Material", "total_cost": "BOM cost (€)",
-                    "origin": "Origin", "ic_value_pct_fmt": "IC%",
-                    "_ic_eur": "IC value (€)", "_imp_eur": "Import value (€)",
-                    "indian_supplier": "Indian manufacturer",
-                    "hs_code": "HS Code",
-                    "declaration_rxd": "Declaration rxd?",
-                    "declaration_ref": "Declaration ref",
-                }).to_excel(w, sheet_name="IC Detail", index=False)
-
+                out[sel_cols].rename(columns=display_cols).to_excel(
+                    w, sheet_name="IC Detail", index=False)
                 pd.DataFrame([
                     ["Contract value (€)",   f"{contract_value:,.0f}"],
                     ["Indian content (€)",   f"{indian_val:,.0f}"],
@@ -658,12 +660,15 @@ def main() -> None:
                 ], columns=["Field", "Value"]).to_excel(w, sheet_name="Summary", index=False)
             return buf.getvalue()
 
-        st.download_button(
-            "⬇️ Download internal IC workbook (CONFIDENTIAL — CA eyes only)",
-            data=_internal_excel(),
-            file_name="india_ic_internal_CONFIDENTIAL.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        try:
+            st.download_button(
+                "⬇️ Download internal IC workbook (CONFIDENTIAL — CA eyes only)",
+                data=_internal_excel(),
+                file_name="india_ic_internal_CONFIDENTIAL.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except Exception as e:
+            st.error(f"Could not generate internal workbook: {e}")
 
     # ══════════════════════════════════════════════════════════════════════════
     # TAB 4 — STRATEGY ADVISER
@@ -671,15 +676,14 @@ def main() -> None:
     with tabs[3]:
         st.subheader("Strategy adviser — how to reach your IC% target")
 
-        ic_pct_now = ic_pct_calc
-        shortfall  = max(threshold - ic_pct_now, 0.0)
+        shortfall = max(threshold - ic_pct_calc, 0.0)
 
         if shortfall == 0:
             st.success(
-                f"✅ You currently meet the IC% requirement ({_pct(ic_pct_now)} ≥ {_pct(threshold)}). "
+                f"✅ You currently meet the IC% requirement "
+                f"({_pct(ic_pct_calc)} ≥ {_pct(threshold)}). "
                 "Focus on documentation (declarations, CA cert) rather than sourcing changes."
             )
-
         else:
             shortfall_eur = shortfall * contract_value
             st.error(
@@ -694,29 +698,25 @@ def main() -> None:
             st.markdown("#### 1️⃣ Partially Indian items — maximise claimed fraction (fastest, zero cost)")
             st.markdown(
                 "Any item tagged **Partially Indian** where the IC fraction is set conservatively "
-                "can be reassessed with better data. If an Indian foundry casts the blank and an "
-                "imported CNC finishes it, the casting portion IS Indian content. "
+                "can be reassessed. If an Indian foundry casts the blank and imported CNC "
+                "finishes it, the casting portion IS Indian content. "
                 "Get a cost breakdown from the Indian supplier confirming the split."
             )
-            partial_lines = edited[edited["origin"] == "Partially Indian"].copy()
-            if partial_lines.empty:
+            partial = edited[edited["origin"] == "Partially Indian"].copy()
+            if partial.empty:
                 st.caption("No Partially Indian lines tagged yet.")
             else:
-                partial_lines["_upside_eur"] = (
-                    partial_lines["total_cost"].fillna(0)
-                    * (1 - partial_lines["ic_value_pct"].fillna(0))
-                )
-                partial_lines["ic_value_pct"] = partial_lines["ic_value_pct"].map(
-                    lambda x: f"{float(x)*100:.0f}%")
-                partial_lines["_upside_eur"] = partial_lines["_upside_eur"].map(
-                    lambda x: fmt(x, 0))
+                partial["Max upside (€) if 100%"] = (
+                    partial["total_cost"] * (1 - partial["ic_value_pct"])
+                ).map(lambda x: fmt(x, 0))
+                partial["ic_value_pct"] = partial["ic_value_pct"].map(
+                    lambda x: f"{float(x) * 100:.0f}%")
                 st.dataframe(
-                    partial_lines[["line_id", "part_name", "indian_supplier",
-                                   "ic_value_pct", "_upside_eur"]].rename(columns={
+                    partial[["line_id", "part_name", "indian_supplier",
+                              "ic_value_pct", "Max upside (€) if 100%"]].rename(columns={
                         "line_id": "Line", "part_name": "Component",
                         "indian_supplier": "Indian manufacturer",
                         "ic_value_pct": "Current IC%",
-                        "_upside_eur": "Max upside (€) if 100%",
                     }),
                     use_container_width=True, hide_index=True,
                 )
@@ -729,24 +729,24 @@ def main() -> None:
                 "If you have Indian subcontractors or agents doing any of this, tag it. "
                 "This is the easiest Indian content to add — it's already there."
             )
-            nre_ic_eur = 0.0
             try:
                 from utils.io import load_nre
                 from utils.nre import nre_total
                 nre_df = load_nre()
                 if not nre_df.empty:
                     nre_ic_eur = float(nre_total(nre_df))
-                    st.metric(
-                        "NRE / engineering cost",
-                        fmt(nre_ic_eur, 0),
-                        delta="Add to IC% if performed in India",
-                        delta_color="normal",
-                    )
                     nre_contribution = nre_ic_eur / contract_value if contract_value > 0 else 0
-                    st.caption(
-                        f"If all NRE is Indian: IC% = {_pct(ic_pct_now + nre_contribution)} "
-                        f"(currently {_pct(ic_pct_now)})"
+                    st.metric(
+                        "NRE / engineering cost", fmt(nre_ic_eur, 0),
+                        delta="Add to IC% if performed in India", delta_color="normal",
                     )
+                    st.caption(
+                        f"If all NRE is Indian: IC% = "
+                        f"{_pct(ic_pct_calc + nre_contribution)} "
+                        f"(currently {_pct(ic_pct_calc)})"
+                    )
+                else:
+                    st.caption("No NRE data loaded — enter it in Engineering & NRE page.")
             except Exception:
                 st.caption("Load NRE data in Engineering & NRE page to see NRE IC contribution.")
 
@@ -755,25 +755,22 @@ def main() -> None:
             st.markdown(
                 "The items below are currently **Imported** and have the highest value. "
                 "Consider whether an Indian foundry, fabricator or distributor can supply "
-                "a compliant alternative — even if at a modest premium, the IC% uplift may "
-                "be commercially beneficial."
+                "a compliant alternative — even at a modest premium the IC% uplift may be "
+                "commercially beneficial."
             )
-            top_imp = edited[edited["origin"] == "Imported"].nlargest(6, "total_cost")[
-                ["line_id", "part_name", "material_id", "total_cost", "hs_code"]
-            ].copy()
+            top_imp = (
+                edited[edited["origin"] == "Imported"]
+                .nlargest(6, "total_cost")
+                [["line_id", "part_name", "material_id", "total_cost", "hs_code"]]
+                .copy()
+            )
             if top_imp.empty:
                 st.caption("No imported lines.")
             else:
-                top_imp["total_cost"] = top_imp["total_cost"].map(lambda x: fmt(x, 0))
-                top_imp["IC uplift if Indian"] = top_imp.apply(
-                    lambda r: _pct(
-                        pd.to_numeric(
-                            edited.loc[edited["line_id"] == r["line_id"], "total_cost"],
-                            errors="coerce"
-                        ).fillna(0).sum() / contract_value
-                    ) if contract_value > 0 else "—",
-                    axis=1,
+                top_imp["IC uplift if Indian"] = top_imp["total_cost"].map(
+                    lambda v: _pct(v / contract_value) if contract_value > 0 else "—"
                 )
+                top_imp["total_cost"] = top_imp["total_cost"].map(lambda x: fmt(x, 0))
                 st.dataframe(
                     top_imp.rename(columns={
                         "line_id": "Line", "part_name": "Component",
@@ -788,31 +785,34 @@ def main() -> None:
             st.markdown(
                 """
 **Bill of Entry (BoE) method:**
-File a Bill of Entry for every imported item. The customs-cleared import value is officially
-documented. Everything in the contract value not covered by a BoE is deemed Indian. Simple,
-irrefutable, and requires zero supplier cooperation beyond standard import paperwork.
+File a Bill of Entry for every imported item with Indian customs. The cleared import
+value is officially documented. Everything in the contract value not covered by a BoE
+is deemed Indian — simple, irrefutable, requires zero supplier cooperation beyond
+standard import paperwork.
 
 **Free Issue Material (FIM):**
-If the Indian customer is purchasing certain imported items themselves and providing them free
-of charge to you, those items may be excluded from the IC% denominator entirely, boosting your
-effective IC%. Requires contract clause — worth negotiating for high-value imports.
+If the Indian customer purchases certain imported items themselves and supplies them
+free of charge to you, those items may be excluded from the IC% denominator entirely,
+boosting your effective IC%. Requires a contract clause — worth negotiating for
+high-value imports (e.g. NAB castings, impeller blanks).
 
 **Offset arrangements:**
 Under DAP 2020, foreign OEMs with large Indian defence contracts can generate Offset
-credits by placing work with Indian entities. If your parent company has an offset obligation
-in India, sub-placing machining/assembly work is dual-purpose.
+credits by placing work with Indian entities. If your parent company has an offset
+obligation in India, sub-placing machining/assembly work is dual-purpose.
 
-**Letter of Comfort vs. full quotes:**
-For Partially Indian items where you are getting a competitive domestic quote, you can
-present a Letter of Intent from the Indian supplier (not the actual price quote) as evidence
-you are actively pursuing Indian sourcing. Accepted at tender stage by most authorities.
+**Letter of Intent vs. full quotes:**
+For Partially Indian items where you are actively seeking a domestic quote, present
+a Letter of Intent from the Indian supplier (not the actual price quote) as evidence
+of active local sourcing. Accepted at tender stage by most procurement authorities.
                 """
             )
 
         st.divider()
         st.info(
             "**Bottom line:** Do not submit your full quote book. "
-            "Submit: (A) BOM Origin Register, (B) CA Certificate, (C) Supplier Origin Declarations. "
+            "Submit: (A) BOM Origin Register, (B) CA Certificate, "
+            "(C) Supplier Origin Declarations. "
             "Your CA sees the internal workbook; the surveyor sees only origin data.",
             icon="🔒",
         )
