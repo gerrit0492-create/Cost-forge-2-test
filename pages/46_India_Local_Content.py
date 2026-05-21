@@ -43,6 +43,127 @@ from utils.style import inject_css, page_header
 ORIGIN_OPTIONS = ["Indian", "Imported", "Partially Indian"]
 DECL_STATUS    = ["Pending", "Yes", "No", "Not required"]
 
+# ── HS code keyword → code mapping (marine / industrial components) ───────────
+# Each entry: (tuple-of-keywords,  hs_code,  short description)
+_HS_KEYWORD_MAP: list[tuple[tuple[str, ...], str, str]] = [
+    (("impeller", "runner", "wheel"),                       "8413.91", "Parts for pumps"),
+    (("nozzle", "deflector", "jet tube", "steering nozzle"),"8481.80", "Taps/cocks/valves"),
+    (("shaft",),                                            "8483.10", "Transmission shafts"),
+    (("ball bearing", "roller bearing", "taper bearing"),   "8482.10", "Bearings"),
+    (("bearing",),                                          "8482.80", "Bearings — other"),
+    (("mechanical seal", "lip seal", "face seal"),          "8484.10", "Gaskets & seals"),
+    (("o-ring", "o ring", "oring"),                         "4016.93", "Rubber gaskets"),
+    (("gasket", "rubber", "elastomer"),                     "4016.93", "Vulcanised rubber"),
+    (("wear ring", "liner", "wear liner"),                  "8413.91", "Parts for pumps"),
+    (("casing", "housing", "volute", "bowl", "scroll"),     "8413.91", "Parts for pumps"),
+    (("cover", "end cover", "bearing housing"),             "8413.91", "Parts for pumps"),
+    (("valve", "check valve", "gate valve", "butterfly"),   "8481.80", "Valves"),
+    (("bolt", "stud", "cap screw", "hex bolt"),             "7318.15", "Screws & bolts"),
+    (("nut", "lock nut", "hex nut"),                        "7318.16", "Nuts"),
+    (("washer", "spring washer"),                           "7318.21", "Washers"),
+    (("flange",),                                           "7307.91", "Flanges — steel"),
+    (("pipe", "tube", "hose"),                              "7304.49", "Seamless pipes/tubes"),
+    (("casting", "cast bronze", "cast nab"),                "7419.99", "Copper alloy articles"),
+    (("nab", "aluminium bronze", "nickel aluminium"),       "8413.91", "Parts for pumps"),
+    (("bronze", "gunmetal"),                                "7419.99", "Copper alloy articles"),
+    (("sensor", "transducer", "transmitter", "pressure sensor"), "9026.80", "Measuring instruments"),
+    (("motor", "servo motor", "electric motor"),            "8501.10", "Electric motors"),
+    (("pump",),                                             "8413.50", "Centrifugal pumps"),
+    (("hydraulic", "cylinder", "ram"),                      "8412.21", "Hydraulic actuators"),
+    (("cable", "wire", "wiring harness"),                   "8544.49", "Electric conductors"),
+    (("gearbox", "gear", "pinion", "bevel gear"),           "8483.40", "Gears & gearing"),
+    (("coupling", "flexible coupling", "rigid coupling"),   "8483.60", "Couplings"),
+    (("bracket", "frame", "weldment", "fabrication"),       "7326.90", "Other steel articles"),
+    (("stainless", "ss316", "ss304", "duplex"),             "7326.90", "Other steel articles"),
+    (("paint", "coating", "primer", "epoxy"),               "3208.90", "Paints & varnishes"),
+    (("key", "keyway", "dowel"),                            "7318.29", "Other threaded articles"),
+    (("grease", "lubricant", "oil"),                        "2710.19", "Lubricating oils"),
+    (("nameplate", "label", "plate"),                       "8310.00", "Sign-plates & nameplates"),
+]
+
+
+def _suggest_hs_code(part_name: str) -> str:
+    """Return a likely HS code based on keywords in the component name.
+    Returns empty string when no match — user fills it in."""
+    name_lower = str(part_name or "").lower()
+    for keywords, hs_code, _ in _HS_KEYWORD_MAP:
+        if any(kw in name_lower for kw in keywords):
+            return hs_code
+    return ""
+
+
+# ── Known Indian manufacturers (marine / industrial) ─────────────────────────
+INDIAN_SUPPLIERS: list[str] = [
+    "",                                         # blank — for non-Indian lines
+    # Castings & forgings
+    "Bharat Forge Ltd",
+    "Bhoruka Aluminium Ltd",
+    "Electrosteel Castings Ltd",
+    "Hinduja Foundries Ltd",
+    "Kirloskar Ferrous Industries",
+    "Nelcast Ltd",
+    "Sundaram Clayton Ltd",
+    "WFD Metalcast India",
+    # Machined / fabricated components
+    "BEML Ltd",
+    "Godrej & Boyce Mfg Co Ltd",
+    "HMT Ltd (Machine Tools)",
+    "L&T Precision Engineering",
+    "Larsen & Toubro Ltd",
+    "Tata Advanced Systems Ltd",
+    # Bearings
+    "FAG Bearings India (Schaeffler India)",
+    "NBC Bearings (National Engineering Industries)",
+    "SKF India Ltd",
+    "Timken India Ltd",
+    # Seals & gaskets
+    "Freudenberg Sealing Technologies India",
+    "Parker Hannifin India Pvt Ltd",
+    "Trelleborg Sealing Solutions India",
+    # Fasteners
+    "Bulten India Pvt Ltd",
+    "Sundaram Fasteners Ltd",
+    "Vikrant Screw Factory",
+    # Hydraulics & pneumatics
+    "Bosch Rexroth India Ltd",
+    "Eaton Fluid Power Ltd (India)",
+    "Parker Hannifin India Pvt Ltd",
+    # Electrical & instrumentation
+    "ABB India Ltd",
+    "Bharat Heavy Electricals Ltd (BHEL)",
+    "Emerson Electric India",
+    "Honeywell Automation India",
+    "Schneider Electric India",
+    "Siemens Ltd India",
+    # Valves
+    "Alfa Laval India Pvt Ltd",
+    "Audco India Ltd (Flowserve)",
+    "KSB Pumps Ltd",
+    "L&T Valves Ltd",
+    # Stainless / structural steel
+    "Bhushan Steel Ltd",
+    "Jindal Stainless Ltd",
+    "Kalyani Steels Ltd",
+    "Mukand Ltd",
+    # Pumps & fluid equipment
+    "Flowserve India Controls Pvt Ltd",
+    "Kirloskar Brothers Ltd",
+    "KSB Pumps Ltd",
+    "Sulzer India Ltd",
+    # Marine & defence
+    "Cochin Shipyard Ltd",
+    "Garden Reach Shipbuilders & Engineers Ltd",
+    "Goa Shipyard Ltd",
+    "Hindustan Shipyard Ltd",
+    "Mazagon Dock Shipbuilders Ltd",
+    # Rubber & sealing
+    "Fenner India Ltd",
+    "Gates India Pvt Ltd",
+    "Premier Rubber Works",
+    # Other
+    "Other Indian manufacturer",
+]
+
 IC_THRESHOLDS = {
     "Buy (Indian-IDDM)":             0.50,
     "Buy (Indian)":                  0.40,
@@ -298,12 +419,14 @@ def main() -> None:
     bom_base = df[["line_id", "part_name", "material_id", "total_cost"]].copy()
     bom_base["hs_code"] = bom_base["material_id"].map(hs_map).fillna("").astype(str)
 
+    today_iso = date.today().isoformat()   # e.g. "2026-05-21"
+
     if lc_df.empty:
         seed = bom_base.copy()
         seed["origin"]          = "Imported"
         seed["indian_supplier"] = ""
         seed["declaration_rxd"] = "Pending"
-        seed["declaration_ref"] = ""
+        seed["declaration_ref"] = today_iso   # default to today for new rows
         seed["ic_value_pct"]    = 0.0
         seed["notes"]           = ""
     else:
@@ -315,11 +438,12 @@ def main() -> None:
         ]
         seed = bom_base.merge(lc_df[lc_merge_cols], on="line_id", how="left")
 
-        # Ensure all expected columns exist after merge
-        seed["origin"]          = seed.get("origin",          pd.Series(dtype=str)).fillna("Imported")
-        seed["indian_supplier"] = seed.get("indian_supplier",  pd.Series(dtype=str)).fillna("")
-        seed["declaration_rxd"] = seed.get("declaration_rxd",  pd.Series(dtype=str)).fillna("Pending")
-        seed["declaration_ref"] = seed.get("declaration_ref",  pd.Series(dtype=str)).fillna("")
+        seed["origin"]          = seed.get("origin",         pd.Series(dtype=str)).fillna("Imported")
+        seed["indian_supplier"] = seed.get("indian_supplier", pd.Series(dtype=str)).fillna("")
+        seed["declaration_rxd"] = seed.get("declaration_rxd", pd.Series(dtype=str)).fillna("Pending")
+        # Default blank declaration_ref to today so new rows have a sensible starting date
+        seed["declaration_ref"] = seed.get("declaration_ref", pd.Series(dtype=str)).fillna(today_iso)
+        seed["declaration_ref"] = seed["declaration_ref"].replace("", today_iso)
         seed["ic_value_pct"]    = pd.to_numeric(
             seed.get("ic_value_pct", pd.Series(dtype=float)), errors="coerce").fillna(0.0)
         seed["notes"]           = seed.get("notes", pd.Series(dtype=str)).fillna("")
@@ -327,6 +451,10 @@ def main() -> None:
     # Guarantee hs_code column exists (loaded lc_df might overwrite via merge)
     if "hs_code" not in seed.columns:
         seed["hs_code"] = ""
+
+    # Auto-suggest HS codes for lines where it is still blank
+    mask_blank_hs = seed["hs_code"].fillna("").str.strip() == ""
+    seed.loc[mask_blank_hs, "hs_code"] = seed.loc[mask_blank_hs, "part_name"].map(_suggest_hs_code)
 
     # Ensure total_cost is numeric
     seed["total_cost"] = pd.to_numeric(seed["total_cost"], errors="coerce").fillna(0.0)
@@ -349,6 +477,13 @@ def main() -> None:
             "For **Partially Indian** lines, set the IC fraction (e.g. 0.60 = 60% of that line's "
             "value is Indian). You do **not** need a supplier price quote — only an origin declaration."
         )
+        st.info(
+            "🤖 **HS codes** are auto-suggested from the component name — verify and correct where needed.  "
+            "🏭 **Indian manufacturer** is a searchable dropdown of known Indian suppliers — "
+            "type to filter or scroll.  "
+            "📅 **Declaration ref** defaults to today's date; update it when the signed declaration arrives.",
+            icon="ℹ️",
+        )
 
         edited = st.data_editor(
             seed[["line_id", "part_name", "material_id", "hs_code", "total_cost",
@@ -370,12 +505,17 @@ def main() -> None:
                                        "IC fraction (0–1)", min_value=0.0, max_value=1.0, format="%.2f",
                                        help="Auto-set: Indian→1.0, Imported→0.0. "
                                             "For Partially Indian enter the fraction manually."),
-                "indian_supplier": st.column_config.TextColumn(
+                "indian_supplier": st.column_config.SelectboxColumn(
                                        "Indian manufacturer",
-                                       help="Manufacturer name only — no price needed."),
+                                       options=INDIAN_SUPPLIERS,
+                                       help="Select known Indian manufacturer, or type to filter. "
+                                            "Name only — no price needed."),
                 "declaration_rxd": st.column_config.SelectboxColumn(
                                        "Declaration rxd?", options=DECL_STATUS),
-                "declaration_ref": st.column_config.TextColumn("Declaration ref / date"),
+                "declaration_ref": st.column_config.TextColumn(
+                                       "Declaration ref / date",
+                                       help="Free text — defaults to today's date. "
+                                            "Update when declaration is actually received."),
                 "notes":           st.column_config.TextColumn("Notes"),
             },
             use_container_width=True,
