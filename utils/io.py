@@ -60,14 +60,20 @@ SCHEMA_BOM = {
     "cost_type":             "string",
     "subcontract_price_eur": "float64",
     "scale_exp":             "float64",
+    "pattern_cost_eur":      "float64",  # one-time casting pattern / die cost (NRE)
+    "pattern_amort_qty":     "float64",  # qty over which pattern is amortised
 }
 SCHEMA_QUOTES = {
-    "supplier": "string",
-    "material_id": "string",
-    "price_eur_per_kg": "float64",
-    "lead_time_days": "Int64",
-    "valid_until": "string",
-    "preferred": "Int64",
+    "supplier":              "string",
+    "material_id":           "string",
+    "price_eur_per_kg":      "float64",
+    "price_eur_per_unit":    "float64",  # fixed unit price (castings, assemblies)
+    "lead_time_days":        "Int64",
+    "valid_until":           "string",
+    "preferred":             "Int64",
+    "pattern_cost_eur":      "float64",  # foundry pattern / tooling NRE charge
+    "pattern_amort_qty":     "float64",  # min qty over which foundry amortises pattern
+    "notes":                 "string",   # e.g. "Sand casting, 6-week lead, min 3 off"
 }
 SCHEMA_ACTUALS = {
     "line_id":                "string",

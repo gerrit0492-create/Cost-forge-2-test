@@ -28,8 +28,14 @@ def best_quotes(quotes: pd.DataFrame) -> pd.DataFrame:
 
 def apply_best_quotes(materials: pd.DataFrame, quotes: pd.DataFrame) -> pd.DataFrame:
     best = best_quotes(quotes)
+    # Carry through per-unit price from the quotes sheet (for castings / assemblies).
+    # NOTE: pattern_cost_eur / pattern_amort_qty intentionally NOT propagated here —
+    # they are per-BOM-line attributes set directly on the BOM, not per-material.
+    _extra = [c for c in ["price_eur_per_unit"]
+              if c in best.columns]
+    join_cols = ["material_id", "price_eur_per_kg", "supplier", "lead_time_days"] + _extra
     m = materials.merge(
-        best[["material_id", "price_eur_per_kg", "supplier", "lead_time_days"]],
+        best[[c for c in join_cols if c in best.columns]],
         on="material_id",
         how="left",
         suffixes=("_base", "_quote"),

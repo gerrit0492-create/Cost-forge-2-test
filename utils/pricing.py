@@ -25,8 +25,15 @@ def compute_costs(
     """
     df = (
         bom.merge(mats, on="material_id", how="left")
-           .merge(procs, left_on="process_route", right_on="process_id", how="left")
+           .merge(procs, left_on="process_route", right_on="process_id", how="left",
+                  suffixes=("", "_proc"))
     )
+    # Resolve any _x/_y column collisions (BOM columns take priority over procs columns)
+    for _c in list(df.columns):
+        if _c.endswith("_x"):
+            base = _c[:-2]
+            df[base] = df[_c]
+            df.drop(columns=[_c, f"{base}_y"], errors="ignore", inplace=True)
     required = [
         "qty", "mass_kg", "price_eur_per_kg",
         "runtime_h", "machine_rate_eur_h", "labor_rate_eur_h",
@@ -88,27 +95,47 @@ def compute_costs(
     # Effective runtime = run time + setup amortised across production run
     effective_h = df["runtime_h"] + setup_h / n
 
+    # ── Casting / pattern cost columns ───────────────────────────────────────
+    # pattern_cost_eur can come from BOM column (direct entry) OR from quotes
+    # join (foundry quotes the pattern separately). BOM column takes priority.
+    pattern_cost_eur_bom   = _col("pattern_cost_eur", 0.0)
+    pattern_amort_qty_bom  = _col("pattern_amort_qty", 0.0)
+    # Per-unit price from quotes (castings, sub-assemblies) — overrides per-kg pricing
+    price_per_unit = _col("price_eur_per_unit", 0.0)
+
     # ── Flags ─────────────────────────────────────────────────────────────────
     is_bought       = make_buy == "B"
     has_subcontract = subcontract_price.notna() & (subcontract_price > 0)
-    is_manufactured = ~is_bought & ~has_subcontract
+    has_unit_price  = price_per_unit > 0                 # foundry / supplier per-unit price
+    is_manufactured = ~is_bought & ~has_subcontract & ~has_unit_price
 
     # ── Material cost: purchase quantity adjusted by yield factor ─────────────
     df["material_cost"] = qty_mult * (df["mass_kg"] / yield_factor) * df["price_eur_per_kg"]
+    # Override with per-unit price when available (castings, bought-out assemblies)
+    # Per-unit price covers the complete casting piece — material is included in that price
+    df.loc[has_unit_price, "material_cost"] = (qty_mult * price_per_unit)[has_unit_price]
 
     # ── MOQ excess cost ───────────────────────────────────────────────────────
-    # When BOM quantity × mass_kg < moq_kg, buyer must purchase the MOQ minimum.
-    # Record the excess cost as an additional material cost column (not in base_cost
-    # by default — shown as a separate advisory column).
+    # Only applies to weight-based pricing, not to per-unit castings.
     purchased_kg  = qty_mult * (df["mass_kg"] / yield_factor)
     moq_excess_kg = (moq_kg - purchased_kg).clip(lower=0)
     df["moq_excess_cost"] = moq_excess_kg * df["price_eur_per_kg"]
+    df.loc[has_unit_price, "moq_excess_cost"] = 0.0  # not applicable to per-unit pricing
+
+    # ── Casting pattern / tooling NRE cost ────────────────────────────────────
+    # Amortised over max(pattern_amort_qty, num_units).  If amort qty is not set,
+    # amortise over the production run (num_units).  Pattern cost is per BOM line
+    # (i.e. per unique part number / pattern).
+    _amort = pattern_amort_qty_bom.where(pattern_amort_qty_bom > 0, float(n))
+    df["pattern_cost"] = (pattern_cost_eur_bom / _amort * qty_mult).where(
+        pattern_cost_eur_bom > 0, other=0.0
+    )
 
     # ── Process cost ──────────────────────────────────────────────────────────
     proc_internal   = qty_mult * effective_h * (df["machine_rate_eur_h"] + df["labor_rate_eur_h"])
     df["process_cost"] = proc_internal.where(is_manufactured, other=0.0)
 
-    # Subcontracted lines: price + markup
+    # Subcontracted lines: price + markup (includes per-unit castings that go through subcontract)
     subc_with_markup = qty_mult * subcontract_price * (1 + subcontract_markup_pct)
     df.loc[has_subcontract, "process_cost"] = subc_with_markup[has_subcontract]
 
@@ -137,16 +164,22 @@ def compute_costs(
 
     # ── Overhead ──────────────────────────────────────────────────────────────
     # Marine standard: overhead on all process-related costs.
-    # Bought-out items get a small handling charge (2%) instead.
+    # Bought-out items (incl. castings) get a small handling charge (2%) instead.
+    # Per-unit priced items are treated as bought-out.
     process_total = df["process_cost"] + df["tooling_cost"] + df["energy_cost"] + df["rework_cost"]
 
+    is_bought_or_unit = is_bought | has_unit_price
     if overhead_base == "process":
         df["overhead"] = process_total * df["overhead_pct"]
-        df.loc[is_bought, "overhead"] = df.loc[is_bought, "material_cost"] * 0.02
+        # Buy / unit-price items: 2% handling charge on total bought value
+        # (subcontract price sits in process_cost for bought items)
+        bought_value = df["material_cost"] + df["process_cost"] + df["pattern_cost"]
+        df.loc[is_bought_or_unit, "overhead"] = bought_value[is_bought_or_unit] * 0.02
     else:
         df["overhead"] = (df["material_cost"] + process_total) * df["overhead_pct"]
 
-    df["base_cost"]  = df["material_cost"] + process_total + df["overhead"]
+    # Pattern cost is added after overhead (it's an NRE charge, not a recurring cost)
+    df["base_cost"]  = df["material_cost"] + process_total + df["overhead"] + df["pattern_cost"]
     df["margin"]     = df["base_cost"] * df["margin_pct"]
     df["total_cost"] = df["base_cost"] + df["margin"]
     return df

@@ -22,7 +22,8 @@ from utils.safe import guard
 from utils.style import inject_css, page_header
 
 QUOTE_COLUMNS = ["supplier", "material_id", "price_eur_per_kg",
-                 "lead_time_days", "valid_until", "preferred"]
+                 "lead_time_days", "valid_until", "preferred",
+                 "pattern_cost_eur", "pattern_amort_qty", "notes"]
 
 EMPTY_QUOTE: dict = {
     "supplier": "",
@@ -31,11 +32,15 @@ EMPTY_QUOTE: dict = {
     "lead_time_days": 14,
     "valid_until": pd.Timestamp.today().normalize() + pd.DateOffset(months=6),
     "preferred": 0,
+    "pattern_cost_eur": 0.0,
+    "pattern_amort_qty": 0.0,
+    "notes": "",
 }
 
 BOM_COLUMNS = ["line_id", "part_name", "material_id", "qty", "mass_kg",
                "process_route", "runtime_h", "setup_h",
-               "make_buy", "subcontract_price_eur"]
+               "make_buy", "subcontract_price_eur",
+               "pattern_cost_eur", "pattern_amort_qty"]
 
 
 @st.cache_data(ttl=30)
@@ -71,8 +76,9 @@ def main():
         caption="Add/edit supplier quotes · manage buy (purchased) items · track validity",
     )
 
-    tab_quotes, tab_buy, tab_coverage, tab_history = st.tabs([
+    tab_quotes, tab_castings, tab_buy, tab_coverage, tab_history = st.tabs([
         "📋 Supplier Quotes",
+        "🏭 Casting Patterns",
         "📦 Buy Items (no manufacturing)",
         "🔍 Coverage & gaps",
         "📈 Impact on cost",
@@ -92,10 +98,13 @@ def main():
 
         # Ensure correct types for data_editor
         if not q.empty:
-            q["price_eur_per_kg"] = pd.to_numeric(q["price_eur_per_kg"], errors="coerce").fillna(0.0)
-            q["lead_time_days"]   = pd.to_numeric(q["lead_time_days"], errors="coerce").fillna(14).astype(int)
-            q["preferred"]        = pd.to_numeric(q["preferred"], errors="coerce").fillna(0).astype(int)
-            q["valid_until"]      = pd.to_datetime(q["valid_until"], errors="coerce")
+            q["price_eur_per_kg"]   = pd.to_numeric(q["price_eur_per_kg"], errors="coerce").fillna(0.0)
+            q["lead_time_days"]     = pd.to_numeric(q["lead_time_days"], errors="coerce").fillna(14).astype(int)
+            q["preferred"]          = pd.to_numeric(q["preferred"], errors="coerce").fillna(0).astype(int)
+            q["valid_until"]        = pd.to_datetime(q["valid_until"], errors="coerce")
+            q["pattern_cost_eur"]   = pd.to_numeric(q.get("pattern_cost_eur", 0), errors="coerce").fillna(0.0)
+            q["pattern_amort_qty"]  = pd.to_numeric(q.get("pattern_amort_qty", 0), errors="coerce").fillna(0.0)
+            q["notes"]              = q.get("notes", pd.Series("", index=q.index)).fillna("")
 
         # Colour-code expiry
         def _status_flag(row):
@@ -136,9 +145,14 @@ def main():
         st.divider()
         st.subheader("Edit quotes")
 
+        # Ensure all QUOTE_COLUMNS exist
+        for _qc in QUOTE_COLUMNS:
+            if _qc not in q.columns:
+                q[_qc] = 0.0 if _qc not in ("supplier", "material_id", "valid_until", "notes") else ""
+
         # Editable table
         edited = st.data_editor(
-            q[QUOTE_COLUMNS] if not q.empty else pd.DataFrame([EMPTY_QUOTE]),
+            q[[c for c in QUOTE_COLUMNS if c in q.columns]] if not q.empty else pd.DataFrame([EMPTY_QUOTE]),
             num_rows="dynamic",
             use_container_width=True,
             key="quote_editor",
@@ -148,7 +162,10 @@ def main():
                     "Material ID", options=all_mat_ids, width="medium"
                 ),
                 "price_eur_per_kg": st.column_config.NumberColumn(
-                    "Price €/kg", min_value=0.0, format="€ %.3f", width="small"
+                    "Price €/kg",
+                    min_value=0.0, format="€ %.3f", width="small",
+                    help="For castings priced per piece, leave this 0 and use the BOM's "
+                         "subcontract_price_eur field instead.",
                 ),
                 "lead_time_days": st.column_config.NumberColumn(
                     "Lead time (days)", min_value=0, step=1, width="small"
@@ -158,6 +175,23 @@ def main():
                 ),
                 "preferred": st.column_config.CheckboxColumn(
                     "Preferred", width="small"
+                ),
+                "pattern_cost_eur": st.column_config.NumberColumn(
+                    "Pattern cost EUR",
+                    min_value=0.0, format="€ %.0f", width="small",
+                    help="One-time casting pattern / die / mould cost quoted by the foundry. "
+                         "Leave 0 for non-casting materials. "
+                         "Set this in the BOM (per part) or here as a reference for your BOM entry.",
+                ),
+                "pattern_amort_qty": st.column_config.NumberColumn(
+                    "Amort. qty",
+                    min_value=0.0, step=1.0, format="%.0f", width="small",
+                    help="Number of units the foundry amortises the pattern cost over "
+                         "(their minimum order / tooling split). Typically 5–20 off.",
+                ),
+                "notes": st.column_config.TextColumn(
+                    "Notes / RFQ ref", width="large",
+                    help="e.g. RFQ ref, material spec, certifications required, delivery terms",
                 ),
             },
             hide_index=True,
@@ -211,7 +245,155 @@ def main():
                 st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 2 — BUY ITEMS
+    # TAB 2 — CASTING PATTERNS
+    # ══════════════════════════════════════════════════════════════════════════
+    with tab_castings:
+        st.markdown("""
+### How supplier casting charges work
+
+When a foundry supplies a casting (sand cast, investment cast, die cast) they typically charge:
+
+| Charge | When | How it flows into cost |
+|---|---|---|
+| **Pattern / tooling cost** | One-time per part number (or per order) | Amortised over `pattern_amort_qty` units → `pattern_cost` column in BOM |
+| **Piece price** | Per casting supplied | Entered as `subcontract_price_eur` in BOM + foundry markup from Processes |
+| **Material spec** | Included in piece price | No separate material cost for bought-out castings |
+
+The cost engine:
+- Sets `process_cost` = piece price × (1 + subcontract markup%)
+- Adds `pattern_cost` = pattern_cost_eur ÷ amort_qty (per unit in the BOM)
+- Applies 2% handling overhead on the total bought value
+- Zero machining cost (machine/labour rates are zeroed for `make_buy = B`)
+- Margin comes from the process route (e.g. SAND_CAST) as usual
+""")
+
+        st.subheader("Casting BOM lines")
+        cast_mask = bom["process_route"].str.contains("CAST", case=False, na=False) \
+                    if "process_route" in bom.columns else pd.Series(False, index=bom.index)
+        buy_mask  = (bom["make_buy"].str.upper() == "B") if "make_buy" in bom.columns \
+                    else pd.Series(False, index=bom.index)
+        cast_bom  = bom[cast_mask | buy_mask].copy()
+
+        if cast_bom.empty:
+            st.info("No casting or Buy lines in BOM yet. Mark a BOM line `make_buy = B` in the Buy Items tab.")
+        else:
+            # Ensure columns exist
+            for _cc in ["subcontract_price_eur", "pattern_cost_eur", "pattern_amort_qty"]:
+                if _cc not in cast_bom.columns:
+                    cast_bom[_cc] = 0.0
+                cast_bom[_cc] = pd.to_numeric(cast_bom[_cc], errors="coerce").fillna(0.0)
+
+            show_cast_cols = [c for c in
+                              ["line_id", "part_name", "material_id", "qty", "mass_kg",
+                               "make_buy", "process_route", "subcontract_price_eur",
+                               "pattern_cost_eur", "pattern_amort_qty"]
+                              if c in cast_bom.columns]
+
+            cast_edited = st.data_editor(
+                cast_bom[show_cast_cols],
+                num_rows="fixed",
+                use_container_width=True,
+                key="cast_bom_editor",
+                column_config={
+                    "line_id":   st.column_config.TextColumn("Line ID", disabled=True, width="small"),
+                    "part_name": st.column_config.TextColumn("Part name", disabled=True, width="large"),
+                    "material_id": st.column_config.TextColumn("Material", disabled=True, width="small"),
+                    "qty":       st.column_config.NumberColumn("Qty", disabled=True, width="small"),
+                    "mass_kg":   st.column_config.NumberColumn("Mass kg", disabled=True, format="%.1f", width="small"),
+                    "make_buy":  st.column_config.SelectboxColumn("Make/Buy", options=["M", "B"], width="small"),
+                    "process_route": st.column_config.TextColumn(
+                        "Process route", width="small",
+                        help="Keep SAND_CAST or INVEST_CAST so overhead% and margin% are inherited. "
+                             "Make/Buy=B means hourly cost is zero — only subcontract price applies.",
+                    ),
+                    "subcontract_price_eur": st.column_config.NumberColumn(
+                        "Foundry piece price EUR",
+                        min_value=0.0, format="€ %.0f", width="medium",
+                        help="The foundry's quoted price per casting, per unit. "
+                             "A subcontract markup (from the process route) is added on top.",
+                    ),
+                    "pattern_cost_eur": st.column_config.NumberColumn(
+                        "Pattern cost EUR (total)",
+                        min_value=0.0, format="€ %.0f", width="medium",
+                        help="One-time cost to make the sand casting pattern or investment casting die. "
+                             "Quoted by the foundry. Amortised over pattern_amort_qty units.",
+                    ),
+                    "pattern_amort_qty": st.column_config.NumberColumn(
+                        "Amort. qty",
+                        min_value=0.0, step=1.0, format="%.0f", width="small",
+                        help="Number of units over which the pattern cost is spread. "
+                             "Often the foundry's MOQ (e.g. 5 off). "
+                             "If you order 1, you still pay 1/5 of the pattern.",
+                    ),
+                },
+                hide_index=True,
+            )
+
+            # Live preview of pattern cost per unit
+            st.markdown("**Pattern cost per unit (preview)**")
+            preview_rows = []
+            for _, r in cast_edited.iterrows():
+                pc = float(r.get("pattern_cost_eur", 0) or 0)
+                aq = float(r.get("pattern_amort_qty", 0) or 0)
+                sp = float(r.get("subcontract_price_eur", 0) or 0)
+                qty_val = int(r.get("qty", 1) or 1)
+                pc_per_unit = pc / aq if aq > 0 else pc
+                handling = (sp + pc_per_unit) * 0.02
+                preview_rows.append({
+                    "Line": r.get("line_id", ""),
+                    "Part": r.get("part_name", "")[:35],
+                    "Piece price": f"€ {sp:,.0f}",
+                    "Pattern (total)": f"€ {pc:,.0f}",
+                    "Amort qty": f"{int(aq) if aq else '—'}",
+                    "Pattern / unit": f"€ {pc_per_unit:,.0f}",
+                    "2% handling": f"€ {handling:,.0f}",
+                    "Base / unit": f"€ {sp + pc_per_unit + handling:,.0f}",
+                })
+            if preview_rows:
+                st.dataframe(pd.DataFrame(preview_rows), use_container_width=True, hide_index=True)
+
+            if st.button("💾 Save casting BOM changes", type="primary"):
+                updated = bom.copy()
+                for _cc in ["subcontract_price_eur", "pattern_cost_eur", "pattern_amort_qty", "make_buy"]:
+                    if _cc in cast_edited.columns and _cc in updated.columns:
+                        idx_map = cast_edited.set_index("line_id")[_cc]
+                        updated.set_index("line_id", inplace=True)
+                        updated.update(idx_map)
+                        updated.reset_index(inplace=True)
+                _save_bom(updated)
+                st.success("✅ Casting BOM changes saved.")
+                st.rerun()
+
+        st.divider()
+        st.subheader("Foundry quotes for castings")
+        st.caption(
+            "Record foundry quotes below for reference. "
+            "The pattern cost and piece price are entered per BOM line (above). "
+            "This section tracks which foundry gave which quote for your records."
+        )
+
+        if not quotes.empty:
+            cast_quotes = quotes[
+                quotes["material_id"].str.contains("CAST", case=False, na=False)
+            ].copy()
+            if cast_quotes.empty:
+                st.info("No casting-specific quotes found (material IDs containing 'CAST').")
+            else:
+                display_cols = [c for c in
+                                ["supplier", "material_id", "lead_time_days", "valid_until",
+                                 "pattern_cost_eur", "pattern_amort_qty", "notes"]
+                                if c in cast_quotes.columns]
+                st.dataframe(cast_quotes[display_cols].rename(columns={
+                    "supplier": "Foundry",
+                    "material_id": "Material",
+                    "lead_time_days": "Lead time (d)",
+                    "valid_until": "Valid until",
+                    "pattern_cost_eur": "Pattern cost EUR",
+                    "pattern_amort_qty": "Amort. qty",
+                }), use_container_width=True, hide_index=True)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # TAB 3 — BUY ITEMS
     # ══════════════════════════════════════════════════════════════════════════
     with tab_buy:
         st.markdown("""
@@ -356,7 +538,7 @@ Leave `subcontract_price_eur` blank to price by weight from the Quotes sheet.
                     st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 3 — COVERAGE & GAPS
+    # TAB 4 — COVERAGE & GAPS
     # ══════════════════════════════════════════════════════════════════════════
     with tab_coverage:
         st.subheader("Quote coverage — what's priced, what's missing")
@@ -462,7 +644,7 @@ Leave `subcontract_price_eur` blank to price by weight from the Quotes sheet.
             st.info("No make_buy column found in BOM.")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # TAB 4 — COST IMPACT
+    # TAB 5 — COST IMPACT
     # ══════════════════════════════════════════════════════════════════════════
     with tab_history:
         st.subheader("Cost impact — what the quotes are worth")
