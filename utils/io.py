@@ -21,6 +21,7 @@ SHEET_MAP = {
     "milestones":    "Milestones",
     "cost_timeline": "CostTimeline",
     "change_orders": "ChangeOrders",
+    "india_lc":      "IndiaLocalContent",
 }
 
 SCHEMA_MATERIALS = {
@@ -221,6 +222,25 @@ def load_change_orders() -> pd.DataFrame:
         return _read("change_orders", SCHEMA_CHANGE_ORDERS)
     except Exception:
         return pd.DataFrame(columns=list(SCHEMA_CHANGE_ORDERS.keys()))
+
+
+def load_india_lc() -> pd.DataFrame:
+    """Load India local content register (IndiaLocalContent sheet)."""
+    SCHEMA_INDIA_LC = {
+        "line_id":           "string",
+        "part_name":         "string",
+        "hs_code":           "string",
+        "origin":            "string",   # Indian / Imported / Partially Indian
+        "indian_supplier":   "string",
+        "declaration_rxd":   "string",   # Yes / No / Pending
+        "declaration_ref":   "string",
+        "ic_value_pct":      "float64",  # fraction of this line's value claimed as Indian (0–1)
+        "notes":             "string",
+    }
+    try:
+        return _read("india_lc", SCHEMA_INDIA_LC)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_INDIA_LC.keys()))
 
 
 # Keep for backwards compat (Download Center used it)

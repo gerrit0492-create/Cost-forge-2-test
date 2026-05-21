@@ -54,6 +54,7 @@ _P = {
     "spareparts": st.Page("pages/43_Spare_Parts.py",           title="Spare Parts",           icon="🔩"),
     "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
     "cockpit":    st.Page("pages/45_Command_Centre.py",          title="Command Centre",      icon="🎯"),
+    "india_lc":   st.Page("pages/46_India_Local_Content.py",    title="India Local Content", icon="🇮🇳"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -495,7 +496,7 @@ def dashboard() -> None:
         "From contract signature through delivery and close-out — "
         "cash flow, change orders, final P&L, spare parts and quote audit trail."
     )
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     with c1:
         _card(_P["contract"],    "💰", "Contract & Cash Flow",
               "Milestone payments, cash flow timeline, LD, APG, retention and bond costs.")
@@ -511,6 +512,9 @@ def dashboard() -> None:
     with c5:
         _card(_P["revisions"],   "📜", "Quote Revisions",
               "Snapshot and compare quote revisions — full audit trail for contracts.")
+    with c6:
+        _card(_P["india_lc"],    "🇮🇳", "India Local Content",
+              "IC% register, CA certificate, origin declarations — prove compliance without submitting quote book.")
 
     st.divider()
 
