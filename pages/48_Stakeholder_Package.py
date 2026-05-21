@@ -98,7 +98,10 @@ def _load_all():
     meta = load_project_meta()
 
     mats_quoted = apply_best_quotes(mats, quotes)
-    df = compute_costs(mats_quoted, procs, bom, energy_rate_eur_kwh=1.0)
+    # Use default energy rate (0.20 EUR/kWh) for correct EUR financials
+    df = compute_costs(mats_quoted, procs, bom)
+    # Add kWh column: divide energy_cost back out by the default rate
+    df["energy_kwh"] = df["energy_cost"] / 0.20
 
     return {
         "bom": bom,
@@ -153,7 +156,7 @@ def _build_subsystem_table(df: pd.DataFrame, bom: pd.DataFrame) -> pd.DataFrame:
         marg = sub["margin"].sum()
         sell = sub["total_cost"].sum()
         mass = sub["mass_kg"].sum() if "mass_kg" in sub.columns else 0.0
-        kwh = sub["energy_cost"].sum()  # energy_cost = kWh when rate=1.0
+        kwh = sub["energy_kwh"].sum() if "energy_kwh" in sub.columns else sub["energy_cost"].sum() / 0.20
         rows.append({
             "prefix": prefix,
             "scope": info["name"],
@@ -388,40 +391,50 @@ def _sheet_exec_summary(wb: Workbook, data: dict):
     base = df["base_cost"].sum()
     mat = df["material_cost"].sum()
     proc = df["process_cost"].sum()
+    mach = df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0
+    lab = df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0
     tool = df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0
-    kwh_total = df["energy_cost"].sum()
+    energy_eur = df["energy_cost"].sum()
     rework = df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0
+    moq = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
     oh = df["overhead"].sum()
     marg = df["margin"].sum()
+    kwh_total = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur / 0.20
 
     ws.cell(row=1, column=1, value="EXECUTIVE SUMMARY — COST KPIs").font = Font(bold=True, size=13, color=NAVY_FILL)
-    _apply_header_row(ws, 2, ["Cost Element", "EUR", "% of Base Cost"])
+    _apply_header_row(ws, 2, ["Cost Element", "EUR", "% of Base Cost", "Note"])
 
     kpi_rows = [
-        ("Material cost", mat, mat / base * 100 if base else 0),
-        ("Process cost", proc, proc / base * 100 if base else 0),
-        ("Tooling cost", tool, tool / base * 100 if base else 0),
-        ("Energy cost (EUR)", kwh_total, kwh_total / base * 100 if base else 0),
-        ("Rework cost", rework, rework / base * 100 if base else 0),
-        ("Overhead", oh, oh / base * 100 if base else 0),
-        ("Base cost", base, 100.0),
-        ("Margin", marg, marg / base * 100 if base else 0),
-        ("Sell price", sell, sell / base * 100 if base else 0),
+        ("Material cost", mat, mat / base * 100 if base else 0, ""),
+        ("MOQ excess cost", moq, moq / base * 100 if base else 0, "Min order qty premium — often exceeds material cost"),
+        ("Process cost", proc, proc / base * 100 if base else 0, ""),
+        ("  — Machine cost", mach, mach / base * 100 if base else 0, "incl. in Process"),
+        ("  — Labour cost", lab, lab / base * 100 if base else 0, "incl. in Process"),
+        ("  — Tooling cost", tool, tool / base * 100 if base else 0, "incl. in Process"),
+        ("  — Energy cost", energy_eur, energy_eur / base * 100 if base else 0, f"{kwh_total:,.0f} kWh @ 0.20 EUR/kWh"),
+        ("  — Rework cost", rework, rework / base * 100 if base else 0, "incl. in Process"),
+        ("Overhead", oh, oh / base * 100 if base else 0, ""),
+        ("Base cost", base, 100.0, ""),
+        ("Margin", marg, marg / base * 100 if base else 0, ""),
+        ("Sell price", sell, sell / base * 100 if base else 0, ""),
     ]
-    for ri, (label, eur, pct) in enumerate(kpi_rows, 3):
+    for ri, (label, eur, pct, note) in enumerate(kpi_rows, 3):
         alt = (ri % 2 == 0)
         bold_row = label in ("Base cost", "Sell price")
+        sub_row = label.startswith("  —")
         fill = _xl_alt_fill() if alt else None
-        for ci, val in enumerate([_xl(label), eur, pct / 100], 1):
+        for ci, val in enumerate([_xl(label), eur, pct / 100, _xl(note)], 1):
             cell = ws.cell(row=ri, column=ci, value=val)
             if fill:
                 cell.fill = fill
-            cell.font = _xl_bold() if bold_row else _xl_normal()
+            cell.font = _xl_bold() if bold_row else (Font(italic=True, size=9) if sub_row else _xl_normal())
             cell.alignment = _xl_left()
             if ci == 2:
                 cell.number_format = '#,##0.00'
             elif ci == 3:
                 cell.number_format = '0.0%'
+            elif ci == 4:
+                cell.font = Font(italic=True, size=9, color="666666")
 
     # Subsystem breakdown
     sub_df = _build_subsystem_table(df, bom)
@@ -444,7 +457,8 @@ def _sheet_exec_summary(wb: Workbook, data: dict):
                 if ci in fmt_map:
                     cell.number_format = fmt_map[ci]
 
-    _auto_col_widths(ws, [30, 16, 12, 12, 10, 12])
+    # Col widths: A=Cost Element/Scope, B=EUR, C=%, D=Note, E=EUR/kg, F=kWh
+    _auto_col_widths(ws, [34, 16, 14, 38, 12, 12])
 
 
 def _sheet_waterfall(wb: Workbook, data: dict):
@@ -458,16 +472,18 @@ def _sheet_waterfall(wb: Workbook, data: dict):
         return v / sell if sell else 0.0
 
     moq = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    energy_eur = df["energy_cost"].sum()
+    kwh_total = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur / 0.20
 
     elements = [
         ("Material cost", df["material_cost"].sum()),
+        ("MOQ excess cost", moq),
         ("Process cost", df["process_cost"].sum()),
-        ("Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
-        ("Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
-        ("Tooling", df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0),
-        ("Energy", df["energy_cost"].sum()),
-        ("Rework", df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0),
-        ("MOQ excess", moq),
+        ("  Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
+        ("  Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
+        ("  Tooling cost", df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0),
+        (f"  Energy cost ({kwh_total:,.0f} kWh)", energy_eur),
+        ("  Rework cost", df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0),
         ("Overhead", df["overhead"].sum()),
         ("Base cost", df["base_cost"].sum()),
         ("Margin", df["margin"].sum()),
@@ -903,31 +919,38 @@ def build_pdf(data: dict, company: str, prepared_by: str, confidentiality: str) 
     story.append(Paragraph("Executive Summary", styles["SectionHeading"]))
 
     mat = df["material_cost"].sum()
+    moq_es = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
     proc = df["process_cost"].sum()
+    mach_es = df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0
+    lab_es = df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0
     tool = df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0
-    kwh_total = df["energy_cost"].sum()
+    energy_eur_es = df["energy_cost"].sum()
+    kwh_total = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur_es / 0.20
     rework = df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0
     oh = df["overhead"].sum()
     marg = df["margin"].sum()
 
-    kpi_headers = [["Item", "EUR", "% of Base"]]
-    kpi_rows = [
-        ("Material cost", mat),
-        ("Process cost", proc),
-        ("Tooling cost", tool),
-        ("Energy cost", kwh_total),
-        ("Rework cost", rework),
-        ("Overhead", oh),
-        ("Base cost", base),
-        ("Margin", marg),
-        ("Sell price", sell),
+    kpi_headers = [["Item", "EUR", "% of Base", "Note"]]
+    kpi_rows_pdf = [
+        ("Material cost", mat, ""),
+        ("MOQ excess cost", moq_es, "Min order qty premium"),
+        ("Process cost", proc, ""),
+        ("  Machine cost", mach_es, "sub-total of Process"),
+        ("  Labour cost", lab_es, "sub-total of Process"),
+        (f"  Energy ({kwh_total:,.0f} kWh)", energy_eur_es, "@ 0.20 EUR/kWh"),
+        ("  Tooling", tool, "sub-total of Process"),
+        ("  Rework", rework, "sub-total of Process"),
+        ("Overhead", oh, ""),
+        ("Base cost", base, ""),
+        ("Margin", marg, ""),
+        ("Sell price", sell, ""),
     ]
     kpi_data = kpi_headers + [
-        [n, f"€ {v:,.2f}", f"{v/base*100:.1f}%" if base else "—"]
-        for n, v in kpi_rows
+        [n, f"€ {v:,.2f}", f"{v/base*100:.1f}%" if base else "—", nt]
+        for n, v, nt in kpi_rows_pdf
     ]
-    kpi_tbl = Table(kpi_data, colWidths=[7 * cm, 5 * cm, 4 * cm])
-    kpi_tbl.setStyle(_pdf_table_style(has_total_row=True, total_row_idx=len(kpi_data) - 1))
+    kpi_tbl = Table(kpi_data, colWidths=[6 * cm, 4 * cm, 3 * cm, 4 * cm])
+    kpi_tbl.setStyle(_pdf_table_style(has_total_row=True, total_row_idx=len(kpi_data) - 3))
     story.append(kpi_tbl)
     story.append(Spacer(1, 0.5 * cm))
 
@@ -951,15 +974,17 @@ def build_pdf(data: dict, company: str, prepared_by: str, confidentiality: str) 
     # ── Section 3: Cost Waterfall ─────────────────────────────────────────────
     story.append(Paragraph("Cost Waterfall", styles["SectionHeading"]))
     moq = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    energy_eur_wf = df["energy_cost"].sum()
+    kwh_wf = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur_wf / 0.20
     wf_elements = [
         ("Material cost", df["material_cost"].sum()),
+        ("MOQ excess cost", moq),
         ("Process cost", df["process_cost"].sum()),
-        ("Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
-        ("Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
-        ("Tooling", df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0),
-        ("Energy", df["energy_cost"].sum()),
-        ("Rework", df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0),
-        ("MOQ excess", moq),
+        ("  Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
+        ("  Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
+        (f"  Energy cost ({kwh_wf:,.0f} kWh)", energy_eur_wf),
+        ("  Tooling cost", df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0),
+        ("  Rework cost", df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0),
         ("Overhead", df["overhead"].sum()),
         ("Base cost", df["base_cost"].sum()),
         ("Margin", df["margin"].sum()),
@@ -1040,7 +1065,7 @@ def build_pdf(data: dict, company: str, prepared_by: str, confidentiality: str) 
 
     total_co2 = kwh_total * EMISSION_FACTOR
     story.append(Paragraph(
-        f"Total: {kwh_total:,.1f} kWh  |  {total_co2:,.1f} kg CO2e  |  {total_co2/1000:,.3f} t CO2e",
+        f"Total: <b>{kwh_total:,.0f} kWh</b>  |  <b>{total_co2:,.0f} kg CO2e</b>  |  {total_co2/1000:,.3f} t CO2e",
         styles["BodySmall"],
     ))
     story.append(Paragraph(
@@ -1097,8 +1122,12 @@ def main():
     data = _load_all()
     meta = data["meta"]
     df = data["df"]
+    bom = data["bom"]
+    quotes = data["quotes"]
 
     proj_name = meta.get("name", "Unnamed Project")
+    customer = meta.get("customer", "")
+    estimate_ref = meta.get("estimate_ref", "")
     maturity = meta.get("maturity", "Budget (±15%)")
 
     page_header(
@@ -1109,19 +1138,53 @@ def main():
         maturity=maturity,
     )
 
-    # ── KPI summary ───────────────────────────────────────────────────────────
+    # ── Project meta fields in sidebar ───────────────────────────────────────
+    st.sidebar.divider()
+    st.sidebar.header("Project Details")
+    st.sidebar.caption("These fields populate the Cover sheet of the report.")
+    customer_in = st.sidebar.text_input("Customer", value=customer)
+    estimate_ref_in = st.sidebar.text_input("Estimate reference", value=estimate_ref,
+                                             placeholder="e.g. CE-2024-047 Rev B")
+    contract_value_in = st.sidebar.number_input(
+        "Contract value (EUR, if awarded)", min_value=0.0, value=float(meta.get("contract_value", 0.0)),
+        step=1000.0, format="%.0f"
+    )
+    if st.sidebar.button("💾 Save project details", use_container_width=True):
+        from utils.project import save_project_meta
+        save_project_meta(
+            customer=customer_in,
+            estimate_ref=estimate_ref_in,
+            contract_value=contract_value_in,
+        )
+        st.sidebar.success("Saved.")
+        st.cache_data.clear()
+        st.rerun()
+
+    # Merge saved fields into data dict meta for this run
+    data["meta"] = {**meta, "customer": customer_in, "estimate_ref": estimate_ref_in,
+                    "contract_value": contract_value_in}
+
+    # ── KPI row ───────────────────────────────────────────────────────────────
     sell = df["total_cost"].sum()
     base = df["base_cost"].sum()
     margin = df["margin"].sum()
     total_mass = df["mass_kg"].sum() if "mass_kg" in df.columns else 0.0
-    kwh_total = df["energy_cost"].sum()
+    kwh_total = df["energy_kwh"].sum() if "energy_kwh" in df.columns else df["energy_cost"].sum() / 0.20
+    moq_total = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    proc_total = df["process_cost"].sum()
+    co2e_kg = kwh_total * EMISSION_FACTOR
 
-    k1, k2, k3, k4, k5 = st.columns(5)
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
     k1.metric("Sell Price", fmt(sell, 0))
     k2.metric("Base Cost", fmt(base, 0))
-    k3.metric("Margin", f"{margin/sell*100:.1f}%" if sell else "—")
-    k4.metric("Total Mass", f"{total_mass:,.1f} kg")
-    k5.metric("Total Energy", f"{kwh_total:,.0f} kWh")
+    k3.metric("Margin", f"{margin/sell*100:.1f}%" if sell else "—",
+              delta=f"{fmt(margin, 0)}", delta_color="normal")
+    k4.metric("Total Mass", f"{total_mass:,.0f} kg")
+    k5.metric("Energy", f"{kwh_total:,.0f} kWh",
+              delta=f"{co2e_kg/1000:,.2f} t CO₂e", delta_color="off")
+    k6.metric("MOQ Excess", fmt(moq_total, 0),
+              delta="⚠ larger than material" if moq_total > df["material_cost"].sum() else None,
+              delta_color="inverse")
 
     st.divider()
 
@@ -1158,45 +1221,198 @@ def main():
 
     st.divider()
 
-    # ── Preview table ─────────────────────────────────────────────────────────
-    st.subheader("Package Contents")
+    # ── Rich on-screen preview ────────────────────────────────────────────────
+    st.subheader("📊 Preview — What's in the package")
 
-    preview_data = {
-        "Excel Sheet": [
-            "1. COVER",
-            "2. EXECUTIVE SUMMARY",
-            "3. COST WATERFALL",
-            "4. SUBSYSTEM BREAKDOWN",
-            "5. BOM DETAIL",
-            "6. PROCUREMENT",
-            "7. ENERGY & CARBON",
-            "8. INDIA LOCAL CONTENT",
-            "9. RISK & ACTIONS",
-        ],
-        "Description": [
-            "Project metadata, KPIs, scope statement",
-            "Cost component KPIs + subsystem cost table",
-            "Waterfall: each cost element with EUR and % of sell price",
-            "14 subsystem scopes: cost, mass, share, kWh, CO2e",
-            "All BOM lines with full cost breakdown",
-            "Supplier quotes, lead times, expiry status",
-            "Energy by subsystem + carbon footprint (0.233 kg CO2e/kWh)",
-            "India local content declarations and IC fraction",
-            "Auto-generated risks + risk register (severity, impact, mitigation)",
-        ],
-        "PDF Section": [
-            "Section 1 — Cover Page",
-            "Section 2 — Executive Summary",
-            "Section 3 — Cost Waterfall",
-            "Section 2 — Subsystem Table",
-            "(included in Excel only)",
-            "Section 4 — Procurement Status",
-            "Section 5 — Energy & Carbon",
-            "(included in Excel only)",
-            "Section 6 — Risk Register",
-        ],
-    }
-    st.dataframe(pd.DataFrame(preview_data), use_container_width=True, hide_index=True)
+    tab_cost, tab_subsys, tab_procure, tab_energy, tab_risks, tab_contents = st.tabs([
+        "💶 Cost Breakdown",
+        "🔩 Subsystem Split",
+        "🛒 Procurement",
+        "⚡ Energy & Carbon",
+        "⚠️ Risks",
+        "📋 Contents",
+    ])
+
+    # ── Tab 1: Cost Breakdown ─────────────────────────────────────────────────
+    with tab_cost:
+        mat = df["material_cost"].sum()
+        mach = df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0
+        lab = df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0
+        tool = df["tooling_cost"].sum() if "tooling_cost" in df.columns else 0.0
+        energy_eur = df["energy_cost"].sum()
+        rework = df["rework_cost"].sum() if "rework_cost" in df.columns else 0.0
+        oh = df["overhead"].sum()
+        marg_v = df["margin"].sum()
+
+        cost_rows = [
+            {"Cost Element": "Material cost",     "EUR": mat,        "% of Base": f"{mat/base*100:.1f}%",  "Note": ""},
+            {"Cost Element": "MOQ excess cost",   "EUR": moq_total,  "% of Base": f"{moq_total/base*100:.1f}%", "Note": "⚠ min order qty premium — often > material cost"},
+            {"Cost Element": "Process cost",      "EUR": proc_total, "% of Base": f"{proc_total/base*100:.1f}%", "Note": "dominant cost driver"},
+            {"Cost Element": "  Machine cost",    "EUR": mach,       "% of Base": f"{mach/base*100:.1f}%",  "Note": "sub-total of Process"},
+            {"Cost Element": "  Labour cost",     "EUR": lab,        "% of Base": f"{lab/base*100:.1f}%",   "Note": "sub-total of Process"},
+            {"Cost Element": f"  Energy ({kwh_total:,.0f} kWh)", "EUR": energy_eur, "% of Base": f"{energy_eur/base*100:.1f}%", "Note": "@ 0.20 EUR/kWh"},
+            {"Cost Element": "  Tooling cost",    "EUR": tool,       "% of Base": f"{tool/base*100:.1f}%",  "Note": "sub-total of Process"},
+            {"Cost Element": "  Rework cost",     "EUR": rework,     "% of Base": f"{rework/base*100:.1f}%","Note": "sub-total of Process"},
+            {"Cost Element": "Overhead",          "EUR": oh,         "% of Base": f"{oh/base*100:.1f}%",    "Note": ""},
+            {"Cost Element": "BASE COST",         "EUR": base,       "% of Base": "100.0%",                 "Note": ""},
+            {"Cost Element": "Margin",            "EUR": marg_v,     "% of Base": f"{marg_v/base*100:.1f}%","Note": f"margin on sell = {marg_v/sell*100:.1f}%"},
+            {"Cost Element": "SELL PRICE",        "EUR": sell,       "% of Base": f"{sell/base*100:.1f}%",  "Note": ""},
+        ]
+        cost_df = pd.DataFrame(cost_rows)
+        cost_df["EUR"] = cost_df["EUR"].map(lambda v: f"€ {v:,.2f}")
+        st.dataframe(cost_df, use_container_width=True, hide_index=True)
+
+        if moq_total > mat:
+            st.warning(
+                f"⚠️ **MOQ excess cost (€ {moq_total:,.0f}) is larger than material cost (€ {mat:,.0f})**. "
+                "This is a significant cost driver — review BOM quantities and negotiate blanket orders with suppliers."
+            )
+
+    # ── Tab 2: Subsystem Split ────────────────────────────────────────────────
+    with tab_subsys:
+        sub_df = _build_subsystem_table(df, bom)
+        if sub_df.empty:
+            st.info("No BOM lines loaded.")
+        else:
+            disp = sub_df[["scope", "lines", "mass_kg", "material_eur", "process_eur",
+                           "sell_eur", "share_pct", "eur_per_kg", "kwh", "co2e_kg"]].copy()
+            disp.columns = ["Scope", "Lines", "Mass (kg)", "Material (EUR)", "Process (EUR)",
+                            "Sell (EUR)", "Share %", "EUR/kg", "kWh", "CO₂e kg"]
+            for c in ["Mass (kg)", "Material (EUR)", "Process (EUR)", "Sell (EUR)", "EUR/kg", "kWh", "CO₂e kg"]:
+                disp[c] = pd.to_numeric(disp[c]).map(lambda v: f"{v:,.1f}")
+            disp["Share %"] = pd.to_numeric(sub_df["share_pct"]).map(lambda v: f"{v:.1f}%")
+            st.dataframe(disp, use_container_width=True, hide_index=True)
+            st.caption(f"Total: {len(bom)} BOM lines  |  {bom['material_id'].nunique() if 'material_id' in bom.columns else '?'} unique materials  |  {total_mass:,.1f} kg")
+
+    # ── Tab 3: Procurement ────────────────────────────────────────────────────
+    with tab_procure:
+        if quotes.empty:
+            st.warning("No supplier quotes on file. Add quotes on the **Procurement** page to populate this section.")
+        else:
+            today_ts = pd.Timestamp.today().normalize()
+            q_disp = quotes.copy()
+            if "valid_until" in q_disp.columns:
+                q_disp["Status"] = q_disp["valid_until"].apply(
+                    lambda d: "EXPIRED" if pd.to_datetime(d, errors="coerce") < today_ts else "ACTIVE"
+                )
+            n_exp = (q_disp.get("Status", pd.Series(dtype=str)) == "EXPIRED").sum()
+            if n_exp:
+                st.error(f"⚠ {n_exp} quote(s) expired — refresh before sending to customer.")
+            else:
+                st.success(f"✅ All {len(quotes)} quotes are within validity.")
+            st.dataframe(q_disp, use_container_width=True, hide_index=True)
+
+    # ── Tab 4: Energy & Carbon ────────────────────────────────────────────────
+    with tab_energy:
+        co2e_t = co2e_kg / 1000
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Energy", f"{kwh_total:,.0f} kWh")
+        c2.metric("CO₂e (EU grid)", f"{co2e_kg:,.0f} kg", delta=f"{co2e_t:.2f} t", delta_color="off")
+        c3.metric("Energy Intensity", f"{kwh_total/sell:.3f} kWh/EUR" if sell else "—")
+
+        st.caption("Scope 2 emissions — purchased electricity for manufacturing. EU average grid 0.233 kg CO2e/kWh.")
+
+        sub_df2 = _build_subsystem_table(df, bom)
+        if not sub_df2.empty:
+            ec_disp = sub_df2[["scope", "kwh", "co2e_kg"]].copy()
+            ec_disp["co2e_t"] = ec_disp["co2e_kg"] / 1000
+            ec_disp["kWh/EUR"] = sub_df2.apply(
+                lambda r: r["kwh"] / r["sell_eur"] if r["sell_eur"] > 0 else 0.0, axis=1
+            )
+            ec_disp.columns = ["Scope", "kWh", "CO₂e (kg)", "CO₂e (t)", "kWh/EUR intensity"]
+            for c in ["kWh", "CO₂e (kg)", "CO₂e (t)"]:
+                ec_disp[c] = pd.to_numeric(ec_disp[c]).map(lambda v: f"{v:,.1f}")
+            ec_disp["kWh/EUR intensity"] = ec_disp["kWh/EUR intensity"].map(lambda v: f"{v:.4f}")
+            st.dataframe(ec_disp, use_container_width=True, hide_index=True)
+
+    # ── Tab 5: Risks ──────────────────────────────────────────────────────────
+    with tab_risks:
+        risks = _build_risks(data)
+        if not risks:
+            st.success("No risks identified.")
+        else:
+            risk_disp = pd.DataFrame(risks)
+            if "Impact EUR" in risk_disp.columns:
+                risk_disp["Impact EUR"] = risk_disp["Impact EUR"].map(lambda v: f"€ {v:,.0f}")
+            st.dataframe(risk_disp, use_container_width=True, hide_index=True)
+
+            high_risks = [r for r in risks if r.get("Severity") == "High"]
+            if high_risks:
+                st.error(f"🔴 {len(high_risks)} HIGH severity risk(s) require attention before submission.")
+
+    # ── Tab 6: Contents ───────────────────────────────────────────────────────
+    with tab_contents:
+        # Data completeness checklist
+        nre = data.get("nre", pd.DataFrame())
+        milestones = data.get("milestones", pd.DataFrame())
+        transport = data.get("transport", pd.DataFrame())
+        india_lc = data.get("india_lc", pd.DataFrame())
+        change_orders = data.get("change_orders", pd.DataFrame())
+
+        checks = [
+            ("Project name set", bool(proj_name and proj_name != "Unnamed Project")),
+            ("Customer set", bool(data["meta"].get("customer", ""))),
+            ("Estimate reference set", bool(data["meta"].get("estimate_ref", ""))),
+            (f"BOM loaded ({len(bom)} lines)", not bom.empty),
+            (f"Quotes on file ({len(quotes)})", not quotes.empty),
+            (f"India LC data ({len(india_lc)} rows)", not india_lc.empty),
+            (f"NRE / non-recurring costs ({len(nre)} rows)", not (isinstance(nre, pd.DataFrame) and nre.empty)),
+            (f"Milestones ({len(milestones)} rows)", not (isinstance(milestones, pd.DataFrame) and milestones.empty)),
+            (f"Transport quotes ({len(transport)} rows)", not (isinstance(transport, pd.DataFrame) and transport.empty)),
+            (f"Change orders ({len(change_orders)} rows)", not (isinstance(change_orders, pd.DataFrame) and change_orders.empty)),
+        ]
+
+        st.markdown("#### Package data completeness")
+        for label, ok in checks:
+            icon = "✅" if ok else "⬜"
+            st.markdown(f"{icon} {label}")
+
+        empty_sections = [label for label, ok in checks if not ok]
+        if empty_sections:
+            st.info(
+                f"**{len(empty_sections)} section(s) not yet populated.** "
+                "Empty sections will show placeholder messages in the Excel/PDF. "
+                "Use the respective pages (Procurement, India Local Content, NRE, etc.) to fill in data."
+            )
+
+        st.divider()
+        st.markdown("#### Package contents")
+        preview_data = {
+            "Excel Sheet": [
+                "1. COVER",
+                "2. EXECUTIVE SUMMARY",
+                "3. COST WATERFALL",
+                "4. SUBSYSTEM BREAKDOWN",
+                "5. BOM DETAIL",
+                "6. PROCUREMENT",
+                "7. ENERGY & CARBON",
+                "8. INDIA LOCAL CONTENT",
+                "9. RISK & ACTIONS",
+            ],
+            "Description": [
+                "Project metadata, KPIs, scope statement",
+                "Cost KPIs with process sub-breakdown + subsystem table",
+                "Waterfall with MOQ, machine, labour, energy, tooling, rework",
+                "14 subsystem scopes: cost, mass, share, kWh, CO2e",
+                "All BOM lines with full cost breakdown",
+                "Supplier quotes, lead times, expiry status",
+                "Energy by subsystem + carbon footprint (0.233 kg CO2e/kWh)",
+                "India local content declarations and IC fraction",
+                "Auto-generated risks + risk register (severity, impact, mitigation)",
+            ],
+            "PDF Section": [
+                "§1 Cover Page",
+                "§2 Executive Summary",
+                "§3 Cost Waterfall",
+                "§2 Subsystem Table",
+                "(Excel only)",
+                "§4 Procurement Status",
+                "§5 Energy & Carbon",
+                "(Excel only)",
+                "§6 Risk Register",
+            ],
+        }
+        st.dataframe(pd.DataFrame(preview_data), use_container_width=True, hide_index=True)
 
 
 guard(main)
