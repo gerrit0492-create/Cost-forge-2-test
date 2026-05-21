@@ -111,43 +111,47 @@ st.caption(f"Showing {len(view)} of {len(df)} BOM lines")
 
 # ── KPI summary of filtered view ─────────────────────────────────────────────
 dry_kg = (pd.to_numeric(view["qty"], errors="coerce").fillna(1) * view["mass_kg"].fillna(0)).sum()
-k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
+k1, k2, k3, k4, k5, k6, k7, k8 = st.columns(8)
 k1.metric("Material (purchase)", fmt(view['material_cost'].sum()))
-k2.metric("Machine cost",        fmt(view['machine_cost'].sum()))
-k3.metric("Labour cost",         fmt(view['labour_cost'].sum()))
-k4.metric("Overhead",            fmt(view['overhead'].sum()))
-k5.metric("Your cost",           fmt(view['base_cost'].sum()))
-k6.metric("Sell price (incl. margin)", fmt(view['total_cost'].sum()))
-k7.metric("Dry weight",          f"{dry_kg:,.0f} kg")
+k2.metric("MOQ excess",          fmt(view['moq_excess_cost'].sum()) if 'moq_excess_cost' in view.columns else "—")
+k3.metric("Pattern / tooling",   fmt(view['pattern_cost'].sum()) if 'pattern_cost' in view.columns else "—")
+k4.metric("Machine cost",        fmt(view['machine_cost'].sum()))
+k5.metric("Labour cost",         fmt(view['labour_cost'].sum()))
+k6.metric("Overhead",            fmt(view['overhead'].sum()))
+k7.metric("Your cost",           fmt(view['base_cost'].sum()))
+k8.metric("Sell price",          fmt(view['total_cost'].sum()))
 
 st.divider()
 
 # ── Per-line detail table ─────────────────────────────────────────────────────
 display_cols = {
-    "line_id":        "Line ID",
-    "part_name":      "Component",
-    "material_id":    "Material",
-    "qty":            "Qty",
-    "mass_kg":        "Mass (kg)",
+    "line_id":          "Line ID",
+    "part_name":        "Component",
+    "material_id":      "Material",
+    "qty":              "Qty",
+    "mass_kg":          "Mass (kg)",
+    "make_buy":         "M/B",
     "price_eur_per_kg": "€/kg",
-    "material_cost":  "Purchase €",
-    "process_route":  "Process",
-    "runtime_h":      "Runtime h",
-    "machine_cost":   "Machine €",
-    "labour_cost":    "Labour €",
-    "process_cost":   "Process €",
-    "overhead_pct":   "OH%",
-    "overhead":       "Overhead €",
-    "base_cost":      "Your cost €",
-    "margin_pct":     "Margin%",
-    "margin":         "Margin €",
-    "total_cost":     "Sell price €",
+    "material_cost":    "Purchase €",
+    "moq_excess_cost":  "MOQ excess €",
+    "pattern_cost":     "Pattern €",
+    "process_route":    "Process",
+    "runtime_h":        "Runtime h",
+    "machine_cost":     "Machine €",
+    "labour_cost":      "Labour €",
+    "process_cost":     "Process €",
+    "overhead_pct":     "OH%",
+    "overhead":         "Overhead €",
+    "base_cost":        "Your cost €",
+    "margin_pct":       "Margin%",
+    "margin":           "Margin €",
+    "total_cost":       "Sell price €",
 }
 table = view[[c for c in display_cols if c in view.columns]].copy()
 table.rename(columns=display_cols, inplace=True)
 
-for col in ["Purchase €", "Machine €", "Labour €", "Process €", "Overhead €",
-            "Your cost €", "Margin €", "Sell price €"]:
+for col in ["Purchase €", "MOQ excess €", "Pattern €", "Machine €", "Labour €",
+            "Process €", "Overhead €", "Your cost €", "Margin €", "Sell price €"]:
     if col in table.columns:
         table[col] = table[col].map(lambda x: fmt(x, 2) if pd.notna(x) else "—")
 
@@ -164,9 +168,12 @@ st.subheader("Subsystem totals")
 qty_all = pd.to_numeric(df["qty"], errors="coerce").fillna(1)
 df["_line_mass"] = qty_all * df["mass_kg"].fillna(0)
 
+_agg_cols = [c for c in ["material_cost", "moq_excess_cost", "pattern_cost",
+                          "machine_cost", "labour_cost",
+                          "overhead", "base_cost", "margin", "total_cost", "_line_mass"]
+             if c in df.columns]
 agg = (
-    df.groupby("subsystem")[["material_cost", "machine_cost", "labour_cost",
-                              "overhead", "base_cost", "margin", "total_cost", "_line_mass"]]
+    df.groupby("subsystem")[_agg_cols]
     .sum()
     .reset_index()
 )
@@ -176,28 +183,31 @@ agg["Margin%"] = (agg["margin"] / agg["base_cost"] * 100).map(lambda x: f"{x:.1f
 agg["Share%"]  = (agg["total_cost"] / df["total_cost"].sum() * 100).map(lambda x: f"{x:.1f}%")
 
 agg_display = agg.rename(columns={
-    "name":          "Subsystem",
-    "material_cost": "Purchase €",
-    "machine_cost":  "Machine €",
-    "labour_cost":   "Labour €",
-    "overhead":      "Overhead €",
-    "base_cost":     "Your cost €",
-    "margin":        "Margin €",
-    "total_cost":    "Sell price €",
-    "_line_mass":    "Mass (kg)",
+    "name":             "Subsystem",
+    "material_cost":    "Purchase €",
+    "moq_excess_cost":  "MOQ excess €",
+    "pattern_cost":     "Pattern €",
+    "machine_cost":     "Machine €",
+    "labour_cost":      "Labour €",
+    "overhead":         "Overhead €",
+    "base_cost":        "Your cost €",
+    "margin":           "Margin €",
+    "total_cost":       "Sell price €",
+    "_line_mass":       "Mass (kg)",
 })
-for col in ["Purchase €", "Machine €", "Labour €", "Overhead €",
-            "Your cost €", "Margin €", "Sell price €"]:
-    agg_display[col] = agg_display[col].map(lambda x: fmt(x))
-agg_display["Mass (kg)"] = agg_display["Mass (kg)"].map(lambda x: f"{x:,.0f}")
+for col in ["Purchase €", "MOQ excess €", "Pattern €", "Machine €", "Labour €",
+            "Overhead €", "Your cost €", "Margin €", "Sell price €"]:
+    if col in agg_display.columns:
+        agg_display[col] = agg_display[col].map(lambda x: fmt(x))
+if "Mass (kg)" in agg_display.columns:
+    agg_display["Mass (kg)"] = agg_display["Mass (kg)"].map(lambda x: f"{x:,.0f}")
 
-st.dataframe(
-    agg_display[["Subsystem", "Purchase €", "Machine €", "Labour €",
-                 "Overhead €", "Your cost €", "OH%", "Margin €", "Margin%",
-                 "Sell price €", "Mass (kg)", "Share%"]],
-    use_container_width=True,
-    hide_index=True,
-)
+_show_agg_cols = [c for c in ["Subsystem", "Purchase €", "MOQ excess €", "Pattern €",
+                               "Machine €", "Labour €", "Overhead €",
+                               "Your cost €", "OH%", "Margin €", "Margin%",
+                               "Sell price €", "Mass (kg)", "Share%"]
+                  if c in agg_display.columns]
+st.dataframe(agg_display[_show_agg_cols], use_container_width=True, hide_index=True)
 
 # ── Download ──────────────────────────────────────────────────────────────────
 st.divider()

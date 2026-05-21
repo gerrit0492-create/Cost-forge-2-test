@@ -404,19 +404,22 @@ def _sheet_exec_summary(wb: Workbook, data: dict):
     ws.cell(row=1, column=1, value="EXECUTIVE SUMMARY — COST KPIs").font = Font(bold=True, size=13, color=NAVY_FILL)
     _apply_header_row(ws, 2, ["Cost Element", "EUR", "% of Base Cost", "Note"])
 
+    pattern = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
+
     kpi_rows = [
-        ("Material cost", mat, mat / base * 100 if base else 0, ""),
-        ("MOQ excess cost", moq, moq / base * 100 if base else 0, "Min order qty premium — often exceeds material cost"),
-        ("Process cost", proc, proc / base * 100 if base else 0, ""),
-        ("  — Machine cost", mach, mach / base * 100 if base else 0, "incl. in Process"),
-        ("  — Labour cost", lab, lab / base * 100 if base else 0, "incl. in Process"),
-        ("  — Tooling cost", tool, tool / base * 100 if base else 0, "incl. in Process"),
-        ("  — Energy cost", energy_eur, energy_eur / base * 100 if base else 0, f"{kwh_total:,.0f} kWh @ 0.20 EUR/kWh"),
-        ("  — Rework cost", rework, rework / base * 100 if base else 0, "incl. in Process"),
-        ("Overhead", oh, oh / base * 100 if base else 0, ""),
-        ("Base cost", base, 100.0, ""),
-        ("Margin", marg, marg / base * 100 if base else 0, ""),
-        ("Sell price", sell, sell / base * 100 if base else 0, ""),
+        ("Material cost",           mat,        mat / base * 100 if base else 0, ""),
+        ("MOQ excess cost",         moq,        moq / base * 100 if base else 0, "Min order qty premium — often exceeds material cost"),
+        ("Pattern / tooling NRE",   pattern,    pattern / base * 100 if base else 0, "Casting pattern amortised per unit"),
+        ("Process cost",            proc,       proc / base * 100 if base else 0, ""),
+        ("  — Machine cost",        mach,       mach / base * 100 if base else 0, "incl. in Process"),
+        ("  — Labour cost",         lab,        lab / base * 100 if base else 0, "incl. in Process"),
+        ("  — Tooling cost",        tool,       tool / base * 100 if base else 0, "incl. in Process"),
+        ("  — Energy cost",         energy_eur, energy_eur / base * 100 if base else 0, f"{kwh_total:,.0f} kWh @ 0.20 EUR/kWh"),
+        ("  — Rework cost",         rework,     rework / base * 100 if base else 0, "incl. in Process"),
+        ("Overhead",                oh,         oh / base * 100 if base else 0, ""),
+        ("Base cost",               base,       100.0, ""),
+        ("Margin",                  marg,       marg / base * 100 if base else 0, ""),
+        ("Sell price",              sell,       sell / base * 100 if base else 0, ""),
     ]
     for ri, (label, eur, pct, note) in enumerate(kpi_rows, 3):
         alt = (ri % 2 == 0)
@@ -472,12 +475,14 @@ def _sheet_waterfall(wb: Workbook, data: dict):
         return v / sell if sell else 0.0
 
     moq = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    pattern_wf = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
     energy_eur = df["energy_cost"].sum()
     kwh_total = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur / 0.20
 
     elements = [
         ("Material cost", df["material_cost"].sum()),
         ("MOQ excess cost", moq),
+        ("Pattern / tooling NRE", pattern_wf),
         ("Process cost", df["process_cost"].sum()),
         ("  Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
         ("  Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
@@ -930,10 +935,13 @@ def build_pdf(data: dict, company: str, prepared_by: str, confidentiality: str) 
     oh = df["overhead"].sum()
     marg = df["margin"].sum()
 
+    pattern_es = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
+
     kpi_headers = [["Item", "EUR", "% of Base", "Note"]]
     kpi_rows_pdf = [
         ("Material cost", mat, ""),
         ("MOQ excess cost", moq_es, "Min order qty premium"),
+        ("Pattern / tooling NRE", pattern_es, "Casting pattern amortised per unit"),
         ("Process cost", proc, ""),
         ("  Machine cost", mach_es, "sub-total of Process"),
         ("  Labour cost", lab_es, "sub-total of Process"),
@@ -974,11 +982,13 @@ def build_pdf(data: dict, company: str, prepared_by: str, confidentiality: str) 
     # ── Section 3: Cost Waterfall ─────────────────────────────────────────────
     story.append(Paragraph("Cost Waterfall", styles["SectionHeading"]))
     moq = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    pattern_wf2 = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
     energy_eur_wf = df["energy_cost"].sum()
     kwh_wf = df["energy_kwh"].sum() if "energy_kwh" in df.columns else energy_eur_wf / 0.20
     wf_elements = [
         ("Material cost", df["material_cost"].sum()),
         ("MOQ excess cost", moq),
+        ("Pattern / tooling NRE", pattern_wf2),
         ("Process cost", df["process_cost"].sum()),
         ("  Machine cost", df["machine_cost"].sum() if "machine_cost" in df.columns else 0.0),
         ("  Labour cost", df["labour_cost"].sum() if "labour_cost" in df.columns else 0.0),
@@ -1244,10 +1254,12 @@ def main():
         oh = df["overhead"].sum()
         marg_v = df["margin"].sum()
 
+        pattern_tab = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
         cost_rows = [
-            {"Cost Element": "Material cost",     "EUR": mat,        "% of Base": f"{mat/base*100:.1f}%",  "Note": ""},
-            {"Cost Element": "MOQ excess cost",   "EUR": moq_total,  "% of Base": f"{moq_total/base*100:.1f}%", "Note": "⚠ min order qty premium — often > material cost"},
-            {"Cost Element": "Process cost",      "EUR": proc_total, "% of Base": f"{proc_total/base*100:.1f}%", "Note": "dominant cost driver"},
+            {"Cost Element": "Material cost",          "EUR": mat,         "% of Base": f"{mat/base*100:.1f}%",         "Note": ""},
+            {"Cost Element": "MOQ excess cost",        "EUR": moq_total,   "% of Base": f"{moq_total/base*100:.1f}%",   "Note": "⚠ min order qty premium — often > material cost"},
+            {"Cost Element": "Pattern / tooling NRE",  "EUR": pattern_tab, "% of Base": f"{pattern_tab/base*100:.1f}%", "Note": "Casting pattern amortised per unit"},
+            {"Cost Element": "Process cost",           "EUR": proc_total,  "% of Base": f"{proc_total/base*100:.1f}%",  "Note": "dominant cost driver"},
             {"Cost Element": "  Machine cost",    "EUR": mach,       "% of Base": f"{mach/base*100:.1f}%",  "Note": "sub-total of Process"},
             {"Cost Element": "  Labour cost",     "EUR": lab,        "% of Base": f"{lab/base*100:.1f}%",   "Note": "sub-total of Process"},
             {"Cost Element": f"  Energy ({kwh_total:,.0f} kWh)", "EUR": energy_eur, "% of Base": f"{energy_eur/base*100:.1f}%", "Note": "@ 0.20 EUR/kWh"},

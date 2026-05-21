@@ -91,7 +91,9 @@ def main() -> None:
     # ── Compute all elements ──────────────────────────────────────────────────
     n = max(int(num_units), 1)
 
-    base_mat  = df["material_cost"].sum()
+    base_mat     = df["material_cost"].sum()
+    base_moq     = df["moq_excess_cost"].sum() if "moq_excess_cost" in df.columns else 0.0
+    base_pattern = df["pattern_cost"].sum() if "pattern_cost" in df.columns else 0.0
     base_proc = df["process_cost"].sum()
     base_oh   = df["overhead"].sum()
     base_sell = df["total_cost"].sum()
@@ -149,6 +151,8 @@ def main() -> None:
     # ── Build waterfall ───────────────────────────────────────────────────────
     wf = build_waterfall(
         material_cost    = base_mat * n,
+        moq_cost         = base_moq * n,
+        pattern_cost     = base_pattern * n,
         inbound_freight  = in_freight_tot * n,
         duties           = duties_tot * n,
         process_cost     = base_proc * n,
