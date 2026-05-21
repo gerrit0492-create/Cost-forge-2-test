@@ -7,15 +7,15 @@ verified by third-party surveying agencies (DGQA, BV, DNV, etc.).
 
 KEY PRINCIPLE: Surveyors verify *manufacturing origin*, not *supplier price*.
 You do NOT need to submit your full quote book. Three accepted methods:
-  1. CA Certificate — CA certifies IC% from your books. Quotes stay internal.
-  2. Manufacturer's Origin Declaration — supplier signs 1-page origin form (no price).
-  3. Bill of Entry / HS Code — customs import records confirm what was imported.
+  1. CA Certificate -- CA certifies IC% from your books. Quotes stay internal.
+  2. Manufacturer's Origin Declaration -- supplier signs 1-page origin form (no price).
+  3. Bill of Entry / HS Code -- customs import records confirm what was imported.
 """
 from __future__ import annotations
 
 import io
+import re
 import textwrap
-import zipfile
 from datetime import date
 
 import pandas as pd
@@ -34,7 +34,7 @@ from utils.quotes import apply_best_quotes
 from utils.safe import guard
 from utils.style import inject_css, page_header
 
-# ── Constants ─────────────────────────────────────────────────────────────────
+# -- Constants -----------------------------------------------------------------
 ORIGIN_OPTIONS = ["Indian", "Imported", "Partially Indian"]
 DECL_STATUS    = ["Pending", "Yes", "No", "Not required"]
 
@@ -45,13 +45,13 @@ IC_THRESHOLDS = {
     "Buy & Make":                       0.30,
     "Make (Indian)":                    0.50,
     "Strategic Partnership Model":      0.50,
-    "GeM — Class I Local Supplier":     0.50,
-    "GeM — Class II Local Supplier":    0.20,
+    "GeM -- Class I Local Supplier":    0.50,
+    "GeM -- Class II Local Supplier":   0.20,
     "Shipbuilding Financial Assistance":0.30,
     "Custom / contractual":             0.0,
 }
 
-# ── HS code keyword → code mapping ────────────────────────────────────────────
+# -- HS code keyword -> code mapping -------------------------------------------
 _HS_KEYWORD_MAP: list[tuple[tuple[str, ...], str]] = [
     (("impeller", "runner", "wheel"),                        "8413.91"),
     (("nozzle", "deflector", "jet tube", "steering nozzle"), "8481.80"),
@@ -93,10 +93,10 @@ def _suggest_hs_code(name: str) -> str:
             return code
     return ""
 
-# ── Indian manufacturer list ──────────────────────────────────────────────────
+# -- Indian manufacturer list --------------------------------------------------
 INDIAN_SUPPLIERS: list[str] = [
     "",
-    # ── Seals & PTC (propeller / shaft seals) ─────────────────────────────
+    # -- Seals & PTC (propeller / shaft seals) ---------------------------------
     "Amruta PTC Pvt Ltd",
     "Vulcan Engineering Co",
     "Trelleborg Sealing Solutions India",
@@ -104,7 +104,7 @@ INDIAN_SUPPLIERS: list[str] = [
     "Parker Hannifin India Pvt Ltd",
     "Dynamic Sealing Technologies India",
     "Precision Seals Mfg Ltd",
-    # ── Castings & forgings ────────────────────────────────────────────────
+    # -- Castings & forgings ---------------------------------------------------
     "Bharat Forge Ltd",
     "Bhoruka Aluminium Ltd",
     "Electrosteel Castings Ltd",
@@ -117,7 +117,7 @@ INDIAN_SUPPLIERS: list[str] = [
     "Amtek Auto Ltd",
     "Ennore Foundries Ltd",
     "Perfect Castings Pvt Ltd",
-    # ── Machined & fabricated components ──────────────────────────────────
+    # -- Machined & fabricated components --------------------------------------
     "BEML Ltd",
     "Godrej & Boyce Mfg Co Ltd",
     "HMT Ltd",
@@ -127,41 +127,41 @@ INDIAN_SUPPLIERS: list[str] = [
     "Precision Camshafts Ltd",
     "Bhart Heavy Plate & Vessels Ltd",
     "Walchandnagar Industries Ltd",
-    # ── Bearings ──────────────────────────────────────────────────────────
+    # -- Bearings --------------------------------------------------------------
     "FAG Bearings India (Schaeffler India)",
     "NBC Bearings (National Engineering Industries)",
     "SKF India Ltd",
     "Timken India Ltd",
     "NRB Bearings Ltd",
-    # ── Fasteners ─────────────────────────────────────────────────────────
+    # -- Fasteners -------------------------------------------------------------
     "Bulten India Pvt Ltd",
     "Sundaram Fasteners Ltd",
     "Vikrant Screw Factory",
     "Mangal Fasteners Pvt Ltd",
     "Lisi Aerospace India",
     "Infastech India",
-    # ── Hydraulics & pneumatics ────────────────────────────────────────────
+    # -- Hydraulics & pneumatics -----------------------------------------------
     "Bosch Rexroth India Ltd",
     "Eaton Fluid Power Ltd India",
     "Parker Hannifin India Pvt Ltd",
     "Yuken India Ltd",
     "Hydraulics & Pneumatics Ltd",
     "Enerpac India",
-    # ── Valves ────────────────────────────────────────────────────────────
+    # -- Valves ----------------------------------------------------------------
     "Audco India Ltd (Flowserve)",
     "KSB Pumps Ltd",
     "L&T Valves Ltd",
     "Advance Valves Pvt Ltd",
     "Forbes Marshall Pvt Ltd",
     "Intervalve India Ltd",
-    # ── Pumps ─────────────────────────────────────────────────────────────
+    # -- Pumps -----------------------------------------------------------------
     "Flowserve India Controls Pvt Ltd",
     "Kirloskar Brothers Ltd",
     "KSB Pumps Ltd",
     "Sulzer India Ltd",
     "Worthington India Pvt Ltd",
     "WPIL Ltd",
-    # ── Electrical & instrumentation ──────────────────────────────────────
+    # -- Electrical & instrumentation ------------------------------------------
     "ABB India Ltd",
     "Bharat Heavy Electricals Ltd (BHEL)",
     "Emerson Electric India",
@@ -170,44 +170,44 @@ INDIAN_SUPPLIERS: list[str] = [
     "Siemens Ltd India",
     "Yokogawa India Ltd",
     "Endress+Hauser India",
-    # ── Stainless / structural steel ──────────────────────────────────────
+    # -- Stainless / structural steel ------------------------------------------
     "Bhushan Steel Ltd",
     "Jindal Stainless Ltd",
     "Kalyani Steels Ltd",
     "Mukand Ltd",
     "Kalyani Group",
     "ISMT Ltd",
-    # ── Cables ────────────────────────────────────────────────────────────
+    # -- Cables ----------------------------------------------------------------
     "Apar Industries Ltd",
     "Finolex Cables Ltd",
     "Polycab India Ltd",
     "KEI Industries Ltd",
-    # ── Rubber & gaskets ──────────────────────────────────────────────────
+    # -- Rubber & gaskets ------------------------------------------------------
     "Fenner India Ltd",
     "Gates India Pvt Ltd",
     "Premier Rubber Works",
     "Supreme Industries Ltd",
-    # ── Marine & defence ──────────────────────────────────────────────────
+    # -- Marine & defence ------------------------------------------------------
     "Cochin Shipyard Ltd",
     "Garden Reach Shipbuilders & Engineers Ltd",
     "Goa Shipyard Ltd",
     "Hindustan Shipyard Ltd",
     "Mazagon Dock Shipbuilders Ltd",
     "Pipavav Defence & Offshore Engineering",
-    # ── Surface finishing ─────────────────────────────────────────────────
+    # -- Surface finishing -----------------------------------------------------
     "Metalcolour Surface Coatings Pvt Ltd",
     "Berger Paints India Ltd",
     "Jotun India Pvt Ltd",
     "Asian Paints Ltd",
-    # ── Other ─────────────────────────────────────────────────────────────
+    # -- Other -----------------------------------------------------------------
     "Other Indian manufacturer",
 ]
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# -- Helpers -------------------------------------------------------------------
 def _traffic(val: float, threshold: float) -> str:
-    if val >= threshold:        return "🟢"
-    if val >= threshold * 0.85: return "🟠"
-    return "🔴"
+    if val >= threshold:        return "GREEN"
+    if val >= threshold * 0.85: return "AMBER"
+    return "RED"
 
 def _pct(val: float) -> str:
     return f"{val * 100:.1f}%"
@@ -215,11 +215,29 @@ def _pct(val: float) -> str:
 def _safe_col(df: pd.DataFrame, name: str, default="") -> pd.Series:
     return df[name] if name in df.columns else pd.Series([default] * len(df), index=df.index)
 
+# Strip emoji and non-BMP characters that corrupt Excel XML
+_EMOJI_RE = re.compile(
+    "["
+    "\U00010000-\U0010FFFF"   # supplementary planes (emoji, symbols)
+    "\U00002600-\U000027BF"   # misc symbols & dingbats
+    "\U0001F300-\U0001F9FF"   # emoticons / misc symbols
+    "]+",
+    flags=re.UNICODE,
+)
 
-# ── Scope detection from BOM line_ids ─────────────────────────────────────────
+def _xl(val) -> str:
+    """Return a string safe for Excel cells -- emoji stripped, control chars removed."""
+    s = str(val) if val is not None else ""
+    s = _EMOJI_RE.sub("", s)
+    # Remove XML-illegal control characters except tab/newline/CR
+    s = "".join(c for c in s if ord(c) >= 0x20 or c in "\t\n\r")
+    return s.strip()
+
+
+# -- Scope detection from BOM line_ids -----------------------------------------
 def _build_scope_table(df_costs: pd.DataFrame) -> pd.DataFrame:
     """
-    Group BOM cost rows by waterjet subsystem prefix → one row per scope.
+    Group BOM cost rows by waterjet subsystem prefix -> one row per scope.
     Unmatched lines go into 'Other'.
     Returns DataFrame with: scope_id, scope_name, icon, lines, cost_eur
     """
@@ -251,7 +269,7 @@ def _build_scope_table(df_costs: pd.DataFrame) -> pd.DataFrame:
         if sid in WATERJET_SUBSYSTEMS:
             info = WATERJET_SUBSYSTEMS[sid]
             return f"{info['icon']} {info['name']}"
-        return "❓ Other / Miscellaneous"
+        return "? Other / Miscellaneous"
 
     agg["scope_name"] = agg["scope_id"].map(_scope_name)
     # Sort: known subsystems first (in definition order), then Other
@@ -261,17 +279,18 @@ def _build_scope_table(df_costs: pd.DataFrame) -> pd.DataFrame:
     return agg
 
 
-# ── Document builders ─────────────────────────────────────────────────────────
+# -- Document builders ---------------------------------------------------------
 
 def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
                   indian_val: float, imported_val: float,
                   procurement_cat: str, threshold: float,
                   surveying_agency: str, company_name: str) -> str:
     today = date.today().strftime("%d %B %Y")
+    meets = "MEETS" if ic_pct >= threshold else "DOES NOT MEET"
     return textwrap.dedent(f"""\
-    ══════════════════════════════════════════════════════════════════════
+    ======================================================================
     CERTIFICATE OF INDIGENOUS CONTENT (IC%)
-    ══════════════════════════════════════════════════════════════════════
+    ======================================================================
 
     Date: {today}
     Issuing CA Firm: [CA FIRM NAME AND REGISTRATION NUMBER]
@@ -281,7 +300,7 @@ def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
     Subject: Certification of Indigenous Content for supply against
              Project: {meta.get("name", "[PROJECT NAME]")}
 
-    ── Project details ───────────────────────────────────────────────────
+    -- Project details -------------------------------------------------------
 
     Seller / Supplier:    {company_name or meta.get("name", "[COMPANY NAME]")}
     Customer / end user:  {meta.get("customer", "[CUSTOMER NAME]")}
@@ -289,21 +308,21 @@ def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
     Required IC%:         {threshold * 100:.1f}%
     Contract value:       EUR {contract_value:,.0f}
 
-    ── IC% Calculation ───────────────────────────────────────────────────
+    -- IC% Calculation -------------------------------------------------------
 
     Calculation method: Value-based
-    Formula: IC% = (Value of Indian inputs / Total contract value) × 100
+    Formula: IC% = (Value of Indian inputs / Total contract value) x 100
 
         Total contract value:     EUR {contract_value:>12,.0f}
         Less: value of imports:   EUR {imported_val:>12,.0f}
-        ─────────────────────────────────────────────
+        -----------------------------------------------------------------
         Indian input value:       EUR {indian_val:>12,.0f}
-        ─────────────────────────────────────────────
+        -----------------------------------------------------------------
         DECLARED INDIGENOUS CONTENT: {ic_pct * 100:.2f}%
 
-    Result: {"✓ MEETS" if ic_pct >= threshold else "✗ DOES NOT MEET"} the required IC% of {threshold*100:.1f}%
+    Result: {meets} the required IC% of {threshold*100:.1f}%
 
-    ── Basis of certification ────────────────────────────────────────────
+    -- Basis of certification ------------------------------------------------
 
     We have examined the books of accounts, purchase orders, invoices and
     internal cost records of the above-referenced project. Individual
@@ -316,7 +335,7 @@ def _ca_cert_text(meta: dict, contract_value: float, ic_pct: float,
     listing all assemblies and their manufacturing origin (without
     commercial pricing) is enclosed as Annex A.
 
-    ── Declaration ───────────────────────────────────────────────────────
+    -- Declaration -----------------------------------------------------------
 
     We certify that the information provided above is true, accurate and
     complete to the best of our knowledge, based on records made available
@@ -341,9 +360,9 @@ def _decl_text(supplier_name: str, scope_list: str, hs_list: str,
                surveying_agency: str) -> str:
     today = date.today().strftime("%d %B %Y")
     return textwrap.dedent(f"""\
-    ══════════════════════════════════════════════════════════════════════
+    ======================================================================
     MANUFACTURER'S DECLARATION OF DOMESTIC ORIGIN
-    ══════════════════════════════════════════════════════════════════════
+    ======================================================================
 
     Date: {today}
 
@@ -353,19 +372,19 @@ def _decl_text(supplier_name: str, scope_list: str, hs_list: str,
     Subject: Declaration of Domestic Manufacturing Origin
              Project: {project}  |  Customer: {customer}
 
-    ── Identity of Manufacturer ──────────────────────────────────────────
+    -- Identity of Manufacturer ----------------------------------------------
 
     Company name:     {supplier_name}
     Registered in:    India
     Manufacturing location: India (address available on request)
 
-    ── Goods / Assemblies Covered ────────────────────────────────────────
+    -- Goods / Assemblies Covered --------------------------------------------
 
     Scope / assembly:  {scope_list}
-    HS Code(s):        {hs_list or "[HS codes — see Scope Register]"}
+    HS Code(s):        {hs_list or "[HS codes -- see Scope Register]"}
     Project reference: {project}
 
-    ── Declaration ───────────────────────────────────────────────────────
+    -- Declaration -----------------------------------------------------------
 
     We, {supplier_name}, hereby unconditionally declare that:
 
@@ -409,101 +428,112 @@ def _build_surveyor_excel(scope_ic: pd.DataFrame, meta: dict,
                            threshold: float, procurement_cat: str,
                            company_name: str, surveying_agency: str) -> bytes:
     """
-    Single Excel workbook — all surveyor-facing data, no prices.
+    Single Excel workbook -- all surveyor-facing data, no prices.
     Sheets: Cover | IC Calculation | Scope Register | Declaration Tracker | HS Code Reference
+    All scope_name values are sanitised with _xl() to strip emoji that corrupt Excel XML.
     """
     today = date.today().strftime("%d %B %Y")
+    status = "COMPLIANT" if ic_pct >= threshold else "NON-COMPLIANT"
+    surplus_label = (
+        f"+{(ic_pct - threshold)*100:.2f}pp COMPLIANT"
+        if ic_pct >= threshold
+        else f"{(ic_pct - threshold)*100:.2f}pp SHORTFALL"
+    )
+
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as w:
 
-        # ── Sheet 1: Cover ────────────────────────────────────────────────
+        # -- Sheet 1: Cover ----------------------------------------------------
         pd.DataFrame([
             ["INDIGENOUS CONTENT COMPLIANCE SUBMISSION", ""],
             ["", ""],
-            ["Project",               meta.get("name", "")],
-            ["Customer / end user",   meta.get("customer", "")],
-            ["Seller / supplier",     company_name or meta.get("name", "")],
-            ["Surveying agency",      surveying_agency or ""],
-            ["Procurement category",  procurement_cat],
+            ["Project",               _xl(meta.get("name", ""))],
+            ["Customer / end user",   _xl(meta.get("customer", ""))],
+            ["Seller / supplier",     _xl(company_name or meta.get("name", ""))],
+            ["Surveying agency",      _xl(surveying_agency or "")],
+            ["Procurement category",  _xl(procurement_cat)],
             ["", ""],
             ["DECLARED IC%",          f"{ic_pct * 100:.2f}%"],
             ["Required IC%",          f"{threshold * 100:.1f}%"],
-            ["Status",                "COMPLIANT" if ic_pct >= threshold else "NON-COMPLIANT"],
+            ["Status",                status],
             ["", ""],
             ["Date of submission",    today],
-            ["Calculation method",    "Value-based (IC% = Indian value / Total value × 100)"],
+            ["Calculation method",    "Value-based (IC% = Indian value / Total value x 100)"],
             ["", ""],
             ["DOCUMENTS ENCLOSED", ""],
-            ["Annex A", "IC Calculation (this sheet — Sheet 2)"],
+            ["Annex A", "IC Calculation (Sheet 2)"],
             ["Annex B", "Scope Origin Register (Sheet 3)"],
             ["Annex C", "Declaration Tracker (Sheet 4)"],
             ["Annex D", "HS Code Reference (Sheet 5)"],
-            ["Annex E", "CA Certificate (separate TXT file — to be signed)"],
-            ["Annex F", "Manufacturer Origin Declarations (separate TXT files — to be signed)"],
+            ["Annex E", "CA Certificate (separate TXT file -- to be signed)"],
+            ["Annex F", "Manufacturer Origin Declarations (separate TXT files -- to be signed)"],
         ], columns=["Field", "Value"]).to_excel(w, sheet_name="Cover", index=False)
 
-        # ── Sheet 2: IC Calculation ───────────────────────────────────────
-        pd.DataFrame([
-            ["INDIGENOUS CONTENT CALCULATION",          ""],
-            ["", ""],
-            ["Total contract value (€)",                f"{contract_value:,.0f}"],
-            ["Value of Indian inputs (€)",              f"{indian_val:,.0f}"],
-            ["Value of imported inputs (€)",            f"{imported_val:,.0f}"],
-            ["", ""],
-            ["Declared IC%",                            f"{ic_pct * 100:.2f}%"],
-            ["Required IC%",                            f"{threshold * 100:.1f}%"],
-            ["IC% surplus / shortfall",
-             f"+{(ic_pct - threshold)*100:.2f}pp COMPLIANT" if ic_pct >= threshold
-             else f"{(ic_pct - threshold)*100:.2f}pp SHORTFALL"],
-            ["", ""],
-            ["Formula",
-             "IC% = (Indian input value / Total contract value) × 100"],
-            ["Basis",
-             "Internal cost records; available for CA certification. "
-             "Individual supplier prices not disclosed."],
-            ["", ""],
-            ["Scope breakdown", ""],
-        ] + [
-            [f"  {r['scope_name']}",
+        # -- Sheet 2: IC Calculation -------------------------------------------
+        scope_rows = [
+            [f"  {_xl(r['scope_name'])}",
              f"{float(r.get('ic_value_pct', 0) or 0)*100:.0f}% Indian  "
              f"(cost weight: {float(r.get('cost_eur', 0) or 0) / contract_value * 100:.1f}%)"]
             for _, r in scope_ic.iterrows()
-        ], columns=["Item", "Value"]).to_excel(w, sheet_name="IC Calculation", index=False)
+        ]
+        pd.DataFrame([
+            ["INDIGENOUS CONTENT CALCULATION", ""],
+            ["", ""],
+            ["Total contract value (EUR)",   f"{contract_value:,.0f}"],
+            ["Value of Indian inputs (EUR)", f"{indian_val:,.0f}"],
+            ["Value of imported inputs (EUR)", f"{imported_val:,.0f}"],
+            ["", ""],
+            ["Declared IC%",   f"{ic_pct * 100:.2f}%"],
+            ["Required IC%",   f"{threshold * 100:.1f}%"],
+            ["IC% surplus / shortfall", surplus_label],
+            ["", ""],
+            ["Formula", "IC% = (Indian input value / Total contract value) x 100"],
+            ["Basis",   "Internal cost records; available for CA certification. "
+                        "Individual supplier prices not disclosed."],
+            ["", ""],
+            ["Scope breakdown", ""],
+        ] + scope_rows, columns=["Item", "Value"]).to_excel(
+            w, sheet_name="IC Calculation", index=False)
 
-        # ── Sheet 3: Scope Origin Register (no prices) ───────────────────
+        # -- Sheet 3: Scope Origin Register (no prices) ------------------------
         pd.DataFrame({
-            "Scope / Subsystem":          _safe_col(scope_ic, "scope_name"),
-            "Manufacturing origin":       _safe_col(scope_ic, "origin", "Imported"),
-            "IC fraction claimed":        _safe_col(scope_ic, "ic_value_pct", 0.0).map(
-                                              lambda x: f"{float(x or 0)*100:.0f}%"),
-            "Indian manufacturer":        _safe_col(scope_ic, "indian_supplier"),
-            "HS Code":                    _safe_col(scope_ic, "hs_code"),
-            "BOM lines in scope":         _safe_col(scope_ic, "lines", 0),
-            "Origin declaration received":_safe_col(scope_ic, "declaration_rxd", "Pending"),
-            "Declaration ref / date":     _safe_col(scope_ic, "declaration_ref"),
-            "Notes":                      _safe_col(scope_ic, "notes"),
+            "Scope / Subsystem":           _safe_col(scope_ic, "scope_name").map(_xl),
+            "Manufacturing origin":        _safe_col(scope_ic, "origin", "Imported"),
+            "IC fraction claimed":         _safe_col(scope_ic, "ic_value_pct", 0.0).map(
+                                               lambda x: f"{float(x or 0)*100:.0f}%"),
+            "Indian manufacturer":         _safe_col(scope_ic, "indian_supplier"),
+            "HS Code":                     _safe_col(scope_ic, "hs_code"),
+            "BOM lines in scope":          _safe_col(scope_ic, "lines", 0),
+            "Origin declaration received": _safe_col(scope_ic, "declaration_rxd", "Pending"),
+            "Declaration ref / date":      _safe_col(scope_ic, "declaration_ref"),
+            "Notes":                       _safe_col(scope_ic, "notes"),
         }).to_excel(w, sheet_name="Scope Register (Annex B)", index=False)
 
-        # ── Sheet 4: Declaration Tracker ─────────────────────────────────
+        # -- Sheet 4: Declaration Tracker --------------------------------------
         indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
             ["Indian", "Partially Indian"])
         decl = scope_ic[indian_mask].copy()
-        pd.DataFrame({
-            "Scope / Subsystem":         _safe_col(decl, "scope_name"),
-            "Indian manufacturer":       _safe_col(decl, "indian_supplier"),
-            "IC fraction":               _safe_col(decl, "ic_value_pct", 0.0).map(
-                                             lambda x: f"{float(x or 0)*100:.0f}%"),
-            "Declaration received?":     _safe_col(decl, "declaration_rxd", "Pending"),
-            "Reference / date":          _safe_col(decl, "declaration_ref"),
-            "Action required":           _safe_col(decl, "declaration_rxd", "Pending").map(
-                lambda s: "✓ Complete" if s == "Yes"
-                else ("Send declaration for signature" if s == "Pending"
-                      else ("Not required" if s == "Not required" else "Obtain declaration"))),
-        }).to_excel(w, sheet_name="Declaration Tracker (Annex C)", index=False)
+        if not decl.empty:
+            pd.DataFrame({
+                "Scope / Subsystem":    _safe_col(decl, "scope_name").map(_xl),
+                "Indian manufacturer":  _safe_col(decl, "indian_supplier"),
+                "IC fraction":          _safe_col(decl, "ic_value_pct", 0.0).map(
+                                            lambda x: f"{float(x or 0)*100:.0f}%"),
+                "Declaration received?": _safe_col(decl, "declaration_rxd", "Pending"),
+                "Reference / date":     _safe_col(decl, "declaration_ref"),
+                "Action required":      _safe_col(decl, "declaration_rxd", "Pending").map(
+                    lambda s: "Done - complete" if s == "Yes"
+                    else ("Send for signature" if s == "Pending"
+                          else ("Not required" if s == "Not required"
+                                else "Obtain declaration"))),
+            }).to_excel(w, sheet_name="Declaration Tracker (Annex C)", index=False)
+        else:
+            pd.DataFrame({"Note": ["No Indian / Partially Indian scopes entered yet."]
+                         }).to_excel(w, sheet_name="Declaration Tracker (Annex C)", index=False)
 
-        # ── Sheet 5: HS Code Reference ────────────────────────────────────
+        # -- Sheet 5: HS Code Reference ----------------------------------------
         pd.DataFrame({
-            "Scope / Subsystem": _safe_col(scope_ic, "scope_name"),
+            "Scope / Subsystem": _safe_col(scope_ic, "scope_name").map(_xl),
             "HS Code":           _safe_col(scope_ic, "hs_code"),
             "Origin":            _safe_col(scope_ic, "origin", "Imported"),
             "Purpose":           "Bill of Entry cross-reference / customs classification",
@@ -512,146 +542,47 @@ def _build_surveyor_excel(scope_ic: pd.DataFrame, meta: dict,
     return buf.getvalue()
 
 
-def _build_surveyor_zip(scope_ic: pd.DataFrame, meta: dict,
-                         contract_value: float, ic_pct: float,
-                         indian_val: float, imported_val: float,
-                         threshold: float, procurement_cat: str,
+def _build_declarations(scope_ic: pd.DataFrame, meta: dict,
                          company_name: str, surveying_agency: str,
-                         project: str) -> bytes:
+                         project: str) -> list[tuple[str, bytes]]:
     """
-    Build a complete ZIP package containing every document the surveyor needs.
-    No prices anywhere in any file.
+    Return list of (filename, bytes) -- one declaration TXT per Indian supplier.
     """
-    buf = io.BytesIO()
-    folder = f"IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat()}"
+    customer = meta.get("customer", "")
+    indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
+        ["Indian", "Partially Indian"])
+    indian_rows = scope_ic[indian_mask].copy()
 
-    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+    suppliers: dict[str, dict] = {}
+    for _, r in indian_rows.iterrows():
+        sup = str(r.get("indian_supplier") or "").strip()
+        if not sup:
+            continue
+        if sup not in suppliers:
+            suppliers[sup] = {"scopes": [], "hs_codes": []}
+        suppliers[sup]["scopes"].append(_xl(str(r.get("scope_name", ""))))
+        hs = str(r.get("hs_code", "") or "").strip()
+        if hs and hs not in suppliers[sup]["hs_codes"]:
+            suppliers[sup]["hs_codes"].append(hs)
 
-        # ── 01 Excel workbook (Annexes A–D) ──────────────────────────────
-        excel_bytes = _build_surveyor_excel(
-            scope_ic, meta, contract_value, ic_pct, indian_val, imported_val,
-            threshold, procurement_cat, company_name, surveying_agency,
+    result = []
+    for i, (sup_name, data) in enumerate(suppliers.items(), start=1):
+        text = _decl_text(
+            supplier_name=sup_name,
+            scope_list="; ".join(data["scopes"]),
+            hs_list="; ".join(data["hs_codes"]),
+            project=project,
+            customer=customer,
+            company_name=company_name,
+            surveying_agency=surveying_agency,
         )
-        zf.writestr(f"{folder}/01_IC_Submission_Package.xlsx", excel_bytes)
-
-        # ── 02 CA Certificate draft ───────────────────────────────────────
-        ca_text = _ca_cert_text(
-            meta, contract_value, ic_pct, indian_val, imported_val,
-            procurement_cat, threshold, surveying_agency, company_name,
-        )
-        zf.writestr(f"{folder}/02_CA_Certificate_Draft_(Annex_E).txt", ca_text)
-
-        # ── 03 Manufacturer declarations (one per supplier) ───────────────
-        customer = meta.get("customer", "")
-        indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
-            ["Indian", "Partially Indian"])
-        indian_rows = scope_ic[indian_mask].copy()
-
-        # Group by supplier
-        suppliers = {}
-        for _, r in indian_rows.iterrows():
-            sup = str(r.get("indian_supplier") or "").strip()
-            if not sup:
-                continue
-            if sup not in suppliers:
-                suppliers[sup] = {"scopes": [], "hs_codes": []}
-            suppliers[sup]["scopes"].append(str(r.get("scope_name", "")))
-            hs = str(r.get("hs_code", "") or "").strip()
-            if hs and hs not in suppliers[sup]["hs_codes"]:
-                suppliers[sup]["hs_codes"].append(hs)
-
-        if suppliers:
-            for i, (sup_name, data) in enumerate(suppliers.items(), start=1):
-                decl = _decl_text(
-                    supplier_name=sup_name,
-                    scope_list="; ".join(data["scopes"]),
-                    hs_list="; ".join(data["hs_codes"]),
-                    project=project,
-                    customer=customer,
-                    company_name=company_name,
-                    surveying_agency=surveying_agency,
-                )
-                safe_name = sup_name.replace(" ", "_").replace("/", "-")[:50]
-                zf.writestr(
-                    f"{folder}/03_Declarations/Declaration_{i:02d}_{safe_name}.txt",
-                    decl,
-                )
-        else:
-            zf.writestr(
-                f"{folder}/03_Declarations/README.txt",
-                "No Indian manufacturers entered yet.\n"
-                "Add Indian manufacturer names in the IC Register tab, "
-                "then re-generate this package.\n",
-            )
-
-        # ── 04 README / submission instructions ───────────────────────────
-        readme = textwrap.dedent(f"""\
-        IC SUBMISSION PACKAGE — CONTENTS AND INSTRUCTIONS
-        ══════════════════════════════════════════════════
-
-        Project:   {project}
-        Customer:  {customer}
-        Generated: {date.today().strftime("%d %B %Y")}
-        Declared IC%: {ic_pct*100:.2f}%  (Required: {threshold*100:.1f}%)
-
-        ── FILES IN THIS PACKAGE ────────────────────────────────────────
-
-        01_IC_Submission_Package.xlsx
-            Annex A  Cover page & compliance status
-            Annex B  Scope Origin Register (all scopes, NO prices)
-            Annex C  IC% Calculation (value breakdown)
-            Annex D  Declaration Tracker (signature status per scope)
-            Annex E  HS Code Reference (for Bill of Entry cross-check)
-
-        02_CA_Certificate_Draft_(Annex_E).txt
-            Template for your Chartered Accountant to adapt and sign.
-            CA certifies IC% from internal books — individual supplier
-            prices are NOT disclosed in this document.
-
-        03_Declarations/Declaration_XX_SupplierName.txt
-            One declaration per Indian manufacturer (Annex F).
-            Each supplier must SIGN and STAMP their declaration before
-            submission. No purchase prices appear in any declaration.
-
-        ── SUBMISSION PROCESS ───────────────────────────────────────────
-
-        Step 1  Email the declaration TXT files to each Indian supplier.
-                They sign, stamp and return — takes 1–3 working days.
-
-        Step 2  Give the CA Certificate draft to your Chartered Accountant
-                with your internal cost records. They certify and sign —
-                allows them to verify IC% without disclosing prices to
-                the surveyor.
-
-        Step 3  Submit the complete package to {surveying_agency or "the surveying agency"}:
-                  • 01_IC_Submission_Package.xlsx  (all annexes)
-                  • 02_CA_Certificate.pdf          (signed by CA)
-                  • 03_Declarations/ folder        (signed by each supplier)
-
-        ── WHAT YOU DO NOT SUBMIT ───────────────────────────────────────
-
-        ✗  Your supplier quote book
-        ✗  Individual purchase prices
-        ✗  Your cost build-up or margin
-        ✗  Internal financial records
-
-        The surveyor verifies ORIGIN, not PRICE. The CA certificate
-        bridges the gap — they verify the numbers, you keep the prices.
-
-        ── BACKUP METHOD (Bill of Entry) ────────────────────────────────
-
-        For every imported scope, file a Bill of Entry with Indian Customs
-        when the goods arrive. The customs-cleared import value becomes the
-        official record of what was imported. Everything in the contract
-        value not on a BoE is deemed Indian. This method is irrefutable
-        and requires no supplier cooperation.
-        """)
-        zf.writestr(f"{folder}/00_README_Submission_Instructions.txt", readme)
-
-    return buf.getvalue()
+        safe_name = re.sub(r"[^\w\-]", "_", sup_name)[:50]
+        fname = f"Declaration_{i:02d}_{safe_name}.txt"
+        result.append((fname, text.encode("utf-8")))
+    return result
 
 
-# ═════════════════════════════════════════════════════════════════════════════
+# =============================================================================
 def main() -> None:
     st.set_page_config(page_title="India Local Content", layout="wide", page_icon="🇮🇳")
     inject_css()
@@ -670,7 +601,7 @@ def main() -> None:
         project=project,
     )
 
-    # ── Load BOM costs ────────────────────────────────────────────────────────
+    # -- Load BOM costs --------------------------------------------------------
     try:
         mats   = load_materials()
         procs  = load_processes()
@@ -692,7 +623,7 @@ def main() -> None:
     df["total_cost"] = pd.to_numeric(df["total_cost"], errors="coerce").fillna(0.0)
     total_bom_value  = float(df["total_cost"].sum())
 
-    # ── Sidebar ───────────────────────────────────────────────────────────────
+    # -- Sidebar ---------------------------------------------------------------
     st.sidebar.divider()
     st.sidebar.subheader("Contract settings")
 
@@ -707,7 +638,7 @@ def main() -> None:
     threshold = threshold_pct / 100.0
 
     contract_value = float(st.sidebar.number_input(
-        "Contract value (€)",
+        "Contract value (EUR)",
         min_value=0.0, value=float(total_bom_value), step=10_000.0, format="%.0f",
         help="Defaults to BOM sell price. Override with signed contract value.",
     ))
@@ -726,15 +657,15 @@ def main() -> None:
     st.sidebar.divider()
     st.sidebar.info(
         "**No quote book needed. Three methods:**\n\n"
-        "1️⃣ **CA Certificate** — CA certifies IC% from books.\n\n"
-        "2️⃣ **Origin Declaration** — supplier signs 1-page form, no price.\n\n"
-        "3️⃣ **Bill of Entry** — customs records confirm imports; rest is Indian."
+        "1. **CA Certificate** -- CA certifies IC% from books.\n\n"
+        "2. **Origin Declaration** -- supplier signs 1-page form, no price.\n\n"
+        "3. **Bill of Entry** -- customs records confirm imports; rest is Indian."
     )
 
-    # ── Build scope table from BOM ────────────────────────────────────────────
+    # -- Build scope table from BOM --------------------------------------------
     scope_tbl = _build_scope_table(df)   # scope_id, scope_name, lines, cost_eur
 
-    # ── Load previously saved scope IC data ───────────────────────────────────
+    # -- Load previously saved scope IC data -----------------------------------
     lc_df = load_india_lc()
     # Saved rows use scope_id as their line_id (prefixed "SCOPE_")
     saved_scope = pd.DataFrame()
@@ -776,25 +707,25 @@ def main() -> None:
 
     scope_tbl["cost_eur"] = pd.to_numeric(scope_tbl["cost_eur"], errors="coerce").fillna(0.0)
 
-    # ── Tabs ──────────────────────────────────────────────────────────────────
+    # -- Tabs ------------------------------------------------------------------
     tabs = st.tabs([
-        "📋 IC Register (scope level)",
-        "📊 IC% Dashboard",
-        "📝 Submission Documents",
-        "🏭 Strategy Adviser",
-        "🔍 BOM Line Detail",
+        "IC Register (scope level)",
+        "IC% Dashboard",
+        "Submission Documents",
+        "Strategy Adviser",
+        "BOM Line Detail",
     ])
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 1 — IC REGISTER (SCOPE LEVEL)
-    # ══════════════════════════════════════════════════════════════════════════
+    # =========================================================================
+    # TAB 1 -- IC REGISTER (SCOPE LEVEL)
+    # =========================================================================
     with tabs[0]:
-        st.subheader("IC register — one row per scope / subsystem")
+        st.subheader("IC register -- one row per scope / subsystem")
         st.caption(
-            "Set origin and IC fraction at the **scope level** — one row per waterjet subsystem. "
+            "Set origin and IC fraction at the **scope level** -- one row per waterjet subsystem. "
             "Indian = 1.0 · Imported = 0.0 · Partially Indian = enter the fraction (e.g. 0.60). "
-            "🤖 HS codes auto-suggested · 🏭 Manufacturer is a searchable dropdown · "
-            "📅 Declaration date defaults to today."
+            "HS codes auto-suggested · Manufacturer is a searchable dropdown · "
+            "Declaration date defaults to today."
         )
 
         editor_df = scope_tbl[[
@@ -811,7 +742,7 @@ def main() -> None:
                 "lines":           st.column_config.NumberColumn(
                     "BOM lines", disabled=True, width="small"),
                 "cost_eur":        st.column_config.NumberColumn(
-                    "Cost (€)", disabled=True, format="%.0f"),
+                    "Cost (EUR)", disabled=True, format="%.0f"),
                 "origin":          st.column_config.SelectboxColumn(
                     "Origin", options=ORIGIN_OPTIONS, width="medium",
                     help="Indian=100% local · Imported=0% · Partially Indian=enter fraction"),
@@ -819,10 +750,10 @@ def main() -> None:
                     "IC fraction", min_value=0.0, max_value=1.0, format="%.2f",
                     help="1.00 = fully Indian · 0.00 = fully imported · "
                          "0.60 = 60% of this scope's cost is Indian. "
-                         "Enter your value — it will NOT be reset."),
+                         "Enter your value -- it will NOT be reset."),
                 "indian_supplier": st.column_config.SelectboxColumn(
                     "Indian manufacturer", options=INDIAN_SUPPLIERS, width="large",
-                    help="Type to filter. Supplier name only — no price."),
+                    help="Type to filter. Supplier name only -- no price."),
                 "declaration_rxd": st.column_config.SelectboxColumn(
                     "Declaration rxd?", options=DECL_STATUS, width="small"),
                 "declaration_ref": st.column_config.TextColumn(
@@ -839,14 +770,14 @@ def main() -> None:
             num_rows="fixed",
         )
 
-        # ── Coerce types but DO NOT auto-reset user-entered ic_value_pct ─────
+        # -- Coerce types but DO NOT auto-reset user-entered ic_value_pct ------
         edited = edited.copy()
         edited["ic_value_pct"] = pd.to_numeric(
             edited["ic_value_pct"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
         edited["cost_eur"] = scope_tbl["cost_eur"].values   # always from live BOM
 
         c_save, c_tip = st.columns([1, 6])
-        if c_save.button("💾 Save IC register", type="primary", use_container_width=True):
+        if c_save.button("Save IC register", type="primary", use_container_width=True):
             save_rows = edited.copy()
             save_rows["line_id"]   = "SCOPE_" + scope_tbl["scope_id"].values
             save_rows["part_name"] = save_rows["scope_name"]
@@ -856,49 +787,49 @@ def main() -> None:
                             "ic_value_pct", "notes"]],
                 "india_lc",
             )
-            st.success("✅ IC register saved.")
+            st.success("IC register saved.")
             st.rerun()
 
         c_tip.caption(
-            "💡 Enter IC fraction directly (e.g. **0.65** = 65% Indian). "
-            "Your value is kept as-is — it is not auto-reset. "
+            "Enter IC fraction directly (e.g. **0.65** = 65% Indian). "
+            "Your value is kept as-is -- it is not auto-reset. "
             "The surveying agency needs manufacturer name + HS code, not your price."
         )
 
-    # ── Shared IC calculation (used by all remaining tabs) ────────────────────
+    # -- Shared IC calculation (used by all remaining tabs) --------------------
     edited["_ic_eur"]  = edited["cost_eur"] * edited["ic_value_pct"]
     edited["_imp_eur"] = edited["cost_eur"] * (1 - edited["ic_value_pct"])
     indian_val   = float(edited["_ic_eur"].sum())
     imported_val = float(edited["_imp_eur"].sum())
     ic_pct_calc  = indian_val / contract_value if contract_value > 0 else 0.0
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 2 — IC% DASHBOARD
-    # ══════════════════════════════════════════════════════════════════════════
+    # =========================================================================
+    # TAB 2 -- IC% DASHBOARD
+    # =========================================================================
     with tabs[1]:
         st.subheader("IC% summary")
 
         k1, k2, k3, k4, k5 = st.columns(5)
         sig = _traffic(ic_pct_calc, threshold)
         k1.metric("Declared IC%",        _pct(ic_pct_calc),
-                  delta=f"{sig} {'Meets' if ic_pct_calc >= threshold else 'Below'} "
+                  delta=f"{sig}  {'Meets' if ic_pct_calc >= threshold else 'Below'} "
                         f"{_pct(threshold)} threshold")
-        k2.metric("Indian content (€)",  fmt(indian_val, 0))
-        k3.metric("Imported content (€)",fmt(imported_val, 0))
-        k4.metric("Contract value (€)",  fmt(contract_value, 0))
+        k2.metric("Indian content (EUR)",  fmt(indian_val, 0))
+        k3.metric("Imported content (EUR)", fmt(imported_val, 0))
+        k4.metric("Contract value (EUR)",  fmt(contract_value, 0))
         k5.metric("IC threshold",        _pct(threshold),
                   delta=procurement_cat, delta_color="off")
 
         if ic_pct_calc < threshold:
             shortfall_eur = (threshold - ic_pct_calc) * contract_value
             st.error(
-                f"⚠️ IC% shortfall: **{_pct(threshold - ic_pct_calc)}** — "
+                f"IC% shortfall: **{_pct(threshold - ic_pct_calc)}** -- "
                 f"need **{fmt(shortfall_eur, 0)}** more Indian content. "
                 "See **Strategy Adviser** tab."
             )
         else:
             st.success(
-                f"✅ IC% exceeds threshold by **{_pct(ic_pct_calc - threshold)}** "
+                f"IC% exceeds threshold by **{_pct(ic_pct_calc - threshold)}** "
                 f"({fmt((ic_pct_calc - threshold) * contract_value, 0)} buffer)."
             )
 
@@ -912,11 +843,11 @@ def main() -> None:
 
         dc1, dc2, dc3, dc4 = st.columns(4)
         dc1.metric("Scopes needing declaration", len(indian_scopes))
-        dc2.metric("✅ Received",   d_yes)
-        dc3.metric("⏳ Pending",    d_pending,
+        dc2.metric("Received",   d_yes)
+        dc3.metric("Pending",    d_pending,
                    delta="chase" if d_pending else None,
                    delta_color="inverse" if d_pending else "off")
-        dc4.metric("❌ Not obtained", d_no,
+        dc4.metric("Not obtained", d_no,
                    delta="risk" if d_no else None,
                    delta_color="inverse" if d_no else "off")
 
@@ -935,97 +866,76 @@ def main() -> None:
         by_origin = (
             edited.groupby("origin")["cost_eur"]
             .sum().reset_index()
-            .rename(columns={"cost_eur": "Cost (€)", "origin": "Origin"})
+            .rename(columns={"cost_eur": "Cost (EUR)", "origin": "Origin"})
         )
         c1, c2 = st.columns([2, 1])
         with c1:
-            st.bar_chart(by_origin.set_index("Origin")[["Cost (€)"]], color="#2196F3", height=220)
+            st.bar_chart(by_origin.set_index("Origin")[["Cost (EUR)"]], color="#2196F3", height=220)
         with c2:
             disp = by_origin.copy()
-            disp["Cost (€)"] = disp["Cost (€)"].map(lambda x: fmt(x, 0))
+            disp["Cost (EUR)"] = disp["Cost (EUR)"].map(lambda x: fmt(x, 0))
             st.dataframe(disp, use_container_width=True, hide_index=True)
 
         # Per-scope IC breakdown
         st.subheader("IC contribution by scope")
         scope_disp = pd.DataFrame({
             "Scope":         edited["scope_name"],
-            "Cost (€)":      edited["cost_eur"].map(lambda x: fmt(x, 0)),
+            "Cost (EUR)":    edited["cost_eur"].map(lambda x: fmt(x, 0)),
             "Origin":        edited["origin"],
             "IC fraction":   edited["ic_value_pct"].map(lambda x: f"{x*100:.0f}%"),
-            "IC value (€)":  edited["_ic_eur"].map(lambda x: fmt(x, 0)),
+            "IC value (EUR)": edited["_ic_eur"].map(lambda x: fmt(x, 0)),
             "Contribution":  edited["_ic_eur"].map(
-                lambda x: _pct(x / contract_value) if contract_value > 0 else "—"),
+                lambda x: _pct(x / contract_value) if contract_value > 0 else "--"),
         })
         st.dataframe(scope_disp, use_container_width=True, hide_index=True)
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 3 — SURVEYOR SUBMISSION PACKAGE
-    # ══════════════════════════════════════════════════════════════════════════
+    # =========================================================================
+    # TAB 3 -- SUBMISSION DOCUMENTS
+    # =========================================================================
     with tabs[2]:
-        st.subheader("📦 Surveyor submission package")
+        st.subheader("Submission documents")
 
-        # ── Process overview ──────────────────────────────────────────────────
-        st.markdown(
-            """
-**One button generates everything the surveyor needs.** No prices in any file.
+        company_name    = st.session_state.get("_lc_company", "")
+        surveying_agency = st.session_state.get("_lc_agency", "")
 
-| # | You do | Time |
-|---|--------|------|
-| 1️⃣ | Download the package below | Now |
-| 2️⃣ | Email each supplier their `Declaration_XX_SupplierName.txt` — they sign & stamp and return | 1–3 days |
-| 3️⃣ | Give your CA the `CA_Certificate_Draft.txt` + internal cost records — they certify & sign | 2–5 days |
-| 4️⃣ | Submit signed CA cert + signed declarations + the Excel to the surveying agency | Done |
-            """
-        )
+        # Collect Indian suppliers for declarations
+        indian_scope_rows = edited[edited["origin"].isin(["Indian", "Partially Indian"])]
+        named_suppliers = sorted(set(
+            s for s in indian_scope_rows["indian_supplier"].fillna("").tolist() if s.strip()
+        ))
 
-        # ── Package contents preview ──────────────────────────────────────────
-        with st.expander("📋 What's inside the ZIP"):
-            indian_scope_rows = edited[edited["origin"].isin(["Indian", "Partially Indian"])]
-            named_suppliers = sorted(set(
-                s for s in indian_scope_rows["indian_supplier"].fillna("").tolist() if s.strip()
-            ))
-            st.markdown(
-                f"""
-```
-IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat()}/
-│
-├── 00_README_Submission_Instructions.txt   ← Step-by-step instructions
-│
-├── 01_IC_Submission_Package.xlsx           ← Hand this to the surveyor (no prices)
-│     Sheet 1: Cover — project, IC%, compliance status
-│     Sheet 2: IC Calculation — value breakdown, formula, result
-│     Sheet 3: Scope Register — all scopes, origin, HS code (Annex B)
-│     Sheet 4: Declaration Tracker — who signed what (Annex C)
-│     Sheet 5: HS Code Reference — for Bill of Entry cross-check (Annex D)
-│
-├── 02_CA_Certificate_Draft_(Annex_E).txt   ← Give to your CA to sign (Annex E)
-│
-└── 03_Declarations/                        ← Send each file to the named supplier
-{"".join(f"      Declaration_{i+1:02d}_{s.replace(' ', '_')[:40]}.txt{chr(10)}" for i, s in enumerate(named_suppliers)) if named_suppliers else "      (No Indian manufacturers entered yet — add in IC Register tab)"}```
-                """
+        # Warnings
+        if not named_suppliers:
+            st.warning(
+                "No Indian manufacturer names entered yet. "
+                "Add manufacturer names in the IC Register tab first."
+            )
+        if ic_pct_calc < threshold:
+            st.warning(
+                f"Declared IC% ({_pct(ic_pct_calc)}) is below the required "
+                f"{_pct(threshold)} -- documents will show NON-COMPLIANT."
+            )
+        pending_decls = int((indian_scope_rows["declaration_rxd"] == "Pending").sum())
+        if pending_decls:
+            st.info(
+                f"{pending_decls} declaration(s) still pending -- "
+                "documents generated now but not yet signed. "
+                "Update status in IC Register after receiving signed copies."
             )
 
         st.divider()
 
-        # ── Status check before generating ───────────────────────────────────
-        warnings = []
-        if not named_suppliers:
-            warnings.append("⚠️ No Indian manufacturer names entered — declarations will be empty. "
-                            "Add names in the IC Register tab first.")
-        if ic_pct_calc < threshold:
-            warnings.append(f"⚠️ Declared IC% ({_pct(ic_pct_calc)}) is below the "
-                            f"required {_pct(threshold)} — package will show NON-COMPLIANT.")
-        pending_decls = int((indian_scope_rows["declaration_rxd"] == "Pending").sum())
-        if pending_decls:
-            warnings.append(f"ℹ️ {pending_decls} declaration(s) still pending — "
-                            "included in package but not yet signed. Update status in IC Register after receiving.")
-
-        for w_msg in warnings:
-            st.warning(w_msg)
-
-        # ── Single download button ─────────────────────────────────────────────
+        # -----------------------------------------------------------------
+        # FILE 1 -- IC Submission Package (Excel, hand to surveyor)
+        # -----------------------------------------------------------------
+        st.markdown("### File 1 -- IC Submission Package (Excel)")
+        st.caption(
+            "**Hand this to the surveyor.** Five sheets: Cover, IC Calculation, "
+            "Scope Register, Declaration Tracker, HS Code Reference. "
+            "No prices anywhere."
+        )
         try:
-            zip_bytes = _build_surveyor_zip(
+            excel_bytes = _build_surveyor_excel(
                 scope_ic=edited,
                 meta=meta,
                 contract_value=contract_value,
@@ -1034,87 +944,169 @@ IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat
                 imported_val=imported_val,
                 threshold=threshold,
                 procurement_cat=procurement_cat,
-                company_name=st.session_state.get("_lc_company", ""),
-                surveying_agency=st.session_state.get("_lc_agency", ""),
-                project=project,
+                company_name=company_name,
+                surveying_agency=surveying_agency,
             )
-            zip_name = (
-                f"IC_Submission_{(project or 'Project').replace(' ', '_')}"
-                f"_{date.today().isoformat()}.zip"
-            )
+            proj_slug = re.sub(r"[^\w\-]", "_", project or "Project")
+            xl_name = f"IC_Submission_{proj_slug}_{date.today().isoformat()}.xlsx"
             st.download_button(
-                label="⬇️ Download complete surveyor package (ZIP)",
-                data=zip_bytes,
-                file_name=zip_name,
-                mime="application/zip",
+                label="Download -- IC Submission Package.xlsx",
+                data=excel_bytes,
+                file_name=xl_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary",
                 use_container_width=True,
-                help="Contains: Excel workbook (all annexes) + CA Certificate draft + "
-                     "one Origin Declaration per Indian supplier. No prices in any file.",
-            )
-            st.caption(
-                f"📦 Package: `{zip_name}` — "
-                f"{len(named_suppliers)} supplier declaration(s), "
-                f"IC% = {_pct(ic_pct_calc)}"
             )
         except Exception as e:
-            st.error(f"Could not generate package: {e}")
+            st.error(f"Could not generate Excel: {e}")
 
         st.divider()
 
-        # ── Confidential internal workbook (separate, CA only) ────────────────
-        st.markdown("**🔐 Internal IC workbook — CA eyes only (CONFIDENTIAL, do not submit)**")
+        # -----------------------------------------------------------------
+        # FILE 2 -- CA Certificate Draft (TXT, give to your CA)
+        # -----------------------------------------------------------------
+        st.markdown("### File 2 -- CA Certificate Draft (TXT)")
         st.caption(
-            "Contains actual BOM costs per scope. Give ONLY to your CA firm — "
-            "they use it to verify and sign the CA Certificate. Never submit to the surveyor."
+            "**Give this to your Chartered Accountant** with your internal cost records. "
+            "The CA adapts, certifies and signs it. "
+            "The CA verifies your IC% from internal books -- no prices go to the surveyor."
+        )
+        try:
+            ca_text = _ca_cert_text(
+                meta=meta,
+                contract_value=contract_value,
+                ic_pct=ic_pct_calc,
+                indian_val=indian_val,
+                imported_val=imported_val,
+                procurement_cat=procurement_cat,
+                threshold=threshold,
+                surveying_agency=surveying_agency,
+                company_name=company_name,
+            )
+            st.download_button(
+                label="Download -- CA_Certificate_Draft.txt",
+                data=ca_text.encode("utf-8"),
+                file_name="CA_Certificate_Draft.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )
+        except Exception as e:
+            st.error(f"Could not generate CA certificate: {e}")
+
+        st.divider()
+
+        # -----------------------------------------------------------------
+        # FILES 3+ -- Manufacturer declarations (one per Indian supplier)
+        # -----------------------------------------------------------------
+        st.markdown("### Files 3+ -- Manufacturer Origin Declarations")
+        st.caption(
+            "**Email each file to the named Indian manufacturer.** "
+            "They sign, stamp and return it (1--3 working days). "
+            "No purchase price appears in any declaration."
+        )
+        try:
+            decl_files = _build_declarations(
+                scope_ic=edited,
+                meta=meta,
+                company_name=company_name,
+                surveying_agency=surveying_agency,
+                project=project,
+            )
+            if decl_files:
+                for i, (fname, fbytes) in enumerate(decl_files, start=3):
+                    # Extract supplier name from filename for display
+                    sup_display = fname.replace("Declaration_", "").split("_", 1)[-1].replace("_", " ").replace(".txt", "")
+                    col_a, col_b = st.columns([3, 2])
+                    col_a.markdown(f"**File {i}** -- `{fname}`")
+                    col_b.download_button(
+                        label=f"Download -- {fname}",
+                        data=fbytes,
+                        file_name=fname,
+                        mime="text/plain",
+                        use_container_width=True,
+                        key=f"decl_dl_{i}",
+                    )
+            else:
+                st.info(
+                    "No Indian manufacturers entered -- no declarations generated. "
+                    "Add manufacturer names in the IC Register tab."
+                )
+        except Exception as e:
+            st.error(f"Could not generate declarations: {e}")
+
+        st.divider()
+
+        # -----------------------------------------------------------------
+        # CONFIDENTIAL -- Internal IC workbook (CA eyes only, do not submit)
+        # -----------------------------------------------------------------
+        st.markdown("### Confidential -- Internal IC workbook (CA eyes only)")
+        st.caption(
+            "**Give ONLY to your CA firm.** Contains actual BOM costs per scope. "
+            "The CA uses it to verify and sign the certificate. "
+            "Never submit this to the surveyor."
         )
 
         def _internal_excel() -> bytes:
             ibuf = io.BytesIO()
             out = edited.copy()
             out["IC%"] = out["ic_value_pct"].map(lambda x: f"{float(x or 0)*100:.0f}%")
-            with pd.ExcelWriter(ibuf, engine="openpyxl") as w:
+            with pd.ExcelWriter(ibuf, engine="openpyxl") as iw:
                 out[[c for c in [
                     "scope_name", "cost_eur", "origin", "IC%",
                     "_ic_eur", "_imp_eur", "indian_supplier", "hs_code",
                     "declaration_rxd", "declaration_ref", "notes",
                 ] if c in out.columns]].rename(columns={
-                    "scope_name": "Scope", "cost_eur": "BOM cost (€)", "origin": "Origin",
-                    "_ic_eur": "IC value (€)", "_imp_eur": "Import value (€)",
+                    "scope_name": "Scope", "cost_eur": "BOM cost (EUR)", "origin": "Origin",
+                    "_ic_eur": "IC value (EUR)", "_imp_eur": "Import value (EUR)",
                     "indian_supplier": "Indian manufacturer", "hs_code": "HS Code",
                     "declaration_rxd": "Declaration rxd?", "declaration_ref": "Declaration ref",
-                }).to_excel(w, sheet_name="IC Detail", index=False)
+                }).to_excel(iw, sheet_name="IC Detail", index=False)
                 pd.DataFrame([
-                    ["Contract value (€)",   f"{contract_value:,.0f}"],
-                    ["Indian content (€)",   f"{indian_val:,.0f}"],
-                    ["Imported content (€)", f"{imported_val:,.0f}"],
-                    ["Declared IC%",         f"{ic_pct_calc*100:.2f}%"],
-                    ["Required IC%",         f"{threshold*100:.1f}%"],
-                    ["Category",             procurement_cat],
-                    ["Date",                 str(date.today())],
-                ], columns=["Field", "Value"]).to_excel(w, sheet_name="Summary", index=False)
+                    ["Contract value (EUR)",   f"{contract_value:,.0f}"],
+                    ["Indian content (EUR)",   f"{indian_val:,.0f}"],
+                    ["Imported content (EUR)", f"{imported_val:,.0f}"],
+                    ["Declared IC%",           f"{ic_pct_calc*100:.2f}%"],
+                    ["Required IC%",           f"{threshold*100:.1f}%"],
+                    ["Category",               procurement_cat],
+                    ["Date",                   str(date.today())],
+                ], columns=["Field", "Value"]).to_excel(iw, sheet_name="Summary", index=False)
             return ibuf.getvalue()
 
         try:
             st.download_button(
-                "⬇️ Download internal IC workbook (CONFIDENTIAL — CA eyes only)",
+                label="Download -- india_ic_CONFIDENTIAL_CA_only.xlsx",
                 data=_internal_excel(),
                 file_name="india_ic_CONFIDENTIAL_CA_only.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
         except Exception as e:
-            st.error(f"Could not generate: {e}")
+            st.error(f"Could not generate internal workbook: {e}")
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 4 — STRATEGY ADVISER
-    # ══════════════════════════════════════════════════════════════════════════
+        st.divider()
+        st.markdown("""
+**Submission checklist:**
+
+| Step | Action | Who |
+|------|--------|-----|
+| 1 | Email each **Declaration_XX_SupplierName.txt** to the named manufacturer | You |
+| 2 | Manufacturer signs, stamps and returns the declaration | Supplier (1--3 days) |
+| 3 | Give **CA_Certificate_Draft.txt** + internal workbook to your CA firm | You |
+| 4 | CA certifies IC% from books and returns signed certificate | CA (2--5 days) |
+| 5 | Submit to surveying agency: Excel package + signed CA cert + signed declarations | You |
+
+*The surveyor verifies origin, not price. Your quote book stays internal.*
+        """)
+
+    # =========================================================================
+    # TAB 4 -- STRATEGY ADVISER
+    # =========================================================================
     with tabs[3]:
         st.subheader("Strategy adviser")
 
         shortfall = max(threshold - ic_pct_calc, 0.0)
         if shortfall == 0:
             st.success(
-                f"✅ You meet the IC% requirement ({_pct(ic_pct_calc)} ≥ {_pct(threshold)}). "
+                f"You meet the IC% requirement ({_pct(ic_pct_calc)} >= {_pct(threshold)}). "
                 "Focus on documentation."
             )
         else:
@@ -1124,29 +1116,29 @@ IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat
             )
 
         st.divider()
-        st.markdown("### 🎯 Mitigation options — ranked by effort")
+        st.markdown("### Mitigation options -- ranked by effort")
 
         with st.container(border=True):
-            st.markdown("#### 1️⃣ Partially Indian scopes — review claimed fraction")
+            st.markdown("#### 1. Partially Indian scopes -- review claimed fraction")
             partial = edited[edited["origin"] == "Partially Indian"].copy()
             if partial.empty:
                 st.caption("No Partially Indian scopes tagged yet.")
             else:
-                partial["Upside if 100% (€)"] = (
+                partial["Upside if 100% (EUR)"] = (
                     partial["cost_eur"] * (1 - partial["ic_value_pct"])
                 ).map(lambda x: fmt(x, 0))
                 partial["ic_value_pct"] = partial["ic_value_pct"].map(
                     lambda x: f"{float(x)*100:.0f}%")
                 st.dataframe(
                     partial[["scope_name", "indian_supplier",
-                              "ic_value_pct", "Upside if 100% (€)"]].rename(columns={
+                              "ic_value_pct", "Upside if 100% (EUR)"]].rename(columns={
                         "scope_name": "Scope", "indian_supplier": "Indian manufacturer",
                         "ic_value_pct": "Current IC%",
                     }), use_container_width=True, hide_index=True,
                 )
 
         with st.container(border=True):
-            st.markdown("#### 2️⃣ NRE & Engineering — 100% Indian if performed in India")
+            st.markdown("#### 2. NRE & Engineering -- 100% Indian if performed in India")
             try:
                 from utils.io import load_nre
                 from utils.nre import nre_total
@@ -1167,7 +1159,7 @@ IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat
                 st.caption("Load NRE data to see this contribution.")
 
         with st.container(border=True):
-            st.markdown("#### 3️⃣ Top imported scopes — candidate for Indian alternative")
+            st.markdown("#### 3. Top imported scopes -- candidate for Indian alternative")
             top_imp = (
                 edited[edited["origin"] == "Imported"]
                 .nlargest(6, "cost_eur")
@@ -1178,19 +1170,19 @@ IC_Submission_{(project or 'Project').replace(' ', '_')}_{date.today().isoformat
                 st.caption("No imported scopes.")
             else:
                 top_imp["IC uplift if Indian"] = top_imp["cost_eur"].map(
-                    lambda v: _pct(v / contract_value) if contract_value > 0 else "—")
+                    lambda v: _pct(v / contract_value) if contract_value > 0 else "--")
                 top_imp["cost_eur"] = top_imp["cost_eur"].map(lambda x: fmt(x, 0))
                 st.dataframe(top_imp.rename(columns={
-                    "scope_name": "Scope", "cost_eur": "Value (€)", "hs_code": "HS Code",
+                    "scope_name": "Scope", "cost_eur": "Value (EUR)", "hs_code": "HS Code",
                 }), use_container_width=True, hide_index=True)
 
         with st.container(border=True):
-            st.markdown("#### 4️⃣ Contract structuring — advanced methods")
+            st.markdown("#### 4. Contract structuring -- advanced methods")
             st.markdown("""
 **Bill of Entry (BoE):** File a BoE for every imported item. Customs-cleared import
 value is documented; everything else is deemed Indian. Irrefutable.
 
-**Free Issue Material (FIM):** Customer supplies high-value imports themselves —
+**Free Issue Material (FIM):** Customer supplies high-value imports themselves --
 excluded from the IC% denominator entirely. Negotiate this for NAB castings,
 impeller blanks, or imported shaft material.
 
@@ -1203,16 +1195,16 @@ as evidence of active local sourcing for Partially Indian items.
 
         st.info(
             "**Bottom line:** Submit (A) Scope Origin Register, (B) CA Certificate, "
-            "(C) Supplier Origin Declarations. Surveyor gets origin data only — "
+            "(C) Supplier Origin Declarations. Surveyor gets origin data only -- "
             "no prices, no quotes.",
-            icon="🔒",
+            icon="ℹ️",
         )
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # TAB 5 — BOM LINE DETAIL (read-only, how scope IC applies per line)
-    # ══════════════════════════════════════════════════════════════════════════
+    # =========================================================================
+    # TAB 5 -- BOM LINE DETAIL
+    # =========================================================================
     with tabs[4]:
-        st.subheader("BOM line detail — scope IC applied per line")
+        st.subheader("BOM line detail -- scope IC applied per line")
         st.caption(
             "Read-only view. IC fraction from the scope register is applied to every "
             "BOM line within that scope. Use this to spot any lines that need a scope override."
@@ -1240,17 +1232,17 @@ as evidence of active local sourcing for Partially Indian items.
         df_detail = df_detail.merge(scope_ic_map, on="scope_id", how="left")
         df_detail["ic_value_pct"] = pd.to_numeric(
             df_detail["ic_value_pct"], errors="coerce").fillna(0.0)
-        df_detail["IC value (€)"] = df_detail["total_cost"] * df_detail["ic_value_pct"]
+        df_detail["IC value (EUR)"] = df_detail["total_cost"] * df_detail["ic_value_pct"]
 
-        df_detail["total_cost"]  = df_detail["total_cost"].map(lambda x: fmt(x, 0))
-        df_detail["IC value (€)"]= df_detail["IC value (€)"].map(lambda x: fmt(x, 0))
-        df_detail["ic_value_pct"]= df_detail["ic_value_pct"].map(lambda x: f"{x*100:.0f}%")
+        df_detail["total_cost"]    = df_detail["total_cost"].map(lambda x: fmt(x, 0))
+        df_detail["IC value (EUR)"]= df_detail["IC value (EUR)"].map(lambda x: fmt(x, 0))
+        df_detail["ic_value_pct"]  = df_detail["ic_value_pct"].map(lambda x: f"{x*100:.0f}%")
 
         st.dataframe(df_detail.rename(columns={
             "line_id": "Line ID", "part_name": "Component",
-            "material_id": "Material", "total_cost": "Cost (€)",
+            "material_id": "Material", "total_cost": "Cost (EUR)",
             "scope_id": "Scope", "origin": "Origin",
-            "ic_value_pct": "IC fraction", "IC value (€)": "IC value (€)",
+            "ic_value_pct": "IC fraction", "IC value (EUR)": "IC value (EUR)",
             "indian_supplier": "Indian manufacturer",
         }).drop(columns=["scope_id"], errors="ignore"),
         use_container_width=True, hide_index=True)
