@@ -55,6 +55,7 @@ _P = {
     "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
     "cockpit":    st.Page("pages/45_Command_Centre.py",          title="Command Centre",      icon="🎯"),
     "india_lc":   st.Page("pages/46_India_Local_Content.py",    title="India Local Content", icon="🇮🇳"),
+    "carbon":     st.Page("pages/47_Carbon_Energy.py",          title="Carbon & Energy",     icon="🌱"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -515,6 +516,20 @@ def dashboard() -> None:
     with c6:
         _card(_P["india_lc"],    "🇮🇳", "India Local Content",
               "IC% register, CA certificate, origin declarations — prove compliance without submitting quote book.")
+
+    st.divider()
+
+    # ── 8 · Sustainability ────────────────────────────────────────────────────
+    st.subheader("8️⃣ Sustainability")
+    st.caption(
+        "Scope 2 electricity consumption and carbon footprint from manufacturing operations. "
+        "Reduction levers, grid emission factors and Scope 3 context."
+    )
+    s1, s2 = st.columns([1, 5])
+    with s1:
+        _card(_P["carbon"], "🌱", "Carbon & Energy",
+              "kWh and kg CO2e from BOM manufacturing ops. By scope, process and BOM line. "
+              "Reduction levers and Scope 3 / CBAM guidance.")
 
     st.divider()
 

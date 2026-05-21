@@ -35,8 +35,9 @@ from utils.safe import guard
 from utils.style import inject_css, page_header
 
 # -- Constants -----------------------------------------------------------------
-ORIGIN_OPTIONS = ["Indian", "Imported", "Partially Indian"]
-DECL_STATUS    = ["Pending", "Yes", "No", "Not required"]
+ORIGIN_OPTIONS  = ["Indian", "Imported", "Partially Indian"]
+INDIAN_ORIGINS  = ["Indian", "Partially Indian"]   # subsets that count toward IC%
+DECL_STATUS     = ["Pending", "Yes", "No", "Not required"]
 
 IC_THRESHOLDS = {
     "Buy (Indian-IDDM)":                0.50,
@@ -101,7 +102,6 @@ INDIAN_SUPPLIERS: list[str] = [
     "Vulcan Engineering Co",
     "Trelleborg Sealing Solutions India",
     "Freudenberg Sealing Technologies India",
-    "Parker Hannifin India Pvt Ltd",
     "Dynamic Sealing Technologies India",
     "Precision Seals Mfg Ltd",
     # -- Castings & forgings ---------------------------------------------------
@@ -157,7 +157,6 @@ INDIAN_SUPPLIERS: list[str] = [
     # -- Pumps -----------------------------------------------------------------
     "Flowserve India Controls Pvt Ltd",
     "Kirloskar Brothers Ltd",
-    "KSB Pumps Ltd",
     "Sulzer India Ltd",
     "Worthington India Pvt Ltd",
     "WPIL Ltd",
@@ -204,11 +203,6 @@ INDIAN_SUPPLIERS: list[str] = [
 ]
 
 # -- Helpers -------------------------------------------------------------------
-def _traffic(val: float, threshold: float) -> str:
-    if val >= threshold:        return "GREEN"
-    if val >= threshold * 0.85: return "AMBER"
-    return "RED"
-
 def _pct(val: float) -> str:
     return f"{val * 100:.1f}%"
 
@@ -510,8 +504,7 @@ def _build_surveyor_excel(scope_ic: pd.DataFrame, meta: dict,
         }).to_excel(w, sheet_name="Scope Register (Annex B)", index=False)
 
         # -- Sheet 4: Declaration Tracker --------------------------------------
-        indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
-            ["Indian", "Partially Indian"])
+        indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(INDIAN_ORIGINS)
         decl = scope_ic[indian_mask].copy()
         if not decl.empty:
             pd.DataFrame({
@@ -544,13 +537,13 @@ def _build_surveyor_excel(scope_ic: pd.DataFrame, meta: dict,
 
 def _build_declarations(scope_ic: pd.DataFrame, meta: dict,
                          company_name: str, surveying_agency: str,
-                         project: str) -> list[tuple[str, bytes]]:
+                         project: str) -> list[tuple[str, str, bytes]]:
     """
-    Return list of (filename, bytes) -- one declaration TXT per Indian supplier.
+    Return list of (supplier_name, filename, bytes) -- one TXT per Indian supplier.
+    Carrying supplier_name in the tuple avoids fragile filename re-parsing at call sites.
     """
     customer = meta.get("customer", "")
-    indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(
-        ["Indian", "Partially Indian"])
+    indian_mask = _safe_col(scope_ic, "origin", "Imported").isin(INDIAN_ORIGINS)
     indian_rows = scope_ic[indian_mask].copy()
 
     suppliers: dict[str, dict] = {}
@@ -578,7 +571,7 @@ def _build_declarations(scope_ic: pd.DataFrame, meta: dict,
         )
         safe_name = re.sub(r"[^\w\-]", "_", sup_name)[:50]
         fname = f"Declaration_{i:02d}_{safe_name}.txt"
-        result.append((fname, text.encode("utf-8")))
+        result.append((sup_name, fname, text.encode("utf-8")))
     return result
 
 
@@ -601,13 +594,17 @@ def main() -> None:
         project=project,
     )
 
-    # -- Load BOM costs --------------------------------------------------------
+    # -- Load BOM costs (cached so widget reruns don't re-read disk) -----------
+    @st.cache_data(ttl=30)
+    def _load_bom_costs():
+        _mats   = load_materials()
+        _procs  = load_processes()
+        _bom    = load_bom()
+        _quotes = load_quotes()
+        return _mats, _procs, _bom, compute_costs(apply_best_quotes(_mats, _quotes), _procs, _bom)
+
     try:
-        mats   = load_materials()
-        procs  = load_processes()
-        bom    = load_bom()
-        quotes = load_quotes()
-        df     = compute_costs(apply_best_quotes(mats, quotes), procs, bom)
+        mats, procs, bom, df = _load_bom_costs()
     except Exception as exc:
         st.error(f"Could not load BOM: {exc}")
         st.stop()
@@ -810,10 +807,9 @@ def main() -> None:
         st.subheader("IC% summary")
 
         k1, k2, k3, k4, k5 = st.columns(5)
-        sig = _traffic(ic_pct_calc, threshold)
         k1.metric("Declared IC%",        _pct(ic_pct_calc),
-                  delta=f"{sig}  {'Meets' if ic_pct_calc >= threshold else 'Below'} "
-                        f"{_pct(threshold)} threshold")
+                  delta=f"{'Meets' if ic_pct_calc >= threshold else 'Below'} {_pct(threshold)} threshold",
+                  delta_color="normal" if ic_pct_calc >= threshold else "inverse")
         k2.metric("Indian content (EUR)",  fmt(indian_val, 0))
         k3.metric("Imported content (EUR)", fmt(imported_val, 0))
         k4.metric("Contract value (EUR)",  fmt(contract_value, 0))
@@ -836,7 +832,7 @@ def main() -> None:
         st.divider()
         st.subheader("Origin declaration status")
 
-        indian_scopes = edited[edited["origin"].isin(["Indian", "Partially Indian"])]
+        indian_scopes = edited[edited["origin"].isin(INDIAN_ORIGINS)]
         d_yes     = int((indian_scopes["declaration_rxd"] == "Yes").sum())
         d_pending = int((indian_scopes["declaration_rxd"] == "Pending").sum())
         d_no      = int((indian_scopes["declaration_rxd"] == "No").sum())
@@ -899,7 +895,7 @@ def main() -> None:
         surveying_agency = st.session_state.get("_lc_agency", "")
 
         # Collect Indian suppliers for declarations
-        indian_scope_rows = edited[edited["origin"].isin(["Indian", "Partially Indian"])]
+        indian_scope_rows = edited[edited["origin"].isin(INDIAN_ORIGINS)]
         named_suppliers = sorted(set(
             s for s in indian_scope_rows["indian_supplier"].fillna("").tolist() if s.strip()
         ))
@@ -1013,9 +1009,7 @@ def main() -> None:
                 project=project,
             )
             if decl_files:
-                for i, (fname, fbytes) in enumerate(decl_files, start=3):
-                    # Extract supplier name from filename for display
-                    sup_display = fname.replace("Declaration_", "").split("_", 1)[-1].replace("_", " ").replace(".txt", "")
+                for i, (sup_name, fname, fbytes) in enumerate(decl_files, start=3):
                     col_a, col_b = st.columns([3, 2])
                     col_a.markdown(f"**File {i}** -- `{fname}`")
                     col_b.download_button(
@@ -1223,11 +1217,13 @@ as evidence of active local sourcing for Partially Indian items.
         df_detail = df[["line_id", "part_name", "material_id", "total_cost"]].copy()
         df_detail["scope_id"] = df_detail["line_id"].map(_match_scope)
 
-        # Attach scope IC settings
-        scope_ic_map = edited.copy()
-        scope_ic_map["scope_id"] = scope_tbl["scope_id"].values
-        scope_ic_map = scope_ic_map[["scope_id", "origin", "ic_value_pct",
-                                      "indian_supplier"]].drop_duplicates("scope_id")
+        # Attach scope IC settings — build from scope_tbl so scope_id aligns by position
+        scope_ic_map = pd.DataFrame({
+            "scope_id":       scope_tbl["scope_id"].reset_index(drop=True),
+            "origin":         edited["origin"].reset_index(drop=True),
+            "ic_value_pct":   edited["ic_value_pct"].reset_index(drop=True),
+            "indian_supplier":edited["indian_supplier"].reset_index(drop=True),
+        }).drop_duplicates("scope_id")
 
         df_detail = df_detail.merge(scope_ic_map, on="scope_id", how="left")
         df_detail["ic_value_pct"] = pd.to_numeric(
