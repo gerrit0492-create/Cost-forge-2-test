@@ -63,6 +63,7 @@ _P = {
     # System / tools
     "actions":      st.Page("pages/34_Action_Centre.py",          title="Action Centre",        icon="🔧"),
     "cockpit":      st.Page("pages/45_Command_Centre.py",         title="Command Centre",       icon="🎯"),
+    "datastudio":   st.Page("pages/50_Data_Studio.py",            title="Data Studio",          icon="✏️"),
     "stakeholder_rpt": st.Page("pages/33_Stakeholder_Report.py", title="Stakeholder Report",   icon="📋"),
     "restore":      st.Page("pages/25_Restore_Hulp.py",           title="Restore",              icon="♻️"),
     "debug":        st.Page("pages/00_Debug.py",                  title="Debug",                icon="🐛"),
@@ -365,6 +366,10 @@ def dashboard() -> None:
         with c4:
             _card(_P["presets"],  "⚙️", "Presets",
                   "Set overhead %, margin % and labour rates.")
+        c5, c6, c7, c8 = st.columns(4)
+        with c5:
+            _card(_P["datastudio"], "✏️", "Data Studio",
+                  "Inline editor for BOM, materials, processes, quotes, risks, NRE, milestones.")
 
     with st.expander("2️⃣ Calculate — cost engine & sizing"):
         c1, c2, c3, c4 = st.columns(4)
@@ -500,7 +505,7 @@ pg = st.navigation(
         "7 · Compliance":            [_P["india_lc"], _P["carbon"]],
         "Market Intelligence":       [_P["market"], _P["history"],
                                       _P["anomalie"], _P["setup"]],
-        "Tools":                     [_P["actions"], _P["cockpit"],
+        "Tools":                     [_P["actions"], _P["cockpit"], _P["datastudio"],
                                       _P["stakeholder_rpt"], _P["restore"],
                                       _P["debug"], _P["diagnose"]],
     },
