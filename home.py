@@ -25,6 +25,7 @@ _P = {
     "download":   st.Page("pages/20_Download_Center.py",        title="Download Center",     icon="⬇️"),
     "mats":       st.Page("pages/04_Materiaalbronnen.py",       title="Materials",           icon="🧱"),
     "quotes":     st.Page("pages/07_Supplier_Quotes.py",        title="Supplier Quotes",     icon="🏭"),
+    "quotemgmt":  st.Page("pages/49_Quote_Management.py",       title="Quote Management",    icon="🛒"),
     "presets":    st.Page("pages/03_Presets.py",                title="Presets",             icon="⚙️"),
     "quality":    st.Page("pages/05_Data_Quality.py",           title="Data Quality",        icon="✅"),
     "csv":        st.Page("pages/99_Update_from_Public_CSV.py", title="CSV Import",          icon="🔗"),
@@ -357,8 +358,8 @@ def dashboard() -> None:
         _card(_P["mats"],    "🧱", "Materials",
               "Review all materials and their best current supplier prices.")
     with c3:
-        _card(_P["quotes"],  "🏭", "Supplier Quotes",
-              "Enter, compare and validate quotes per supplier.")
+        _card(_P["quotemgmt"], "🛒", "Quote Management",
+              "Add/edit quotes, set buy items, track validity and coverage gaps.")
     with c4:
         _card(_P["presets"], "⚙️", "Presets",
               "Set default overhead %, margin % and labour rates.")
