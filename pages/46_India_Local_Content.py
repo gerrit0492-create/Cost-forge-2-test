@@ -706,6 +706,7 @@ def main() -> None:
 
     # -- Tabs ------------------------------------------------------------------
     tabs = st.tabs([
+        "📋 How-to Guide",
         "IC Register (scope level)",
         "IC% Dashboard",
         "Submission Documents",
@@ -714,9 +715,220 @@ def main() -> None:
     ])
 
     # =========================================================================
-    # TAB 1 -- IC REGISTER (SCOPE LEVEL)
+    # TAB 0 -- HOW-TO GUIDE
     # =========================================================================
     with tabs[0]:
+        st.subheader("India Local Content (IC%) — step-by-step process")
+        st.caption(
+            "Follow these steps in order. Each step explains **what** to do and **why** it matters. "
+            "You never need to share your quote book or supplier prices."
+        )
+
+        # ── What is IC% and why it exists ─────────────────────────────────────
+        with st.expander("📌 What is IC% and why does it matter?", expanded=True):
+            st.markdown("""
+**IC% (Indigenous Content percentage)** is the fraction of a contract's value that is
+manufactured in India. It is a legal compliance requirement on Indian government and
+defence contracts under:
+
+| Policy | Applies to |
+|--------|-----------|
+| DAP 2020 (Defence Acquisition Procedure) | All Indian MoD contracts |
+| DPP (Defence Procurement Procedure) | Legacy defence orders |
+| DPIIT Public Procurement Order | Central government / PSU orders |
+| GeM (Government e-Marketplace) | Class I / II local supplier preference |
+| Shipbuilding Financial Assistance Policy | Indian shipyard contracts |
+
+**Why it matters:**
+- **Mandatory**: orders can be disqualified if declared IC% is below the threshold.
+- **Financial**: subsidy / concessional finance under some schemes requires IC% evidence.
+- **Criminal liability**: false declaration is a criminal offence; the CA who certifies is also liable.
+
+**Key rule:** IC% is based on **value at the contract level**, not physical weight or
+number of parts. Formula:
+
+> **IC% = (Value of Indian-origin inputs ÷ Total contract value) × 100**
+""")
+
+        # ── Step 1: Set contract parameters ───────────────────────────────────
+        with st.expander("**Step 1** — Set contract parameters in the sidebar", expanded=True):
+            st.markdown("""
+**What to do:**
+1. Open the **sidebar** (left panel).
+2. Select the **Procurement category** that matches your contract (e.g. *Buy (Indian-IDDM)* for MoD).
+3. The **IC% threshold** auto-fills from the category — override if your contract specifies a different value.
+4. Enter the **Contract value in EUR** — this is the signed contract price, not the BOM estimate.
+5. Enter **your company name** and the **surveying / certifying agency** (e.g. DGQA, BV, DNV).
+
+**Why:** The threshold determines whether you are compliant. The contract value is the denominator
+in the IC% formula — using the wrong number will produce an incorrect compliance result.
+
+| Procurement category | Required IC% |
+|----------------------|-------------|
+| Buy (Indian-IDDM) | 50% |
+| Buy (Indian) | 40% |
+| Buy & Make (Indian) | 50% |
+| Buy & Make | 30% |
+| Make (Indian) | 50% |
+| GeM — Class I | 50% |
+| GeM — Class II | 20% |
+| Shipbuilding Financial Assistance | 30% |
+""")
+
+        # ── Step 2: Fill IC Register ───────────────────────────────────────────
+        with st.expander("**Step 2** — Fill in the IC Register (one row per scope)", expanded=True):
+            st.markdown("""
+**What to do** (go to the **IC Register** tab):
+
+For each waterjet subsystem (Impeller, Stator, Hull duct, etc.):
+
+1. **Origin** — select one of:
+   - *Indian* → fully manufactured in India (IC fraction = 1.00 automatically)
+   - *Imported* → designed and manufactured outside India (IC fraction = 0.00)
+   - *Partially Indian* → some manufacturing in India; enter the fraction manually
+
+2. **IC fraction** — for Partially Indian items, enter the fraction of that scope's cost
+   that is genuinely Indian-manufactured (e.g. *0.65* = 65% Indian value-add).
+   - Assembly in India of imported parts: typically 0.20–0.35
+   - Machined from Indian bar/billet: typically 0.70–0.90
+   - Fully cast and machined in India: 0.90–1.00
+
+3. **Indian manufacturer** — select from the dropdown (type to search).
+   This name appears on origin declarations; **no price is included**.
+
+4. **HS Code** — auto-suggested; verify or correct.
+   Used for Bill of Entry cross-reference and customs classification.
+
+5. **Declaration received?** — track whether the signed manufacturer declaration
+   has been returned.
+
+6. Click **Save IC register** to persist your entries.
+
+**Why:** The surveyor does not see your prices — they verify **manufacturing origin** only.
+Providing the manufacturer name and HS code satisfies the origin evidence requirement
+under all three accepted methods (CA certificate, manufacturer declaration, Bill of Entry).
+""")
+
+        # ── Step 3: Check compliance ───────────────────────────────────────────
+        with st.expander("**Step 3** — Check your IC% (Dashboard tab)"):
+            st.markdown("""
+**What to do** (go to the **IC% Dashboard** tab):
+
+1. Check the **Declared IC%** KPI at the top — it shows your current compliance status.
+2. If IC% is **green (≥ threshold)**: you are compliant — proceed to document generation.
+3. If IC% is **red (below threshold)**: go to the **Strategy Adviser** tab for options.
+4. Check the **Declaration tracker** — chase any pending manufacturer declarations.
+
+**Why:** You must confirm compliance *before* generating documents.
+A CA who certifies an incorrect IC% faces professional sanctions.
+Getting declarations early avoids last-minute delays — suppliers typically take 1–3 business days.
+""")
+
+        # ── Step 4: Generate documents ─────────────────────────────────────────
+        with st.expander("**Step 4** — Generate and distribute submission documents"):
+            st.markdown("""
+**What to do** (go to the **Submission Documents** tab):
+
+**File 1 — IC Submission Package (Excel)**
+- Download and **hand to the surveying agency** (DGQA / BV / DNV / etc.).
+- Contains: Cover, IC Calculation, Scope Origin Register, Declaration Tracker, HS Code Reference.
+- ⚠️ **No prices in this file** — safe to share externally.
+
+**File 2 — CA Certificate Draft (TXT)**
+- Email to your **Chartered Accountant** together with your internal cost records.
+- The CA reads your books, adapts the draft, and returns a signed certificate.
+- **Timeline: allow 2–5 working days.**
+- ⚠️ This file contains no prices; the CA's signed version certifies IC% from your books.
+
+**Files 3+ — Manufacturer Origin Declarations**
+- Email each `.txt` file to the named **Indian manufacturer**.
+- The manufacturer signs, stamps, and returns it — no price appears anywhere.
+- **Timeline: allow 1–3 working days per supplier.**
+
+**Confidential — Internal IC Workbook (CA eyes only)**
+- Download and give **only to your CA firm** — it contains BOM costs per scope.
+- Never submit this to the surveying agency.
+
+**Why:** Indian IC% compliance has three accepted evidence pathways. You use all three:
+1. **CA Certificate** (certifies IC% from your books — accounts-based evidence)
+2. **Manufacturer Origin Declarations** (proves Indian manufacturing — origin evidence)
+3. **Bill of Entry** (customs records prove what was imported — import evidence)
+
+Combining all three makes the submission audit-proof even if the surveyor challenges individual items.
+""")
+
+        # ── Step 5: Submit ────────────────────────────────────────────────────
+        with st.expander("**Step 5** — Submit to the surveying agency"):
+            st.markdown("""
+**What to submit** (standard package):
+
+| Annex | Document | Who signs |
+|-------|----------|-----------|
+| A | IC% Calculation sheet | From Excel package |
+| B | Scope Origin Register | From Excel package |
+| C | Declaration Tracker | From Excel package |
+| D | HS Code Reference | From Excel package |
+| E | CA Certificate (signed) | Your CA firm |
+| F | Manufacturer Origin Declarations (signed & stamped) | Each Indian supplier |
+
+**What NOT to submit:**
+- Quote book or supplier prices
+- Full BOM with costs
+- Internal procurement records
+
+**Why:** The surveyor's job is to verify **manufacturing origin**, not commercial pricing.
+Your prices are proprietary. Surveyors are trained to verify the above annex set —
+submitting extra documents (especially prices) creates risk without adding compliance value.
+
+**After submission:**
+- Surveyor may ask for a site visit to any Indian manufacturer — notify the supplier in advance.
+- Surveyor issues a compliance letter; attach to your contract file for audit purposes.
+- Keep all records for **7 years** (statutory requirement under Indian law).
+""")
+
+        # ── Rules summary ─────────────────────────────────────────────────────
+        with st.expander("📐 Calculation rules and legal basis"):
+            st.markdown("""
+**The formula (DAP 2020, DPP, GeM):**
+```
+IC% = (Indian input value ÷ Total contract value) × 100
+```
+
+**What counts as "Indian input value":**
+- Materials and components manufactured in India (not just sourced from Indian traders)
+- Manufacturing value-add performed in India (machining, assembly, testing, finishing)
+- Engineering and NRE performed in India (design, drawing, FAT, commissioning)
+- Packaging and handling if performed in India
+
+**What does NOT count:**
+- Imported materials processed or re-labelled in India
+- Agency/trading margin on imported goods
+- Warranty/insurance/freight for imported items
+
+**Partially Indian items — how to calculate the IC fraction:**
+> Use your internal cost build-up. The Indian fraction is:
+> `(Indian material cost + Indian labour + Indian overhead) ÷ Total unit cost`
+> Your CA will verify this from your books.
+
+**Three accepted evidence methods (you can mix and match per scope):**
+
+| Method | Evidence | When to use |
+|--------|----------|-------------|
+| CA Certificate | CA certifies IC% from your books | Always — main proof |
+| Manufacturer Declaration | Supplier signs 1-page origin form (no price) | All Indian/partially-Indian suppliers |
+| Bill of Entry | Customs import record | For imported items — irrefutable proof of import value |
+
+**Legal references:**
+- DAP 2020 Chapter II, Para 3.1 (IC% definition and calculation)
+- DPP 2016 Appendix D (IC% verification procedure)
+- MoD ID No. 1(11)/D(Acq)/19 (IC% threshold notification)
+- GeM Order 2017 r/w PPO 2017 (Class I/II local supplier thresholds)
+""")
+
+    # =========================================================================
+    # TAB 1 -- IC REGISTER (SCOPE LEVEL)
+    # =========================================================================
+    with tabs[1]:
         st.subheader("IC register -- one row per scope / subsystem")
         st.caption(
             "Set origin and IC fraction at the **scope level** -- one row per waterjet subsystem. "
@@ -803,7 +1015,7 @@ def main() -> None:
     # =========================================================================
     # TAB 2 -- IC% DASHBOARD
     # =========================================================================
-    with tabs[1]:
+    with tabs[2]:
         st.subheader("IC% summary")
 
         k1, k2, k3, k4, k5 = st.columns(5)
@@ -888,7 +1100,7 @@ def main() -> None:
     # =========================================================================
     # TAB 3 -- SUBMISSION DOCUMENTS
     # =========================================================================
-    with tabs[2]:
+    with tabs[3]:
         st.subheader("Submission documents")
 
         company_name    = st.session_state.get("_lc_company", "")
@@ -1094,7 +1306,7 @@ def main() -> None:
     # =========================================================================
     # TAB 4 -- STRATEGY ADVISER
     # =========================================================================
-    with tabs[3]:
+    with tabs[4]:
         st.subheader("Strategy adviser")
 
         shortfall = max(threshold - ic_pct_calc, 0.0)
@@ -1197,7 +1409,7 @@ as evidence of active local sourcing for Partially Indian items.
     # =========================================================================
     # TAB 5 -- BOM LINE DETAIL
     # =========================================================================
-    with tabs[4]:
+    with tabs[5]:
         st.subheader("BOM line detail -- scope IC applied per line")
         st.caption(
             "Read-only view. IC fraction from the scope register is applied to every "
