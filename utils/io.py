@@ -21,7 +21,8 @@ SHEET_MAP = {
     "milestones":    "Milestones",
     "cost_timeline": "CostTimeline",
     "change_orders": "ChangeOrders",
-    "india_lc":      "IndiaLocalContent",
+    "india_lc":         "IndiaLocalContent",
+    "quarterly_quotes": "QuarterlyQuotes",
 }
 
 SCHEMA_MATERIALS = {
@@ -247,6 +248,30 @@ def load_india_lc() -> pd.DataFrame:
         return _read("india_lc", SCHEMA_INDIA_LC)
     except Exception:
         return pd.DataFrame(columns=list(SCHEMA_INDIA_LC.keys()))
+
+
+SCHEMA_QUARTERLY_QUOTES = {
+    "vendor_code":      "string",   # IN01 | NL07
+    "product_type":     "string",   # Waterjet | Thrust Block Seal
+    "size_value":       "float64",  # 510, 570, … (mm) or 129, 199, … (kN)
+    "size_unit":        "string",   # mm | kN
+    "qty":              "float64",  # quantity ordered / quoted
+    "unit_price_eur":   "float64",  # EUR per unit
+    "currency_orig":    "string",   # original currency (INR, USD, EUR …)
+    "price_orig":       "float64",  # price in original currency
+    "quarter":          "string",   # e.g. "Q2-2026"
+    "quote_date":       "string",   # date the quote was received
+    "lead_time_days":   "float64",
+    "notes":            "string",
+}
+
+
+def load_quarterly_quotes() -> pd.DataFrame:
+    """Load quarterly price register (QuarterlyQuotes sheet)."""
+    try:
+        return _read("quarterly_quotes", SCHEMA_QUARTERLY_QUOTES)
+    except Exception:
+        return pd.DataFrame(columns=list(SCHEMA_QUARTERLY_QUOTES.keys()))
 
 
 # Keep for backwards compat (Download Center used it)

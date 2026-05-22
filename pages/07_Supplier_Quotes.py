@@ -16,8 +16,46 @@ def main() -> None:
     st.title("🏭 Procurement Intelligence")
     st.caption("Supplier spend, quote validity, price competitiveness and lead-time risk.")
 
-    _, btn = st.columns([6, 1])
-    if btn.button("🔄 Refresh"):
+    # ── Quarterly Quote Register summary strip ─────────────────────────────────
+    from utils.io import load_quarterly_quotes as _load_qq
+    from datetime import date as _date
+
+    def _qq_age(q_str: str) -> int:
+        try:
+            qn, yr = str(q_str).split("-")
+            q, y = int(qn[1:]), int(yr)
+            today = _date.today()
+            cq = (today.month - 1) // 3 + 1
+            return (today.year - y) * 4 + (cq - q)
+        except Exception:
+            return 99
+
+    _qq = _load_qq()
+    _cur_q = f"Q{(_date.today().month-1)//3+1}-{_date.today().year}"
+    if not _qq.empty:
+        _latest_qq = (
+            _qq.assign(_age=_qq["quarter"].map(_qq_age))
+            .sort_values("_age")
+            .drop_duplicates(subset=["vendor_code", "product_type", "size_value"])
+        )
+        _n_in01    = int((_latest_qq["vendor_code"] == "IN01").sum())
+        _n_nl07    = int((_latest_qq["vendor_code"] == "NL07").sum())
+        _n_overdue = int((_latest_qq["_age"] >= 2).sum())
+    else:
+        _n_in01 = _n_nl07 = _n_overdue = 0
+
+    with st.container(border=True):
+        st.caption("📅 **Quarterly Price Register** — IN01 (India) & NL07 (EI/Netherlands) "
+                   "| Jet sizes 510–1880 mm · Thrust Block Seal 129–1600 kN")
+        _qa, _qb, _qc, _qd = st.columns(4)
+        _qa.metric("IN01 (India) lines", _n_in01 if _n_in01 else "no data")
+        _qb.metric("NL07 (EI/NL) lines", _n_nl07 if _n_nl07 else "no data")
+        _qc.metric("🔴 Overdue (≥2 qtrs)", _n_overdue,
+                   delta="update needed" if _n_overdue else ("no data" if not _n_in01 and not _n_nl07 else "all current"),
+                   delta_color="inverse" if _n_overdue else "off")
+        _qd.metric("Current quarter", _cur_q)
+    st.caption("→ Open **📅 Quarterly Quote Register** in the sidebar to enter / edit prices by size.")
+    if st.button("🔄 Refresh"):
         st.cache_data.clear()
         st.rerun()
 
