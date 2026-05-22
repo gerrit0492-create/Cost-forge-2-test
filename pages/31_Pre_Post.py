@@ -11,11 +11,16 @@ from utils.io import load_bom, load_materials, load_processes, load_quotes, save
 from utils.nav import home_button
 from utils.pricing import compute_costs
 from utils.quotes import apply_best_quotes
+from utils.style import inject_css, page_header
 
 st.set_page_config(page_title="Pre / Post", layout="wide", page_icon="📊")
+inject_css()
 home_button()
-st.title("📊 Pre / Post — Budget vs Actuals")
-st.caption("Compare estimated (budget) costs against recorded actuals, line by line and per subsystem.")
+page_header(
+    title="Pre / Post — Budget vs Actuals",
+    icon="📊",
+    caption="Compare estimated (budget) costs against recorded actuals, line by line and per subsystem.",
+)
 
 if st.button("🔄 Refresh", help="Clear cache and reload"):
     st.cache_data.clear()
@@ -109,7 +114,6 @@ The importer will extract the line ID suffix automatically.
             df_sap = None
 
         if df_sap is not None and not df_sap.empty:
-            # Strip whitespace from column names
             df_sap.columns = df_sap.columns.str.strip()
 
             st.markdown("**Preview (first 5 rows)**")
@@ -124,20 +128,15 @@ The importer will extract the line ID suffix automatically.
             mat_col    = mc3.selectbox("Material cost column (optional)", cols, key="sap_mat_col")
 
             if id_col != "— select —" and actual_col != "— select —":
-                # Auto-extract BOM line_id from the WBS element value
-                # Try to match the last dot/slash/dash separated segment to a known line_id
                 import re
 
                 def _extract_line_id(val: str) -> str | None:
                     val = str(val).strip().upper()
-                    # Try exact match first
                     if val in valid_line_ids:
                         return val
-                    # Try segments split by . / - _
                     for seg in re.split(r"[.\-/_]", val):
                         if seg in valid_line_ids:
                             return seg
-                    # Try trailing alphanumeric token
                     m = re.search(r"([A-Z]{1,3}\d{2,3})$", val)
                     if m and m.group(1) in valid_line_ids:
                         return m.group(1)
@@ -158,7 +157,6 @@ The importer will extract the line ID suffix automatically.
                 st.markdown(f"**Matched:** {len(matched)} lines &nbsp;|&nbsp; **Unmatched:** {len(unmatched)} rows")
 
                 if not matched.empty:
-                    # Group by line_id (sum if multiple postings per line)
                     grp_sap = (
                         matched.groupby("line_id")
                         .agg(
@@ -239,7 +237,6 @@ if "sap_actuals" in st.session_state:
     if df_actuals_raw.empty or "line_id" not in df_actuals_raw.columns:
         df_actuals_raw = sap_act
     else:
-        # SAP actuals override saved actuals for matched lines
         df_actuals_raw = df_actuals_raw[
             ~df_actuals_raw["line_id"].isin(sap_act["line_id"])
         ]
@@ -248,14 +245,25 @@ if "sap_actuals" in st.session_state:
 st.divider()
 
 # ── Editable actuals table ────────────────────────────────────────────────────
-st.subheader("Enter / edit actuals")
-st.caption("Fill in what was actually spent per line. Leave blank if not yet incurred.")
+st.subheader("Enter / edit actuals per scope line")
+st.caption("Fill in what was actually spent per line. Leave blank if not yet incurred. All BOM scope lines shown.")
 
-edit_base = df_budget[["line_id", "part_name", "material_cost", "process_cost", "total_cost"]].copy()
+# Pull full budget breakdown per line
+_bgt_cols = ["line_id", "part_name", "material_cost", "process_cost"]
+for _c in ["overhead", "base_cost", "margin", "pattern_cost", "moq_excess_cost", "total_cost"]:
+    if _c in df_budget.columns:
+        _bgt_cols.append(_c)
+
+edit_base = df_budget[_bgt_cols].copy()
 edit_base.rename(columns={
-    "material_cost": "budget_material",
-    "process_cost":  "budget_process",
-    "total_cost":    "budget_total",
+    "material_cost":   "budget_material",
+    "process_cost":    "budget_process",
+    "overhead":        "budget_overhead",
+    "base_cost":       "budget_base",
+    "margin":          "budget_margin",
+    "pattern_cost":    "budget_pattern",
+    "moq_excess_cost": "budget_moq",
+    "total_cost":      "budget_total",
 }, inplace=True)
 
 if not df_actuals_raw.empty and "line_id" in df_actuals_raw.columns:
@@ -278,24 +286,40 @@ else:
 edit_base["status"] = edit_base["status"].fillna("not_started")
 edit_base["notes"]  = edit_base["notes"].fillna("")
 
+# Build column_config — only include budget columns that exist
+_col_cfg: dict = {
+    "line_id":   st.column_config.TextColumn("Line", disabled=True, width="small"),
+    "part_name": st.column_config.TextColumn("Component", disabled=True, width="large"),
+}
+_budget_cols_display = [
+    ("budget_material", "Budget mat €"),
+    ("budget_process",  "Budget proc €"),
+    ("budget_overhead", "Budget OH €"),
+    ("budget_pattern",  "Budget pattern €"),
+    ("budget_moq",      "Budget MOQ €"),
+    ("budget_base",     "Budget base €"),
+    ("budget_margin",   "Budget margin €"),
+    ("budget_total",    "Budget sell €"),
+]
+for _col, _label in _budget_cols_display:
+    if _col in edit_base.columns:
+        _col_cfg[_col] = st.column_config.NumberColumn(_label, disabled=True, format="%.0f")
+
+_col_cfg.update({
+    "actual_material_cost": st.column_config.NumberColumn("Actual mat €",   format="%.0f"),
+    "actual_process_cost":  st.column_config.NumberColumn("Actual proc €",  format="%.0f"),
+    "actual_total_cost":    st.column_config.NumberColumn("Actual total €", format="%.0f"),
+    "notes":                st.column_config.TextColumn("Notes"),
+    "status":               st.column_config.SelectboxColumn(
+        "Status",
+        options=list(STATUS_COLOURS.keys()),
+        width="small",
+    ),
+})
+
 edited = st.data_editor(
     edit_base,
-    column_config={
-        "line_id":               st.column_config.TextColumn("Line", disabled=True, width="small"),
-        "part_name":             st.column_config.TextColumn("Component", disabled=True, width="large"),
-        "budget_material":       st.column_config.NumberColumn("Budget mat €", disabled=True, format="%.0f"),
-        "budget_process":        st.column_config.NumberColumn("Budget proc €", disabled=True, format="%.0f"),
-        "budget_total":          st.column_config.NumberColumn("Budget total €", disabled=True, format="%.0f"),
-        "actual_material_cost":  st.column_config.NumberColumn("Actual mat €",  format="%.0f"),
-        "actual_process_cost":   st.column_config.NumberColumn("Actual proc €", format="%.0f"),
-        "actual_total_cost":     st.column_config.NumberColumn("Actual total €", format="%.0f"),
-        "notes":                 st.column_config.TextColumn("Notes"),
-        "status":                st.column_config.SelectboxColumn(
-            "Status",
-            options=list(STATUS_COLOURS.keys()),
-            width="small",
-        ),
-    },
+    column_config=_col_cfg,
     use_container_width=True,
     hide_index=True,
     num_rows="fixed",
@@ -323,39 +347,33 @@ df.loc[mask_total_blank & mask_parts_filled, "actual_total_cost"] = (
 )
 
 has_actuals = df["actual_total_cost"].notna()
-n_total     = len(df)
-n_actual    = has_actuals.sum()
-n_complete  = (df["status"] == "complete").sum()
+n_total    = len(df)
+n_actual   = has_actuals.sum()
+n_complete = (df["status"] == "complete").sum()
 
-budget_total = df["budget_total"].sum()
-actual_total = df.loc[has_actuals, "actual_total_cost"].sum()
-budget_scope = df.loc[has_actuals, "budget_total"].sum()
-variance_abs = actual_total - budget_scope
+budget_total  = df["budget_total"].sum()
+actual_total  = df.loc[has_actuals, "actual_total_cost"].sum()
+budget_scope  = df.loc[has_actuals, "budget_total"].sum()
+variance_abs  = actual_total - budget_scope
 
-# ── KPIs ──────────────────────────────────────────────────────────────────────
+# ── Summary KPIs ──────────────────────────────────────────────────────────────
 st.subheader("Summary")
 k1, k2, k3, k4, k5, k6 = st.columns(6)
-k1.metric("Budget (full scope)", fmt(budget_total))
-k2.metric("Budget (actuals scope)", fmt(budget_scope))
-k3.metric("Actuals to date", fmt(actual_total))
+k1.metric("Budget (full scope)",     fmt(budget_total))
+k2.metric("Budget (actuals scope)",  fmt(budget_scope))
+k3.metric("Actuals to date",         fmt(actual_total))
 k4.metric(
     "Variance (actuals scope)",
     fmt_delta(variance_abs),
     delta=f"{variance_abs / budget_scope * 100:+.1f}%" if budget_scope else None,
     delta_color="inverse",
 )
-k5.metric("Lines with actuals", f"{n_actual} / {n_total}")
-k6.metric("Lines complete", f"{n_complete} / {n_total}")
-
-if n_actual == 0:
-    st.info("No actuals entered yet. Fill in the table above or import from SAP.")
-    st.stop()
+k5.metric("Lines with actuals",  f"{n_actual} / {n_total}")
+k6.metric("Lines complete",      f"{n_complete} / {n_total}")
 
 st.divider()
 
-# ── Per-subsystem comparison ──────────────────────────────────────────────────
-st.subheader("Subsystem comparison")
-
+# ── Subsystem prefix helper ───────────────────────────────────────────────────
 def _prefix(lid: str) -> str:
     u = str(lid).upper()
     for p in sorted(WATERJET_SUBSYSTEMS, key=len, reverse=True):
@@ -366,6 +384,9 @@ def _prefix(lid: str) -> str:
 df["subsystem"] = df["line_id"].apply(_prefix)
 subsystem_names = {p: f"{info['icon']} {info['name']}" for p, info in WATERJET_SUBSYSTEMS.items()}
 
+# ── Per-subsystem comparison ──────────────────────────────────────────────────
+st.subheader("Subsystem comparison")
+
 grp = (
     df.groupby("subsystem")
     .agg(
@@ -373,6 +394,7 @@ grp = (
         actual=("actual_total_cost", lambda s: s.dropna().sum()),
         n_lines=("line_id", "count"),
         n_actual=("actual_total_cost", lambda s: s.notna().sum()),
+        n_complete=("status", lambda s: (s == "complete").sum()),
     )
     .reset_index()
 )
@@ -382,11 +404,13 @@ grp["Actual €"]   = grp.apply(lambda r: fmt(r["actual"]) if r["n_actual"] > 0 
 grp["Variance €"] = grp.apply(
     lambda r: fmt_delta(r["actual"] - r["budget"]) if r["n_actual"] > 0 else "—", axis=1
 )
-grp["Var %"]      = grp.apply(
+grp["Var %"] = grp.apply(
     lambda r: f"{(r['actual'] - r['budget']) / r['budget'] * 100:+.1f}%"
               if r["n_actual"] > 0 and r["budget"] else "—", axis=1
 )
-grp["Coverage"]   = grp.apply(lambda r: f"{r['n_actual']}/{r['n_lines']} lines", axis=1)
+grp["Coverage"] = grp.apply(
+    lambda r: f"{r['n_actual']}/{r['n_lines']} lines ({r['n_complete']} done)", axis=1
+)
 
 chart_df = grp[grp["n_actual"] > 0].set_index("Subsystem")[["budget", "actual"]].rename(
     columns={"budget": "Budget", "actual": "Actual"}
@@ -400,35 +424,125 @@ if not chart_df.empty:
             grp[["Subsystem", "Budget €", "Actual €", "Variance €", "Var %", "Coverage"]],
             use_container_width=True, hide_index=True,
         )
+else:
+    st.info("No actuals entered yet — fill in the table above or import from SAP.")
 
 st.divider()
 
-# ── Line-by-line detail ───────────────────────────────────────────────────────
-st.subheader("Line-by-line detail")
-
-detail = df[has_actuals].copy()
-detail["Variance €"] = detail["actual_total_cost"] - detail["budget_total"]
-detail["Var %"] = (
-    detail["Variance €"] / detail["budget_total"].replace(0, float("nan")) * 100
-).round(1)
-
-detail_disp = detail[[
-    "line_id", "part_name", "status",
-    "budget_total", "actual_total_cost", "Variance €", "Var %", "notes",
-]].copy()
-detail_disp.rename(columns={
-    "line_id": "Line", "part_name": "Component", "status": "Status",
-    "budget_total": "Budget €", "actual_total_cost": "Actual €", "notes": "Notes",
-}, inplace=True)
-detail_disp["Status"]     = detail_disp["Status"].map(lambda s: f"{STATUS_COLOURS.get(s, '')} {s}")
-detail_disp["Budget €"]   = detail_disp["Budget €"].map(lambda x: fmt(x, 2))
-detail_disp["Actual €"]   = detail_disp["Actual €"].map(lambda x: fmt(x, 2))
-detail_disp["Variance €"] = detail_disp["Variance €"].map(lambda x: fmt_delta(x, 2))
-detail_disp["Var %"]      = detail_disp["Var %"].map(
-    lambda x: f"{x:+.1f}%" if pd.notna(x) else "—"
+# ── Per-scope-line detail (ALL lines) ─────────────────────────────────────────
+st.subheader("Per-scope-line detail")
+st.caption(
+    "All BOM scope lines. Lines without actuals show budget only. "
+    "Filter by subsystem, status, or search to drill down."
 )
 
-st.dataframe(detail_disp, use_container_width=True, hide_index=True)
+# Filters
+fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 2])
+
+# Subsystem filter
+_sub_options_all = ["All subsystems"] + [
+    subsystem_names[p] for p in WATERJET_SUBSYSTEMS if p in df["subsystem"].values
+]
+chosen_sub = fc1.selectbox("Subsystem", _sub_options_all, key="pp_sub")
+
+# Status filter
+chosen_status = fc2.selectbox(
+    "Status",
+    ["All statuses"] + list(STATUS_COLOURS.keys()),
+    key="pp_status",
+)
+
+# Actuals filter
+chosen_actuals = fc3.selectbox(
+    "Show",
+    ["All lines", "Lines with actuals only", "Lines without actuals"],
+    key="pp_actuals_filter",
+)
+
+# Search
+search_pp = fc4.text_input("Search line ID / component", key="pp_search")
+
+# Apply filters
+view = df.copy()
+if chosen_sub != "All subsystems":
+    pfx = next(p for p, n in subsystem_names.items() if n == chosen_sub)
+    view = view[view["subsystem"] == pfx]
+if chosen_status != "All statuses":
+    view = view[view["status"] == chosen_status]
+if chosen_actuals == "Lines with actuals only":
+    view = view[view["actual_total_cost"].notna()]
+elif chosen_actuals == "Lines without actuals":
+    view = view[view["actual_total_cost"].isna()]
+if search_pp:
+    desc = view["part_name"] if "part_name" in view.columns else pd.Series("", index=view.index)
+    mask = (
+        view["line_id"].astype(str).str.contains(search_pp, case=False, na=False) |
+        desc.astype(str).str.contains(search_pp, case=False, na=False)
+    )
+    view = view[mask]
+
+st.caption(f"Showing **{len(view)}** of **{len(df)}** scope lines")
+
+# Compute per-line variance (NaN when no actuals)
+view = view.copy()
+view["variance_eur"] = view["actual_total_cost"] - view["budget_total"]
+view["variance_pct"] = (
+    view["variance_eur"] / view["budget_total"].replace(0, float("nan")) * 100
+).round(1)
+
+# Build display table with all budget component columns
+_disp_detail: dict = {}
+_disp_detail["line_id"]   = "Line"
+_disp_detail["part_name"] = "Component"
+_disp_detail["status"]    = "Status"
+for _c, _l in [("budget_material","Bgt mat €"), ("budget_process","Bgt proc €"),
+                ("budget_overhead","Bgt OH €"),  ("budget_pattern","Bgt pattern €"),
+                ("budget_base","Bgt base €"),     ("budget_total","Bgt sell €")]:
+    if _c in view.columns:
+        _disp_detail[_c] = _l
+_disp_detail["actual_material_cost"] = "Act mat €"
+_disp_detail["actual_process_cost"]  = "Act proc €"
+_disp_detail["actual_total_cost"]    = "Act total €"
+_disp_detail["variance_eur"]         = "Variance €"
+_disp_detail["variance_pct"]         = "Var %"
+_disp_detail["notes"]                = "Notes"
+
+detail_tbl = view[[c for c in _disp_detail if c in view.columns]].rename(columns=_disp_detail).copy()
+
+# Format numeric columns
+_money_cols = ["Bgt mat €","Bgt proc €","Bgt OH €","Bgt pattern €","Bgt base €","Bgt sell €",
+               "Act mat €","Act proc €","Act total €"]
+for _mc in _money_cols:
+    if _mc in detail_tbl.columns:
+        detail_tbl[_mc] = detail_tbl[_mc].map(
+            lambda x: fmt(x, 2) if pd.notna(x) else "—"
+        )
+if "Variance €" in detail_tbl.columns:
+    detail_tbl["Variance €"] = detail_tbl["Variance €"].map(
+        lambda x: fmt_delta(x, 2) if pd.notna(x) else "—"
+    )
+if "Var %" in detail_tbl.columns:
+    detail_tbl["Var %"] = detail_tbl["Var %"].map(
+        lambda x: f"{x:+.1f}%" if pd.notna(x) else "—"
+    )
+if "Status" in detail_tbl.columns:
+    detail_tbl["Status"] = detail_tbl["Status"].map(
+        lambda s: f"{STATUS_COLOURS.get(s, '')} {s}"
+    )
+
+st.dataframe(detail_tbl, use_container_width=True, hide_index=True)
+
+# Quick stats for filtered view
+with st.expander("📊 Filtered-view statistics"):
+    _fv = view.copy()
+    _fv_has = _fv["actual_total_cost"].notna()
+    _stat_cols = st.columns(5)
+    _stat_cols[0].metric("Lines shown",        len(_fv))
+    _stat_cols[1].metric("With actuals",       int(_fv_has.sum()))
+    _stat_cols[2].metric("Budget (shown)",     fmt(_fv["budget_total"].sum()))
+    _stat_cols[3].metric("Actuals (shown)",    fmt(_fv.loc[_fv_has, "actual_total_cost"].sum()))
+    _var_shown = _fv.loc[_fv_has, "actual_total_cost"].sum() - _fv.loc[_fv_has, "budget_total"].sum()
+    _stat_cols[4].metric("Variance (shown)",   fmt_delta(_var_shown))
 
 st.divider()
 
@@ -454,19 +568,26 @@ with dl1:
     )
 
 report = df.copy()
-report["variance"] = report["actual_total_cost"] - report["budget_total"]
-report["var_pct"]  = (
+report["variance"]  = report["actual_total_cost"] - report["budget_total"]
+report["var_pct"]   = (
     report["variance"] / report["budget_total"].replace(0, float("nan")) * 100
 ).round(1)
-report_cols = ["line_id", "part_name", "status", "budget_total",
-               "actual_total_cost", "variance", "var_pct", "notes"]
+
+# All budget breakdown columns in export
+_rpt_cols = ["line_id", "part_name", "subsystem", "status"]
+for _c in ["budget_material","budget_process","budget_overhead","budget_pattern",
+           "budget_moq","budget_base","budget_margin","budget_total"]:
+    if _c in report.columns:
+        _rpt_cols.append(_c)
+_rpt_cols += ["actual_material_cost","actual_process_cost","actual_total_cost",
+              "variance","var_pct","notes"]
 
 with dl2:
     st.download_button(
-        "⬇️ Download pre/post report (Excel)",
-        data=df_to_excel_bytes(report[report_cols], "Pre-Post"),
+        "⬇️ Download full pre/post report (Excel)",
+        data=df_to_excel_bytes(report[[c for c in _rpt_cols if c in report.columns]], "Pre-Post"),
         file_name="pre_post_report.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True,
-        help="Full budget vs actuals comparison.",
+        help="Full budget vs actuals comparison — all scope lines, all budget components.",
     )
