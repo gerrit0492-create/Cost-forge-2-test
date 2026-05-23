@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR  = REPO_ROOT / "data"
 
 
-# ─── Quarter helpers ──────────────────────────────────────────────────────────────────────────────
+# ─── Quarter helpers ──────────────────────────────────────────────────────────
 def current_quarter(d: date = None):
     d = d or date.today()
     q = (d.month - 1) // 3 + 1
@@ -41,35 +41,21 @@ def next_quarter_start(d: date = None):
     return date(year, q * 3 + 1, 1)
 
 
-# ─── Generate Excel (calls the existing generator) ──────────────────────────────────────────────
+# ─── Generate Excel (calls the existing generator) ────────────────────────────
 def generate_excel_bytes() -> bytes:
     """Run the generator in-memory and return xlsx bytes."""
-    import sys
-    sys.path.insert(0, str(REPO_ROOT / "tools"))
-    try:
-        # Import generator as a module
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "gen", REPO_ROOT / "tools" / "generate_quarterly_update_excel.py"
-        )
-        gen = importlib.util.load_from_spec(spec)  # type: ignore
-        spec.loader.exec_module(gen)               # type: ignore
-    except Exception:
-        pass
-
-    # Call the workbook builder directly (same code, returns bytes instead of saving)
     try:
         from openpyxl import Workbook
     except ImportError:
         st.error("openpyxl is not installed. Run: pip install openpyxl")
         st.stop()
 
-    # Re-use functions from generate_quarterly_update_excel.py via exec
     gen_path = REPO_ROOT / "tools" / "generate_quarterly_update_excel.py"
     if not gen_path.exists():
         raise FileNotFoundError(f"Generator not found: {gen_path}")
 
-    ns: dict = {}
+    # __file__ must be seeded so the generator can resolve REPO_ROOT via Path(__file__)
+    ns: dict = {"__file__": str(gen_path)}
     exec(compile(gen_path.read_text(), str(gen_path), "exec"), ns)
 
     today = date.today()
@@ -94,7 +80,7 @@ def generate_excel_bytes() -> bytes:
     return buf.getvalue()
 
 
-# ─── Import helpers (inline; mirrors import_from_quarterly_excel.py) ──────────────────────────
+# ─── Import helpers (inline; mirrors import_from_quarterly_excel.py) ──────────
 def load_csv_db(path: Path):
     if not path.exists():
         return [], []
@@ -173,7 +159,7 @@ def run_import(wb, dry_run: bool) -> dict:
             save_csv_db(DATA_DIR / "processes_db.csv", headers, rows)
 
     # ── Supplier Quotes ──
-    sheet_name = "\ud83c� Supplier Quotes"
+    sheet_name = "🏢 Supplier Quotes"
     if sheet_name in wb.sheetnames:
         ws = wb[sheet_name]
         _, sq_rows = load_csv_db(DATA_DIR / "supplier_quotes.csv")
@@ -287,7 +273,7 @@ def run_import(wb, dry_run: bool) -> dict:
                 "processes_changed": len(changes["Processes"]),
                 "quotes_changed":    len(changes["Supplier Quotes"]),
                 "market_changed":    len(changes["Market Adjustments"]),
-                "note":  f"Imported via Quarterly Update page",
+                "note":  "Imported via Quarterly Update page",
             }
             exists = hist_path.exists()
             with open(hist_path, "a", newline="", encoding="utf-8") as f:
@@ -299,7 +285,7 @@ def run_import(wb, dry_run: bool) -> dict:
     return changes
 
 
-# ─── UI ───────────────────────────────────────────────────────────────────────────────────────
+# ─── UI ───────────────────────────────────────────────────────────────────────
 def main():
     home_button()
 
@@ -312,9 +298,8 @@ def main():
     st.title("🔄 Quarterly Cost Update")
     st.caption(f"Current quarter: **{qlabel}** · Next review in **{days_left} days** ({next_start.strftime('%d %b %Y')})")
 
-    # ── Progress bar ──────────────────────────────────────────────────────────────────────────────
+    # ── Progress bar ──────────────────────────────────────────────────────────
     pct = max(0, min(1, 1 - days_left / 91))
-    colour = "red" if pct > 0.85 else ("orange" if pct > 0.60 else "green")
     st.progress(pct, text=f"Quarter progress: {pct*100:.0f}%")
 
     st.divider()
@@ -325,7 +310,7 @@ def main():
         "📜 3 — History",
     ])
 
-    # ── TAB 1: Generate ────────────────────────────────────────────────────────────────────────────
+    # ── TAB 1: Generate ───────────────────────────────────────────────────────
     with tab_gen:
         st.subheader("Generate quarterly update workbook")
         st.markdown(
@@ -339,7 +324,7 @@ def main():
                 "The workbook includes:\n"
                 "- 💎 Materials DB — current prices + empty 'New Price' column\n"
                 "- ⚙️ Process Rates — machine / labour / overhead\n"
-                "- 🏭 Supplier Quotes — expiry highlighted red/amber\n"
+                "- 🏢 Supplier Quotes — expiry highlighted red/amber\n"
                 "- 📊 Market Adjustments — commodity factors\n"
                 "- 💰 Cost Impact — live formula preview"
             )
@@ -352,7 +337,9 @@ def main():
                     st.session_state["gen_label"] = qlabel
                     st.success(f"✅ Workbook ready — {len(xlsx_bytes)//1024} KB")
                 except Exception as e:
+                    import traceback
                     st.error(f"Generation failed: {e}")
+                    st.code(traceback.format_exc(), language="python")
                     logger.exception("generate_excel_bytes failed")
 
         if "gen_xlsx" in st.session_state:
@@ -383,7 +370,7 @@ def main():
         else:
             st.caption("No pre-generated files found in data/")
 
-    # ── TAB 2: Import ────────────────────────────────────────────────────────────────────────────
+    # ── TAB 2: Import ─────────────────────────────────────────────────────────
     with tab_import:
         st.subheader("Import a filled workbook back to the database")
         st.markdown(
@@ -408,7 +395,7 @@ def main():
                 wb = _lw(io.BytesIO(uploaded.read()), data_only=True)
 
                 required = ["💎 Materials DB", "⚙️ Process Rates",
-                            "🏭 Supplier Quotes", "📊 Market Adjustments"]
+                            "🏢 Supplier Quotes", "📊 Market Adjustments"]
                 missing = [s for s in required if s not in wb.sheetnames]
                 if missing:
                     st.error(f"Wrong file format — missing sheets: {missing}")
@@ -446,7 +433,7 @@ def main():
                 st.error(f"Import failed: {e}")
                 logger.exception("run_import failed")
 
-    # ── TAB 3: History ────────────────────────────────────────────────────────────────────────────
+    # ── TAB 3: History ────────────────────────────────────────────────────────
     with tab_history:
         st.subheader("Update history log")
         log_path = DATA_DIR / "log.csv"
