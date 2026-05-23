@@ -1,0 +1,6 @@
+Force redeploy marker for Streamlit.
+
+Reason: Escalation_Risk runtime still showed an old KeyError: commodity traceback after the safe code was already present on main.
+
+Expected active build marker in app:
+escalation-risk-runtime-safe-2026-05-24-001
