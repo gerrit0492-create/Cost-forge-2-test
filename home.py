@@ -57,6 +57,7 @@ _P = {
     "india_lc":   st.Page("pages/46_India_Local_Content.py",    title="India Local Content", icon="🇮🇳"),
     "carbon":     st.Page("pages/47_Carbon_Energy.py",          title="Carbon & Energy",     icon="🌱"),
     "stakeholder":st.Page("pages/48_Stakeholder_Package.py",   title="Stakeholder Package", icon="📊"),
+    "quarterly":  st.Page("pages/50_Quarterly_Update.py",       title="Quarterly Update",    icon="🔄"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -351,19 +352,23 @@ def dashboard() -> None:
     st.caption("Start here — upload your BOM, verify materials, enter supplier prices and set overhead/margin presets.")
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        _card(_P["bom"],     "📥", "BOM Import",
+        _card(_P["bom"],       "📥", "BOM Import",
               "Upload or paste a BOM — costs are calculated immediately.")
     with c2:
-        _card(_P["mats"],    "🧱", "Materials",
+        _card(_P["mats"],      "🧱", "Materials",
               "Review all materials and their best current supplier prices.")
     with c3:
-        _card(_P["quotes"],  "🏭", "Supplier Quotes",
+        _card(_P["quotes"],    "🏭", "Supplier Quotes",
               "Enter, compare and validate quotes per supplier.")
     with c4:
-        _card(_P["presets"], "⚙️", "Presets",
+        _card(_P["presets"],   "⚙️", "Presets",
               "Set default overhead %, margin % and labour rates.")
     with c5:
-        _card(_P["csv"],     "🔗", "CSV Import",
+        _card(_P["quarterly"], "🔄", "Quarterly Update",
+              "Generate the quarterly price-update workbook, import it back, and track update history.")
+    c1, c2, _, _, _ = st.columns(5)
+    with c1:
+        _card(_P["csv"],       "🔗", "CSV Import",
               "Pull materials and prices from a public Google Sheet.")
 
     st.divider()
