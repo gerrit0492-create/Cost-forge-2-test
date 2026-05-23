@@ -41,7 +41,7 @@ def next_quarter_start(d: date = None):
     return date(year, q * 3 + 1, 1)
 
 
-# ─── Generate Excel ───────────────────────────────────────────────────────────
+# ─── Generate Excel (calls the existing generator) ────────────────────────────
 def generate_excel_bytes() -> bytes:
     """Run the generator in-memory and return xlsx bytes."""
     try:
@@ -54,7 +54,8 @@ def generate_excel_bytes() -> bytes:
     if not gen_path.exists():
         raise FileNotFoundError(f"Generator not found: {gen_path}")
 
-    ns: dict = {}
+    # __file__ must be seeded so the generator can resolve REPO_ROOT via Path(__file__)
+    ns: dict = {"__file__": str(gen_path)}
     exec(compile(gen_path.read_text(), str(gen_path), "exec"), ns)
 
     today = date.today()
@@ -79,7 +80,7 @@ def generate_excel_bytes() -> bytes:
     return buf.getvalue()
 
 
-# ─── Import helpers ───────────────────────────────────────────────────────────
+# ─── Import helpers (inline; mirrors import_from_quarterly_excel.py) ──────────
 def load_csv_db(path: Path):
     if not path.exists():
         return [], []
@@ -107,14 +108,19 @@ def safe_float(val):
         return None
 
 def run_import(wb, dry_run: bool) -> dict:
+    """
+    Import from a filled quarterly workbook.
+    Returns a summary dict: {sheet: [(field, old, new), ...]}
+    """
     from datetime import datetime as DT
     changes: dict[str, list] = {
         "Materials": [], "Processes": [], "Supplier Quotes": [], "Market Adjustments": []
     }
 
     # ── Materials ──
-    if "💎 Materials DB" in wb.sheetnames:
-        ws = wb["💎 Materials DB"]
+    sheet_name = "💎 Materials DB"
+    if sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
         headers, rows = load_csv_db(DATA_DIR / "materials_db.csv")
         for idx, row in enumerate(rows):
             r = idx + 5
@@ -131,8 +137,9 @@ def run_import(wb, dry_run: bool) -> dict:
             save_csv_db(DATA_DIR / "materials_db.csv", headers, rows)
 
     # ── Processes ──
-    if "⚙️ Process Rates" in wb.sheetnames:
-        ws = wb["⚙️ Process Rates"]
+    sheet_name = "⚙️ Process Rates"
+    if sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
         headers, rows = load_csv_db(DATA_DIR / "processes_db.csv")
         field_map = [("E","machine_rate_eur_h"),("G","labor_rate_eur_h"),
                      ("I","overhead_pct"),("K","margin_pct")]
@@ -152,8 +159,9 @@ def run_import(wb, dry_run: bool) -> dict:
             save_csv_db(DATA_DIR / "processes_db.csv", headers, rows)
 
     # ── Supplier Quotes ──
-    if "🏢 Supplier Quotes" in wb.sheetnames:
-        ws = wb["🏢 Supplier Quotes"]
+    sheet_name = "🏢 Supplier Quotes"
+    if sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
         _, sq_rows = load_csv_db(DATA_DIR / "supplier_quotes.csv")
         _, q_rows  = load_csv_db(DATA_DIR / "quotes.csv")
         sq_headers = ["supplier","material_id","price_eur_per_kg","lead_time_days","valid_until","preferred"]
@@ -170,19 +178,22 @@ def run_import(wb, dry_run: bool) -> dict:
             new_lead  = ws[f"H{r}"].value
             new_valid = ws[f"J{r}"].value
             new_pref  = ws[f"K{r}"].value
+
             nf = safe_float(new_price) if not is_blank(new_price) else None
             nl = safe_float(new_lead)  if not is_blank(new_lead)  else None
             nv = None
             if not is_blank(new_valid):
-                if isinstance(new_valid, date):
+                if isinstance(new_valid, (date,)):
                     nv = new_valid.strftime("%Y-%m-%d")
                 elif isinstance(new_valid, DT):
                     nv = new_valid.strftime("%Y-%m-%d")
                 else:
                     nv = str(new_valid).strip()
             np_ = str(int(safe_float(new_pref))) if not is_blank(new_pref) and safe_float(new_pref) is not None else None
+
             if nf is None and nl is None and nv is None and np_ is None:
                 continue
+
             parts = []
             if nf is not None:
                 parts.append(f"price {row.get('price_eur_per_kg','')} → {nf:.4f}")
@@ -191,6 +202,7 @@ def run_import(wb, dry_run: bool) -> dict:
             if nv is not None:
                 parts.append(f"valid_until → {nv}")
             changes["Supplier Quotes"].append((f"{row['supplier']} / {row['material_id']}", ", ".join(parts), "", ""))
+
             if key in sq_key:
                 i = sq_key[key]
                 if nf  is not None: sq_rows[i]["price_eur_per_kg"] = f"{nf:.4f}"
@@ -205,6 +217,7 @@ def run_import(wb, dry_run: bool) -> dict:
                 if nv  is not None: q_rows[i]["valid_until"]      = nv
                 if np_ is not None: q_rows[i]["preferred"]        = np_
                 q_changed = True
+
         if not dry_run:
             if sq_changed:
                 save_csv_db(DATA_DIR / "supplier_quotes.csv", sq_headers, sq_rows)
@@ -212,13 +225,15 @@ def run_import(wb, dry_run: bool) -> dict:
                 save_csv_db(DATA_DIR / "quotes.csv", q_headers, q_rows)
 
     # ── Market Adjustments ──
-    if "📊 Market Adjustments" in wb.sheetnames:
-        ws = wb["📊 Market Adjustments"]
+    sheet_name = "📊 Market Adjustments"
+    if sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
         headers, rows = load_csv_db(DATA_DIR / "market-factors.csv")
         for idx, row in enumerate(rows):
             r = idx + 5
             new_pct    = ws[f"E{r}"].value
             new_factor = ws[f"G{r}"].value
+            changed = False
             if not is_blank(new_pct):
                 nf = safe_float(new_pct)
                 if nf is not None:
@@ -227,6 +242,7 @@ def run_import(wb, dry_run: bool) -> dict:
                         (str(row.get("material_id","(all)")), "pct_change", old, str(nf)))
                     rows[idx]["pct_change"] = str(nf)
                     rows[idx]["factor"] = ""
+                    changed = True
             if not is_blank(new_factor):
                 nf = safe_float(new_factor)
                 if nf is not None:
@@ -235,6 +251,7 @@ def run_import(wb, dry_run: bool) -> dict:
                         (str(row.get("material_id","(all)")), "factor", old, str(nf)))
                     rows[idx]["factor"] = str(nf)
                     rows[idx]["pct_change"] = ""
+                    changed = True
         if not dry_run and changes["Market Adjustments"]:
             out_path = DATA_DIR / "market-factors.csv"
             with open(out_path, "w", newline="", encoding="utf-8") as f:
@@ -281,6 +298,7 @@ def main():
     st.title("🔄 Quarterly Cost Update")
     st.caption(f"Current quarter: **{qlabel}** · Next review in **{days_left} days** ({next_start.strftime('%d %b %Y')})")
 
+    # ── Progress bar ──────────────────────────────────────────────────────────
     pct = max(0, min(1, 1 - days_left / 91))
     st.progress(pct, text=f"Quarter progress: {pct*100:.0f}%")
 
@@ -319,7 +337,9 @@ def main():
                     st.session_state["gen_label"] = qlabel
                     st.success(f"✅ Workbook ready — {len(xlsx_bytes)//1024} KB")
                 except Exception as e:
+                    import traceback
                     st.error(f"Generation failed: {e}")
+                    st.code(traceback.format_exc(), language="python")
                     logger.exception("generate_excel_bytes failed")
 
         if "gen_xlsx" in st.session_state:
@@ -332,7 +352,9 @@ def main():
             )
 
         st.divider()
-        st.subheader("Or download a pre-generated file")
+        st.subheader("Or use the pre-generated file")
+        st.caption("Any `quarterly_update_*.xlsx` already in `data/` can be downloaded here.")
+
         existing = sorted(glob.glob(str(DATA_DIR / "quarterly_update_*.xlsx")), reverse=True)
         if existing:
             for path in existing:
@@ -363,8 +385,9 @@ def main():
         )
 
         dry_run = st.toggle("🔍 Dry run (preview only — no files written)", value=True)
+
         if dry_run:
-            st.info("Dry run is ON — review the detected changes below before applying.")
+            st.info("Dry run is ON — review changes below before applying.")
 
         if uploaded and st.button("▶️ Run import", type="primary", use_container_width=True):
             try:
@@ -375,32 +398,36 @@ def main():
                             "🏢 Supplier Quotes", "📊 Market Adjustments"]
                 missing = [s for s in required if s not in wb.sheetnames]
                 if missing:
-                    st.error(f"Wrong file — missing sheets: {missing}")
+                    st.error(f"Wrong file format — missing sheets: {missing}")
                     st.stop()
 
                 with st.spinner("Importing …"):
                     changes = run_import(wb, dry_run=dry_run)
 
                 total = sum(len(v) for v in changes.values())
+
                 if total == 0:
-                    st.warning("No filled-in cells found — nothing to import.")
+                    st.warning("No filled-in cells found — nothing to import. "
+                               "Make sure you filled in the yellow columns.")
                 else:
                     if dry_run:
-                        st.success(f"**Dry run — {total} change(s) detected.** Disable dry run and re-run to apply.")
+                        st.success(f"**Dry run complete** — {total} change(s) detected. "
+                                   "Disable dry run and re-run to apply.")
                     else:
                         st.success(f"✅ **{total} change(s) applied to the database.**")
 
                     for section, rows in changes.items():
                         if not rows:
                             continue
-                        with st.expander(f"**{section}** — {len(rows)} change(s)", expanded=True):
-                            if section == "Supplier Quotes":
-                                for label, summary, _, __ in rows:
-                                    st.markdown(f"- `{label}`: {summary}")
-                            else:
-                                for item_id, field, old, new in rows:
-                                    arrow = "🔺" if (safe_float(new) or 0) > (safe_float(old) or 0) else "🔻"
-                                    st.markdown(f"- `{item_id}` · {field}: **{old}** → **{new}** {arrow}")
+                        st.markdown(f"**{section}** — {len(rows)} change(s)")
+                        if section == "Supplier Quotes":
+                            for label, summary, _, __ in rows:
+                                st.markdown(f"  - `{label}`: {summary}")
+                        else:
+                            for item_id, field, old, new in rows:
+                                arrow = "🔺" if (safe_float(new) or 0) > (safe_float(old) or 0) else "🔻"
+                                st.markdown(f"  - `{item_id}` · {field}: "
+                                            f"**{old}** → **{new}** {arrow}")
 
             except Exception as e:
                 st.error(f"Import failed: {e}")
@@ -411,7 +438,7 @@ def main():
         st.subheader("Update history log")
         log_path = DATA_DIR / "log.csv"
         if not log_path.exists():
-            st.info("No log entries yet. The log is created after the first import.")
+            st.info("No log entries yet. Log file (`data/log.csv`) will be created after the first import.")
         else:
             try:
                 import pandas as pd
@@ -419,7 +446,11 @@ def main():
                 if df.empty:
                     st.info("Log file exists but has no entries yet.")
                 else:
-                    q_df = df[df["action"] == "quarterly_update"].copy() if "action" in df.columns else df.copy()
+                    if "action" in df.columns:
+                        q_df = df[df["action"] == "quarterly_update"].copy()
+                    else:
+                        q_df = df.copy()
+
                     if q_df.empty:
                         st.info("No quarterly update entries in the log yet.")
                     else:
