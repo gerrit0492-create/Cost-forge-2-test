@@ -1,0 +1,38 @@
+name: Cost Forge CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest ruff
+
+      - name: Verify critical files exist
+        run: |
+          test -f home.py
+          test -d pages
+          test -d utils
+
+      - name: Ruff lint
+        run: ruff check . || true
+
+      - name: Smoke import
+        run: |
+          python -c "import utils.io"
+          python -c "import utils.pricing"
+          python -c "import utils.currency"
