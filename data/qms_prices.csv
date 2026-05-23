@@ -1,37 +1,41 @@
 item_id,description,category,supply_chain,size_mm,qty,price_eur,surcharge_pct,supplier,valid_from,notes
-IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,Main flow impeller MWJ-720 India build
-IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Main flow impeller MWJ-1000 India build
-IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,Main flow impeller MWJ-720 EU build
-IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Main flow impeller MWJ-1000 EU build
-SEAL_MECH,Mechanical shaft seal assembly,Sealing,IN01,720,1,0.00,0.0,TBD,2026-01-01,Primary shaft seal MWJ-720 India
-SEAL_MECH,Mechanical shaft seal assembly,Sealing,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Primary shaft seal MWJ-1000 India
-SEAL_MECH,Mechanical shaft seal assembly,Sealing,NL07,720,1,0.00,0.0,TBD,2026-01-01,Primary shaft seal MWJ-720 EU
-SEAL_MECH,Mechanical shaft seal assembly,Sealing,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Primary shaft seal MWJ-1000 EU
-DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,IN01,720,1,0.00,0.0,TBD,2026-01-01,Transmission shaft MWJ-720 India
-DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Transmission shaft MWJ-1000 India
-DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,NL07,720,1,0.00,0.0,TBD,2026-01-01,Transmission shaft MWJ-720 EU
-DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Transmission shaft MWJ-1000 EU
-BRG_FWD,Forward bearing assembly — duplex,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,Forward bearing MWJ-720 India
-BRG_FWD,Forward bearing assembly — duplex,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Forward bearing MWJ-1000 India
-BRG_FWD,Forward bearing assembly — duplex,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,Forward bearing MWJ-720 EU
-BRG_FWD,Forward bearing assembly — duplex,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Forward bearing MWJ-1000 EU
-BRG_AFT,Aft bearing assembly — single row,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,Aft bearing MWJ-720 India
-BRG_AFT,Aft bearing assembly — single row,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Aft bearing MWJ-1000 India
-BRG_AFT,Aft bearing assembly — single row,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,Aft bearing MWJ-720 EU
-BRG_AFT,Aft bearing assembly — single row,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Aft bearing MWJ-1000 EU
-NOZZLE_BODY,Nozzle body — hardened steel,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,Discharge nozzle MWJ-720 India
-NOZZLE_BODY,Nozzle body — hardened steel,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Discharge nozzle MWJ-1000 India
-NOZZLE_BODY,Nozzle body — hardened steel,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,Discharge nozzle MWJ-720 EU
-NOZZLE_BODY,Nozzle body — hardened steel,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Discharge nozzle MWJ-1000 EU
-INLET_CASING,Inlet casing — duplex stainless,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,Inlet casing MWJ-720 India
-INLET_CASING,Inlet casing — duplex stainless,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Inlet casing MWJ-1000 India
-INLET_CASING,Inlet casing — duplex stainless,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,Inlet casing MWJ-720 EU
-INLET_CASING,Inlet casing — duplex stainless,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Inlet casing MWJ-1000 EU
-STEER_SYS,Steering system actuator assembly,Steering,IN01,720,1,0.00,0.0,TBD,2026-01-01,Hydraulic steering MWJ-720 India
-STEER_SYS,Steering system actuator assembly,Steering,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Hydraulic steering MWJ-1000 India
-STEER_SYS,Steering system actuator assembly,Steering,NL07,720,1,0.00,0.0,TBD,2026-01-01,Hydraulic steering MWJ-720 EU
-STEER_SYS,Steering system actuator assembly,Steering,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Hydraulic steering MWJ-1000 EU
-REV_BUCKET,Reverse bucket deflector — cast iron,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,Reverse deflector MWJ-720 India
-REV_BUCKET,Reverse bucket deflector — cast iron,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,Reverse deflector MWJ-1000 India
-REV_BUCKET,Reverse bucket deflector — cast iron,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,Reverse deflector MWJ-720 EU
-REV_BUCKET,Reverse bucket deflector — cast iron,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,Reverse deflector MWJ-1000 EU
+IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+IMPELLER,Waterjet impeller — bronze alloy,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+STATOR,Stator / guide vane assembly,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+STATOR,Stator / guide vane assembly,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+STATOR,Stator / guide vane assembly,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+STATOR,Stator / guide vane assembly,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+BOWL,Inlet bowl / pump casing,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+BOWL,Inlet bowl / pump casing,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+BOWL,Inlet bowl / pump casing,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+BOWL,Inlet bowl / pump casing,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+SEAL_MECH,Mechanical shaft seal assembly,Sealing,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+SEAL_MECH,Mechanical shaft seal assembly,Sealing,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+SEAL_MECH,Mechanical shaft seal assembly,Sealing,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+SEAL_MECH,Mechanical shaft seal assembly,Sealing,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+DRIVE_SHAFT,Input drive shaft — stainless steel,Drive,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+BRG_FWD,Forward bearing assembly — duplex,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+BRG_FWD,Forward bearing assembly — duplex,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+BRG_FWD,Forward bearing assembly — duplex,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+BRG_FWD,Forward bearing assembly — duplex,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+BRG_AFT,Aft bearing assembly — single row,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+BRG_AFT,Aft bearing assembly — single row,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+BRG_AFT,Aft bearing assembly — single row,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+BRG_AFT,Aft bearing assembly — single row,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+NOZZLE,Discharge nozzle — hardened steel,Hydraulics,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+NOZZLE,Discharge nozzle — hardened steel,Hydraulics,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+NOZZLE,Discharge nozzle — hardened steel,Hydraulics,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+NOZZLE,Discharge nozzle — hardened steel,Hydraulics,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+STEER_SYS,Steering system actuator assembly,Steering,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+STEER_SYS,Steering system actuator assembly,Steering,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+STEER_SYS,Steering system actuator assembly,Steering,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+STEER_SYS,Steering system actuator assembly,Steering,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
+REV_BUCKET,Reverse bucket deflector — cast iron,Structural,IN01,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 India
+REV_BUCKET,Reverse bucket deflector — cast iron,Structural,IN01,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 India
+REV_BUCKET,Reverse bucket deflector — cast iron,Structural,NL07,720,1,0.00,0.0,TBD,2026-01-01,MWJ-720 EU
+REV_BUCKET,Reverse bucket deflector — cast iron,Structural,NL07,1000,1,0.00,0.0,TBD,2026-01-01,MWJ-1000 EU
