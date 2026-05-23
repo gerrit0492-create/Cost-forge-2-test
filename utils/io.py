@@ -103,6 +103,43 @@ def _read(sheet_key: str, schema: dict) -> pd.DataFrame:
     return _apply_schema(df, schema)
 
 
+def _ensure_material_schema(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalise material master data for older workbooks/CSV files.
+
+    Some historical datasets contain `Commodity`, `commodity_group`, or no
+    commodity column at all. Downstream pages use `commodity` for escalation and
+    reporting, so we guarantee a safe fallback instead of raising KeyError.
+    """
+    df = df.copy()
+
+    aliases = {
+        "Commodity": "commodity",
+        "commodity_group": "commodity",
+        "material_group": "commodity",
+        "category": "commodity",
+        "price_eur_kg": "price_eur_per_kg",
+        "price_kg": "price_eur_per_kg",
+    }
+    for old, new in aliases.items():
+        if old in df.columns and new not in df.columns:
+            df[new] = df[old]
+
+    if "commodity" not in df.columns:
+        df["commodity"] = "General"
+    else:
+        df["commodity"] = (
+            df["commodity"]
+            .astype("string")
+            .fillna("General")
+            .replace("", "General")
+        )
+
+    if "price_eur_per_kg" not in df.columns:
+        df["price_eur_per_kg"] = 0.0
+
+    return _apply_schema(df, SCHEMA_MATERIALS)
+
+
 def save_sheet(df: pd.DataFrame, sheet_key: str) -> None:
     """Write df to the named sheet in cost_forge.xlsx, preserving other sheets."""
     sheet = SHEET_MAP[sheet_key]
@@ -130,7 +167,7 @@ def workbook_bytes() -> bytes:
 # ── Public loaders ────────────────────────────────────────────────────────────
 
 def load_materials() -> pd.DataFrame:
-    return _read("materials", SCHEMA_MATERIALS)
+    return _ensure_material_schema(_read("materials", SCHEMA_MATERIALS))
 
 
 def load_processes() -> pd.DataFrame:
