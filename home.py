@@ -58,6 +58,7 @@ _P = {
     "carbon":     st.Page("pages/47_Carbon_Energy.py",          title="Carbon & Energy",     icon="🌱"),
     "stakeholder":st.Page("pages/48_Stakeholder_Package.py",   title="Stakeholder Package", icon="📊"),
     "quarterly":  st.Page("pages/50_Quarterly_Update.py",       title="Quarterly Update",    icon="🔄"),
+    "qms":        st.Page("pages/51_QMS_Prices.py",             title="QMS Prices",          icon="🏗️"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -370,6 +371,9 @@ def dashboard() -> None:
     with c1:
         _card(_P["csv"],       "🔗", "CSV Import",
               "Pull materials and prices from a public Google Sheet.")
+    with c2:
+        _card(_P["qms"],       "🏗️", "QMS Prices",
+              "Component price database for IN01 / NL07 supply chains — all waterjet sizes.")
 
     st.divider()
 
