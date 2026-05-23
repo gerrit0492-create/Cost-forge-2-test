@@ -11,13 +11,13 @@ from utils.style import inject_css
 st.set_page_config(page_title="Cost Forge 2", layout="wide", page_icon="🛠️")
 inject_css()
 
-# ── All pages ─────────────────────────────────────────────────────────────────────────────────
+# ── All pages ───────────────────────────────────────────────────────────────────────────────────
 _P = {
     "bom":        st.Page("pages/15_Bom_Import.py",            title="BOM Import",          icon="📥"),
     "quick":      st.Page("pages/01_Quick_Cost.py",             title="Quick Cost",          icon="⚡"),
     "calc":       st.Page("pages/01_Calculatie.py",             title="Calculation",         icon="💸"),
     "routing":    st.Page("pages/16_Routing_Kosten.py",         title="Routing Costs",       icon="🛠️"),
-    "scenario":   st.Page("pages/06_Scenario_Planner.py",       title="Scenario Planner",    icon="🦭"),
+    "scenario":   st.Page("pages/06_Scenario_Planner.py",       title="Scenario Planner",    icon="🧭"),
     "rapport":    st.Page("pages/12_Rapport.py",                title="Report",              icon="📑"),
     "export":     st.Page("pages/17_Offerte_Export.py",         title="Quote Export",        icon="📦"),
     "docx":       st.Page("pages/18_Offerte_DOCX.py",           title="Quote DOCX",          icon="📝"),
@@ -35,22 +35,22 @@ _P = {
     "restore":    st.Page("pages/25_Restore_Hulp.py",           title="Restore",             icon="♻️"),
     "mgmt":       st.Page("pages/27_Management_Dashboard.py",   title="Management",          icon="📊"),
     "linedet":    st.Page("pages/28_Line_Cost_Detail.py",       title="Line Cost Detail",    icon="🔍"),
-    "quotesheet": st.Page("pages/29_Quote_Sheet.py",            title="Quote Sheet",         icon="🧾"),
+    "quotesheet": st.Page("pages/29_Quote_Sheet.py",            title="Quote Sheet",         icon="🧧"),
     "borescale":  st.Page("pages/30_Bore_Scale.py",             title="Waterjet Size Scale", icon="📐"),
     "prepost":    st.Page("pages/31_Pre_Post.py",               title="Pre / Post",          icon="📊"),
     "itemcost":   st.Page("pages/32_Item_Costing.py",           title="Item Costing",        icon="🔢"),
     "stakeholder":st.Page("pages/33_Stakeholder_Report.py",    title="Stakeholder Report",  icon="📋"),
     "actions":    st.Page("pages/34_Action_Centre.py",          title="Action Centre",       icon="🔧"),
-    # ── Senior cost engineer toolbox ────────────────────────────────────────────────────
+    # ── Senior cost engineer toolbox ──────────────────────────────────────────────────────────────
     "transport":  st.Page("pages/35_Transport_Logistics.py",   title="Transport & Logistics", icon="🚢"),
     "nre":        st.Page("pages/36_Engineering_NRE.py",       title="Engineering & NRE",     icon="🔬"),
     "volume":     st.Page("pages/37_Volume_Analysis.py",       title="Volume Analysis",       icon="📈"),
     "escalation": st.Page("pages/38_Escalation_Risk.py",       title="Escalation & Risk",     icon="📉"),
     "waterfall":  st.Page("pages/39_Full_Cost_Summary.py",     title="Full Cost Summary",     icon="🌊"),
-    # ── Contract & project lifecycle ────────────────────────────────────────────────────
+    # ── Contract & project lifecycle ──────────────────────────────────────────────────────────────
     "contract":   st.Page("pages/40_Contract_Cashflow.py",     title="Contract & Cash Flow",  icon="💰"),
     "changeorders":st.Page("pages/41_Change_Orders.py",        title="Change Orders",         icon="🔄"),
-    "closeout":   st.Page("pages/42_Project_Closeout.py",      title="Project Close-out",     icon="🗂️"),
+    "closeout":   st.Page("pages/42_Project_Closeout.py",      title="Project Close-out",     icon="🗁"),
     "spareparts": st.Page("pages/43_Spare_Parts.py",           title="Spare Parts",           icon="🔩"),
     "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
     "cockpit":    st.Page("pages/45_Command_Centre.py",          title="Command Centre",      icon="🎯"),
@@ -58,6 +58,7 @@ _P = {
     "carbon":     st.Page("pages/47_Carbon_Energy.py",          title="Carbon & Energy",     icon="🌱"),
     "stakeholder":st.Page("pages/48_Stakeholder_Package.py",   title="Stakeholder Package", icon="📊"),
     "quarterly":  st.Page("pages/50_Quarterly_Update.py",       title="Quarterly Update",    icon="🔄"),
+    "qms":        st.Page("pages/51_QMS_Prices.py",             title="QMS Prices",          icon="🏗️"),
     "debug":      st.Page("pages/00_Debug.py",                  title="Debug",               icon="🐛"),
     "diagnose":   st.Page("pages/0_Diagnose.py",                title="Diagnose",            icon="🔍"),
 }
@@ -65,12 +66,12 @@ _P = {
 MATURITY_OPTIONS = {
     "RoM (±30%)":        ("🟡", "Rough Order of Magnitude — early concept estimate"),
     "Budget (±15%)":     ("🟠", "Budget estimate — project planning / pre-FEED"),
-    "Definitive (±5%)":  ("🔵", "Definitive estimate — detailed design complete"),
+    "Definitive (±5%)": ("🔵", "Definitive estimate — detailed design complete"),
     "Firm":              ("🟢", "Firm price — locked BOM, confirmed supplier quotes"),
 }
 
 
-# ── Cached data loaders ─────────────────────────────────────────────────────────────────────────────────
+# ── Cached data loaders ────────────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def _kpis() -> dict | None:
     try:
@@ -155,7 +156,7 @@ def _completeness() -> dict | None:
         return None
 
 
-# ── Card helper ─────────────────────────────────────────────────────────────────────────────────
+# ── Card helper ──────────────────────────────────────────────────────────────────────────────
 def _card(page, icon: str, title: str, caption: str) -> None:
     with st.container(border=True):
         st.markdown(f"**{icon} {title}**")
@@ -163,12 +164,12 @@ def _card(page, icon: str, title: str, caption: str) -> None:
         st.page_link(page, label="Open →", use_container_width=True)
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────────────────────
+# ── Dashboard ───────────────────────────────────────────────────────────────────────────────────
 def dashboard() -> None:
     from utils.currency import currency_selector
     from utils.project import load_project_meta, save_project_meta
 
-    # ── Sidebar controls ──────────────────────────────────────────────────────────────────────────
+    # ── Sidebar controls ──────────────────────────────────────────────────────────────────
     currency_selector()
 
     meta = load_project_meta()
@@ -196,7 +197,7 @@ def dashboard() -> None:
     if maturity != meta.get("maturity") or target_cost != meta.get("target_cost", 0.0):
         save_project_meta(maturity=maturity, target_cost=target_cost)
 
-    # ── Header ────────────────────────────────────────────────────────────────────────────────
+    # ── Header ────────────────────────────────────────────────────────────────────────
     name = meta.get("name", "")
     badge_icon, badge_tip = MATURITY_OPTIONS[maturity]
 
@@ -213,7 +214,7 @@ def dashboard() -> None:
         st.cache_data.clear()
         st.rerun()
 
-    # ── KPI block ────────────────────────────────────────────────────────────────────────────────
+    # ── KPI block ───────────────────────────────────────────────────────────────────────
     kpi = _kpis()
     if kpi:
         # Row 1 — primary cost stack
@@ -258,7 +259,7 @@ def dashboard() -> None:
                 age_str = f"{int(age_s/86400)}d ago"
             r6.metric("Data last updated", age_str)
 
-        # ── Target cost gap ──────────────────────────────────────────────────────────────────────────
+        # ── Target cost gap ────────────────────────────────────────────────────────────────────
         if target_cost > 0:
             gap      = kpi["total"] - target_cost
             gap_pct  = gap / target_cost * 100
@@ -271,7 +272,7 @@ def dashboard() -> None:
                       delta="over" if gap > 0 else "under",
                       delta_color="inverse" if gap > 0 else "normal")
 
-        # ── Data quality alerts ─────────────────────────────────────────────────────────────────────────
+        # ── Data quality alerts ───────────────────────────────────────────────────────────────
         alerts = []
         if exp_count:
             alerts.append(f"⚠️ **{exp_count} expired supplier quote(s)** — prices may be stale: "
@@ -290,7 +291,7 @@ def dashboard() -> None:
 
         st.divider()
 
-        # ── Subsystem cost breakdown ───────────────────────────────────────────────────────────────────
+        # ── Subsystem cost breakdown ───────────────────────────────────────────────────────────────
         st.subheader("Subsystem cost split")
         sc_col, sc_tbl = st.columns([3, 1])
         with sc_col:
@@ -309,7 +310,7 @@ def dashboard() -> None:
     else:
         st.info("No BOM loaded yet — start with **BOM Import** in section 1 below.")
 
-    # ── BOM completeness ─────────────────────────────────────────────────────────────────────────────
+    # ── BOM completeness ──────────────────────────────────────────────────────────────────────
     comp = _completeness()
     if comp:
         from utils.completeness import WATERJET_SUBSYSTEMS
@@ -343,11 +344,11 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ══════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
     #  NUMBERED WORKFLOW SECTIONS
-    # ══════════════════════════════════════════════════════════════════════════════
+    # ════════════════════════════════════════════════════════════════════════════
 
-    # ── 1 · Prepare data ──────────────────────────────────────────────────────────────────────────
+    # ── 1 · Prepare data ──────────────────────────────────────────────────────────────────────
     st.subheader("1️⃣ Prepare data")
     st.caption("Start here — upload your BOM, verify materials, enter supplier prices and set overhead/margin presets.")
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -370,10 +371,13 @@ def dashboard() -> None:
     with c1:
         _card(_P["csv"],       "🔗", "CSV Import",
               "Pull materials and prices from a public Google Sheet.")
+    with c2:
+        _card(_P["qms"],       "🏗️", "QMS Prices",
+              "Component price database for IN01 / NL07 supply chains — all waterjet sizes.")
 
     st.divider()
 
-    # ── 2 · Calculate & size ─────────────────────────────────────────────────────────────────────────
+    # ── 2 · Calculate & size ────────────────────────────────────────────────────────────────────
     st.subheader("2️⃣ Calculate & size")
     st.caption("Run the cost engine — full BOM or a single item, and scale to any waterjet bore size.")
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -395,7 +399,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── 3 · Analyse ──────────────────────────────────────────────────────────────────────────────────
+    # ── 3 · Analyse ───────────────────────────────────────────────────────────────────────────
     st.subheader("3️⃣ Analyse")
     st.caption("Understand cost drivers, run what-if scenarios and check data integrity before quoting.")
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -403,7 +407,7 @@ def dashboard() -> None:
         _card(_P["mgmt"],     "📊", "Management Dashboard",
               "Cost by group and subsystem — material, process, overhead, margin.")
     with c2:
-        _card(_P["scenario"], "🦭", "Scenario Planner",
+        _card(_P["scenario"], "🧭", "Scenario Planner",
               "Simulate commodity price shifts and labour rate changes with sliders.")
     with c3:
         _card(_P["linedet"],  "🔍", "Line Cost Detail",
@@ -417,12 +421,12 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── 4 · Quote ─────────────────────────────────────────────────────────────────────────────────
+    # ── 4 · Quote ─────────────────────────────────────────────────────────────────────────────
     st.subheader("4️⃣ Quote")
     st.caption("Build a professional customer quotation with commercial terms, classification and margin control.")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        _card(_P["quotesheet"], "🧾", "Quote Sheet",
+        _card(_P["quotesheet"], "🧧", "Quote Sheet",
               "Full internal cost analysis + styled customer quote preview + quality checks.")
     with c2:
         _card(_P["export"],     "📦", "Quote Export",
@@ -443,7 +447,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── 5 · Export & deliver ────────────────────────────────────────────────────────────────────────
+    # ── 5 · Export & deliver ────────────────────────────────────────────────────────────────────
     st.subheader("5️⃣ Export & deliver")
     st.caption("Download documents and source data.")
 
@@ -474,7 +478,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── 6 · Senior cost engineer toolbox ─────────────────────────────────────────────────────
+    # ── 6 · Senior cost engineer toolbox ────────────────────────────────────────────────────
     st.subheader("6️⃣ Senior Cost Engineer Toolbox")
     st.caption(
         "Complete cost engineering: transport, NRE, volume curves, escalation, "
@@ -499,7 +503,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── Command Centre call-out ────────────────────────────────────────────────────────────────────────
+    # ── Command Centre call-out ───────────────────────────────────────────────────────────────
     st.info(
         "**🎯 Want everything in one screen?** "
         "Open the **Command Centre** for a live cockpit view of all key metrics, "
@@ -523,7 +527,7 @@ def dashboard() -> None:
         _card(_P["changeorders"],"🔄", "Change Orders",
               "Scope variation register — track approved and pending changes and their margin impact.")
     with c3:
-        _card(_P["closeout"],    "🗂️", "Project Close-out",
+        _card(_P["closeout"],    "🗁", "Project Close-out",
               "Final P&L, budget vs actuals variance and lessons learned register.")
     with c4:
         _card(_P["spareparts"],  "🔩", "Spare Parts",
@@ -537,7 +541,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── 8 · Sustainability ──────────────────────────────────────────────────────────────────────────────
+    # ── 8 · Sustainability ──────────────────────────────────────────────────────────────────────
     st.subheader("8️⃣ Sustainability")
     st.caption(
         "Scope 2 electricity consumption and carbon footprint from manufacturing operations. "
@@ -551,7 +555,7 @@ def dashboard() -> None:
 
     st.divider()
 
-    # ── Market intelligence ────────────────────────────────────────────────────────────────────────────
+    # ── Market intelligence ─────────────────────────────────────────────────────────────────────
     st.subheader("📈 Market intelligence")
     st.caption("Track raw material price trends, spot anomalies and link live market data sources.")
     c1, c2, c3, c4, c5 = st.columns(5)
