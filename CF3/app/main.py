@@ -11,12 +11,14 @@ st.set_page_config(
 )
 
 PAGES = {
+    'Home': 'CF3.modules.home',
     'Dashboard': 'CF3.modules.dashboard',
     'Projects': 'CF3.modules.projects',
     'Command Centre': 'CF3.modules.command_centre',
     'BOM Intelligence': 'CF3.modules.bom_import',
     'Costing': 'CF3.modules.costing',
     'Routing': 'CF3.modules.routing',
+    'Forecasting': 'CF3.modules.forecasting',
     'Suppliers': 'CF3.modules.suppliers',
     'Escalation': 'CF3.modules.escalation',
     'Market Data': 'CF3.modules.market_data',
@@ -28,12 +30,12 @@ PAGES = {
     'System Health': 'CF3.modules.system_health',
 }
 
-st.sidebar.title('Cost Forge 3')
+st.sidebar.title('Cost Forge 3 Enterprise')
 selected_page = st.sidebar.radio('Navigation', list(PAGES.keys()))
 
 st.sidebar.divider()
-st.sidebar.caption('CF3 Enterprise Build')
-st.sidebar.caption('Modular • Stable • Export-ready')
+st.sidebar.caption('Unified Manufacturing Cost Platform')
+st.sidebar.caption('Enterprise • Modular • Stable')
 
 module_name = PAGES[selected_page]
 module = importlib.import_module(module_name)
