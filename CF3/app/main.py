@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-
 import streamlit as st
 
 st.set_page_config(
@@ -38,9 +37,15 @@ st.sidebar.caption('Unified Manufacturing Cost Platform')
 st.sidebar.caption('Enterprise • Modular • Stable')
 
 module_name = PAGES[selected_page]
-module = importlib.import_module(module_name)
 
-if hasattr(module, 'render'):
-    module.render()
-else:
-    st.error(f'Module {module_name} has no render() function')
+try:
+    module = importlib.import_module(module_name)
+
+    if hasattr(module, 'render'):
+        module.render()
+    else:
+        st.error(f'Module {module_name} has no render() function')
+
+except Exception as e:
+    st.error(f'Failed loading module: {module_name}')
+    st.exception(e)
