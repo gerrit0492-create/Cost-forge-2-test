@@ -17,6 +17,7 @@ PAGES = {
     'Routing': 'CF3.modules.routing',
     'Suppliers': 'CF3.modules.suppliers',
     'Escalation': 'CF3.modules.escalation',
+    'Validation Centre': 'CF3.modules.validation',
     'Export Center': 'CF3.modules.export_center',
     'System Health': 'CF3.modules.system_health',
 }
