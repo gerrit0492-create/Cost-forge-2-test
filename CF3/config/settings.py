@@ -1,0 +1,4 @@
+APP_NAME = 'Cost Forge 3 Enterprise'
+APP_VERSION = '3.0.0'
+DEFAULT_CURRENCY = 'EUR'
+DEFAULT_MARGIN = 0.20
