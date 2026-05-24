@@ -42,34 +42,28 @@ _P = {
     "itemcost":   st.Page("pages/32_Item_Costing.py",           title="Item Costing",        icon="🔢"),
     "stakeholder":st.Page("pages/33_Stakeholder_Report.py",    title="Stakeholder Report",  icon="📋"),
     "actions":    st.Page("pages/34_Action_Centre.py",          title="Action Centre",       icon="🔧"),
+    "transport":  st.Page("pages/35_Transport_Logistics.py",   title="Transport & Logistics", icon="🚢"),
+    "nre":        st.Page("pages/36_Engineering_NRE.py",       title="Engineering & NRE",     icon="🔬"),
+    "volume":     st.Page("pages/37_Volume_Analysis.py",       title="Volume Analysis",       icon="📈"),
+    "escalation": st.Page("pages/38_Escalation_Risk.py",       title="Escalation & Risk",     icon="📉"),
+    "waterfall":  st.Page("pages/39_Full_Cost_Summary.py",     title="Full Cost Summary",     icon="🌊"),
+    "contract":   st.Page("pages/40_Contract_Cashflow.py",     title="Contract & Cash Flow",  icon="💰"),
+    "changeorders":st.Page("pages/41_Change_Orders.py",        title="Change Orders",         icon="🔄"),
+    "closeout":   st.Page("pages/42_Project_Closeout.py",      title="Project Close-out",     icon="📁"),
+    "spareparts": st.Page("pages/43_Spare_Parts.py",           title="Spare Parts",           icon="🔩"),
+    "revisions":  st.Page("pages/44_Quote_Revisions.py",       title="Quote Revisions",       icon="📜"),
+    "cockpit":    st.Page("pages/45_Command_Centre.py",        title="Command Centre",      icon="🎯"),
+    "debug":      st.Page("pages/00_Debug.py",                 title="Debug",               icon="🐛"),
+    "diagnose":   st.Page("pages/0_Diagnose.py",               title="Diagnose",            icon="🔍"),
 }
-
-
-def _card(page, icon: str, title: str, caption: str) -> None:
-    with st.container(border=True):
-        st.markdown(f"**{icon} {title}**")
-        st.caption(caption)
-        st.page_link(page, label="Open →", use_container_width=True)
-
 
 st.title('Cost Forge 2')
 st.caption('Enterprise Cost Engineering Platform')
 
-st.subheader('1️⃣ Prepare data')
+st.success('✅ Restored full dashboard navigation and System Health integration.')
 
-c1, c2, c3, c4, c5 = st.columns(5)
-
-with c1:
-    _card(_P['bom'], '📥', 'BOM Import', 'Import BOM structures and project data.')
-
-with c2:
-    _card(_P['mats'], '🧱', 'Materials', 'Manage material master data.')
-
-with c3:
-    _card(_P['quotes'], '🏭', 'Supplier Quotes', 'Manage supplier pricing.')
-
-with c4:
-    _card(_P['quality'], '✅', 'Data Quality', 'Validate workbook quality.')
-
-with c5:
-    _card(_P['systemhealth'], '🩺', 'System Health', 'Monitor workbook integrity and runtime stability.')
+pg = st.navigation(
+    [st.Page("home.py", title="Home", icon="🏠", default=True)] + list(_P.values()),
+    position="hidden",
+)
+pg.run()
