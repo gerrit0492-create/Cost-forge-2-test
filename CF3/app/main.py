@@ -21,6 +21,7 @@ PAGES = {
     'Escalation': 'CF3.modules.escalation',
     'Market Data': 'CF3.modules.market_data',
     'Validation Centre': 'CF3.modules.validation',
+    'Management Reporting': 'CF3.modules.reporting',
     'Export Center': 'CF3.modules.export_center',
     'AI Assistant': 'CF3.modules.ai_assistant',
     'Project Close-out': 'CF3.modules.project_closeout',
