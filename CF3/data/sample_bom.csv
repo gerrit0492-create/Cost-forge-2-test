@@ -1,0 +1,4 @@
+item,description,qty,material_id,material,unit_price,setup_hours,run_hours,machine_rate,labour_rate,supplier
+1001,Frame Assembly,2,ST-001,Steel,125.50,1.5,2.0,85,45,Supplier A
+1002,Control Box,1,EL-001,Electronics,420.00,0.5,1.0,95,55,Supplier B
+1003,Mounting Plate,4,AL-001,Aluminium,42.00,0.2,0.4,70,40,Supplier A
