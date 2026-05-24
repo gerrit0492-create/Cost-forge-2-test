@@ -27,3 +27,4 @@ Clean enterprise rebuild of Cost Forge.
 - Modular engines
 - Isolated business logic
 - Release-safe structure
+CF3 Enterprise Active
