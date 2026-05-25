@@ -12,6 +12,8 @@ from modules.suppliers import render_suppliers
 from modules.rfq import render_rfq
 from modules.project_save import render_project_save
 from modules.forecasting import render_forecasting
+from modules.manufacturing_formulas import render_manufacturing_formulas
+from modules.quote_generator import render_quote_generator
 
 st.set_page_config(
     page_title='Cost Forge 2.0',
@@ -24,10 +26,12 @@ PAGES = {
     'Projects': render_projects,
     'BOM Import': render_bom,
     'Advanced BOM Hierarchy': render_bom_hierarchy,
+    'Manufacturing Formulas': render_manufacturing_formulas,
     'Costing': render_costing,
     'Routing': render_routing,
     'Suppliers': render_suppliers,
     'RFQ Workflow': render_rfq,
+    'Quote Generator': render_quote_generator,
     'Project Save': render_project_save,
     'Forecasting': render_forecasting,
     'Reporting': render_reporting,
