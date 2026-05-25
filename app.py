@@ -17,10 +17,13 @@ from modules.manufacturing_formulas import render_manufacturing_formulas
 from modules.quote_generator import render_quote_generator
 from modules.should_costing import render_should_costing
 
-st.set_page_config(
-    page_title='Cost Forge 2.0',
-    layout='wide'
-)
+st.set_page_config(page_title='Cost Forge 2.0', layout='wide')
+
+if 'main_navigation' not in st.session_state:
+    st.session_state.main_navigation = 'Home'
+
+if 'scenario_values' not in st.session_state:
+    st.session_state.scenario_values = {}
 
 PAGES = {
     'Home': render_home,
@@ -43,9 +46,13 @@ PAGES = {
 
 st.sidebar.title('Cost Forge 2.0')
 
-selected_page = st.sidebar.radio(
+selected_page = st.sidebar.selectbox(
     'Navigation',
-    list(PAGES.keys())
+    list(PAGES.keys()),
+    index=list(PAGES.keys()).index(st.session_state.main_navigation),
+    key='navigation_selectbox'
 )
+
+st.session_state.main_navigation = selected_page
 
 PAGES[selected_page]()
