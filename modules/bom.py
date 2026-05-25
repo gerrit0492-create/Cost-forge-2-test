@@ -10,12 +10,19 @@ from engines.bom_engine import (
 def render_bom():
     st.title('BOM Import & Costing')
 
+    st.markdown('### Step 1 — Upload BOM File')
+
     uploaded = st.file_uploader(
         'Upload BOM',
-        type=['xlsx', 'csv']
+        type=['xlsx', 'csv'],
+        key='bom_upload_main'
     )
 
     if uploaded:
+
+        st.success('BOM file loaded successfully')
+
+        st.markdown('### Step 2 — Read & Normalize BOM')
 
         if uploaded.name.endswith('.csv'):
             df = pd.read_csv(uploaded)
@@ -24,22 +31,22 @@ def render_bom():
 
         df = normalize_bom(df)
 
-        st.subheader('BOM Data')
-
         st.dataframe(
             df,
-            use_container_width=True
+            use_container_width=True,
+            key='bom_dataframe_normalized'
         )
+
+        st.markdown('### Step 3 — Material Cost Calculation')
 
         if 'Material Cost' in df.columns and 'Qty' in df.columns:
 
             df, total = calculate_bom_total(df)
 
-            st.subheader('Calculated BOM')
-
             st.dataframe(
                 df,
-                use_container_width=True
+                use_container_width=True,
+                key='bom_dataframe_calculated'
             )
 
             st.metric(
@@ -47,4 +54,22 @@ def render_bom():
                 f'€ {total:,.2f}'
             )
 
-        st.success('BOM workflow initialized')
+            st.success('BOM costing completed')
+
+        else:
+
+            st.warning(
+                'Columns Material Cost and Qty are required for costing.'
+            )
+
+        st.markdown('### Step 4 — Workflow Status')
+
+        st.info(
+            'BOM normalized → costing completed → ready for routing & manufacturing analysis.'
+        )
+
+    else:
+
+        st.info(
+            'Upload a BOM file to initialize the manufacturing costing workflow.'
+        )
