@@ -16,6 +16,7 @@ from modules.forecasting import render_forecasting
 from modules.manufacturing_formulas import render_manufacturing_formulas
 from modules.quote_generator import render_quote_generator
 from modules.should_costing import render_should_costing
+from modules.scenario_planner import render_scenario_planner
 
 st.set_page_config(page_title='Cost Forge 2.0', layout='wide')
 
@@ -33,6 +34,7 @@ PAGES = {
     'BOM Import': render_bom,
     'Advanced BOM Hierarchy': render_bom_hierarchy,
     'Manufacturing Formulas': render_manufacturing_formulas,
+    'Scenario Planner': render_scenario_planner,
     'Should Cost Intelligence': render_should_costing,
     'Costing': render_costing,
     'Routing': render_routing,
