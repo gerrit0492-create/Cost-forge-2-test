@@ -1,143 +1,190 @@
 import streamlit as st
 
-from modules.home import render_home
 from modules.dashboard import render_dashboard
 from modules.projects import render_projects
 from modules.bom import render_bom
-from modules.bom_hierarchy import render_bom_hierarchy
-from modules.engineering_workspace import render_engineering_workspace
-from modules.costing import render_costing
 from modules.routing import render_routing
-from modules.reporting import render_reporting
+from modules.costing import render_costing
+from modules.scenario_planner import render_scenario_planner
 from modules.suppliers import render_suppliers
 from modules.rfq import render_rfq
-from modules.project_save import render_project_save
-from modules.forecasting import render_forecasting
-from modules.manufacturing_formulas import render_manufacturing_formulas
 from modules.quote_generator import render_quote_generator
-from modules.should_costing import render_should_costing
-from modules.scenario_planner import render_scenario_planner
+from modules.reporting import render_reporting
+from modules.engineering_workspace import render_engineering_workspace
 
-st.set_page_config(page_title='Cost Forge 2.0', layout='wide')
+st.set_page_config(
+    page_title='Cost Forge 2.0',
+    layout='wide',
+    initial_sidebar_state='expanded'
+)
 
-if 'active_module' not in st.session_state:
-    st.session_state.active_module = 'Dashboard'
+if 'active_tool' not in st.session_state:
+    st.session_state.active_tool = 'Dashboard'
 
 if 'scenario_values' not in st.session_state:
     st.session_state.scenario_values = {}
 
-MODULES = {
+TOOLS = {
     'Dashboard': render_dashboard,
     'Project Setup': render_projects,
     'BOM Import': render_bom,
     'Engineering Analysis': render_engineering_workspace,
-    'Advanced BOM': render_bom_hierarchy,
-    'Routing & Operations': render_routing,
-    'Manufacturing Formulas': render_manufacturing_formulas,
+    'Routing Engine': render_routing,
     'Manufacturing Costing': render_costing,
-    'Scenario Simulation': render_scenario_planner,
-    'Should Cost Intelligence': render_should_costing,
+    'Scenario Planner': render_scenario_planner,
     'Supplier Management': render_suppliers,
     'RFQ Workflow': render_rfq,
-    'Quote Generation': render_quote_generator,
-    'Forecasting': render_forecasting,
+    'Quote Generator': render_quote_generator,
     'Reporting & Analytics': render_reporting,
-    'Project Save': render_project_save,
 }
-
-WORKFLOW = [
-    ('1', 'Project Setup', 'Project intake and commercial scope'),
-    ('2', 'BOM Import', 'Import and structure BOM data'),
-    ('3', 'Engineering Analysis', 'DFM and manufacturing review'),
-    ('4', 'Routing & Operations', 'Machines, setup and cycle times'),
-    ('5', 'Manufacturing Costing', 'Material, labor and overhead'),
-    ('6', 'Scenario Simulation', 'Inflation and margin simulation'),
-    ('7', 'Supplier Management', 'Supplier sourcing and analysis'),
-    ('8', 'RFQ Workflow', 'RFQ preparation and tracking'),
-    ('9', 'Quote Generation', 'Commercial quotation workflow'),
-    ('10', 'Reporting & Analytics', 'KPI and management reporting'),
-]
-
-active_module = st.session_state.get('active_module', 'Dashboard')
-
-if active_module not in MODULES:
-    active_module = 'Dashboard'
-    st.session_state.active_module = 'Dashboard'
 
 with st.sidebar:
     st.title('Cost Forge Controls')
-    st.caption(f'Context: {active_module}')
+    st.caption(f'Current Tool: {st.session_state.active_tool}')
 
-    if active_module == 'Scenario Simulation':
+    if st.session_state.active_tool == 'Scenario Planner':
         st.subheader('Scenario Controls')
-        st.slider('Material Inflation %', -50, 100, value=int(st.session_state.get('global_material_inflation', 0)), key='global_material_inflation')
-        st.slider('Labor Rate Adjustment %', -50, 100, value=int(st.session_state.get('global_labor_adjustment', 0)), key='global_labor_adjustment')
-        st.slider('Machine Efficiency %', -50, 100, value=int(st.session_state.get('global_machine_efficiency', 0)), key='global_machine_efficiency')
-        st.selectbox('Production Plant', ['Eindhoven', 'Hamburg', 'Gdansk', 'Prototype Shop'], key='global_plant')
 
-    elif active_module == 'BOM Import':
+        st.slider('Material Inflation %', -50, 100, value=0, key='material_inflation')
+        st.slider('Labor Adjustment %', -50, 100, value=0, key='labor_adjustment')
+        st.slider('Machine Efficiency %', -50, 100, value=0, key='machine_efficiency')
+
+        st.selectbox(
+            'Production Plant',
+            ['Eindhoven', 'Hamburg', 'Gdansk', 'Prototype Shop'],
+            key='production_plant'
+        )
+
+    elif st.session_state.active_tool == 'BOM Import':
         st.subheader('BOM Controls')
-        st.selectbox('Material Class', ['Steel', 'Aluminium', 'Stainless', 'Mixed'])
-        st.checkbox('Enable hierarchy view', value=True)
-        st.checkbox('Auto detect processes', value=True)
 
-    elif active_module == 'Routing & Operations':
+        st.file_uploader('Upload BOM', type=['xlsx', 'csv'])
+
+        st.checkbox('Enable Hierarchy Detection', value=True)
+        st.checkbox('Auto Detect Processes', value=True)
+
+    elif st.session_state.active_tool == 'Routing Engine':
         st.subheader('Routing Controls')
+
         st.slider('Machine Utilization %', 10, 100, 85)
         st.slider('OEE %', 10, 100, 72)
-        st.number_input('Labor Rate EUR/hour', value=65.0)
+        st.number_input('Labor Rate €/hour', value=65.0)
 
-    elif active_module == 'Manufacturing Costing':
-        st.subheader('Costing Controls')
-        st.slider('Overhead %', 0, 100, 15)
+    elif st.session_state.active_tool == 'Manufacturing Costing':
+        st.subheader('Cost Controls')
+
         st.slider('Target Margin %', 0, 100, 28)
-        st.checkbox('Include scrap factor', value=True)
+        st.slider('Overhead %', 0, 100, 15)
 
-    elif active_module == 'Reporting & Analytics':
-        st.subheader('Reporting Controls')
-        st.selectbox('Period', ['Monthly', 'Quarterly', 'Yearly'])
-        st.checkbox('Compare scenarios', value=True)
-        st.checkbox('Show supplier impact', value=True)
+        st.checkbox('Include Scrap Factor', value=True)
 
     else:
-        st.info('Context controls appear per workflow module.')
+        st.info('Context controls will appear per workflow tool.')
 
 st.title('Cost Forge 2.0')
-st.caption('Manufacturing Cost Engineering Workflow Cockpit')
+st.caption('Manufacturing Cost Engineering Control Center')
 
-project_col, kpi1, kpi2, kpi3 = st.columns([2, 1, 1, 1])
+k1, k2, k3, k4 = st.columns(4)
 
-with project_col:
-    st.success('ACTIVE PROJECT: DAF Proto Housing Rev-B')
+k1.metric('Projects', '12')
+k2.metric('Current Margin', '31.2%')
+k3.metric('RFQ Status', 'Pending')
+k4.metric('Plant', 'Eindhoven')
 
-with kpi1:
-    st.metric('Target Margin', '28%')
+st.subheader('Control Center')
 
-with kpi2:
-    st.metric('Current Margin', '31.2%')
+st.markdown('## Source Data')
 
-with kpi3:
-    st.metric('RFQ Status', 'Pending')
+c1, c2, c3, c4 = st.columns(4)
 
-st.subheader('Workflow Process')
+with c1:
+    st.info('QMS Prices')
+    if st.button('Open →', key='qms_prices', use_container_width=True):
+        st.session_state.active_tool = 'Project Setup'
 
-for step, module_name, description in WORKFLOW:
-    c1, c2, c3 = st.columns([1, 3, 5])
+with c2:
+    st.info('Material Database')
+    if st.button('Open →', key='material_db', use_container_width=True):
+        st.session_state.active_tool = 'BOM Import'
 
-    with c1:
-        st.markdown(f'### {step}')
+with c3:
+    st.info('Supplier Database')
+    if st.button('Open →', key='supplier_db', use_container_width=True):
+        st.session_state.active_tool = 'Supplier Management'
 
-    with c2:
-        if st.button(module_name, use_container_width=True, key=f'workflow_{module_name}'):
-            st.session_state.active_module = module_name
+with c4:
+    st.info('BOM Import')
+    if st.button('Open →', key='bom_import', use_container_width=True):
+        st.session_state.active_tool = 'BOM Import'
 
-    with c3:
-        st.caption(description)
+st.markdown('## Calculate & Size')
+
+c1, c2, c3, c4 = st.columns(4)
+
+with c1:
+    st.info('Quick Cost')
+    if st.button('Open →', key='quick_cost', use_container_width=True):
+        st.session_state.active_tool = 'Manufacturing Costing'
+
+with c2:
+    st.info('Calculation')
+    if st.button('Open →', key='calculation', use_container_width=True):
+        st.session_state.active_tool = 'Manufacturing Costing'
+
+with c3:
+    st.info('Routing Engine')
+    if st.button('Open →', key='routing_engine', use_container_width=True):
+        st.session_state.active_tool = 'Routing Engine'
+
+with c4:
+    st.info('Scenario Planner')
+    if st.button('Open →', key='scenario_planner', use_container_width=True):
+        st.session_state.active_tool = 'Scenario Planner'
+
+st.markdown('## Engineering')
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.info('Engineering Analysis')
+    if st.button('Open →', key='engineering_analysis', use_container_width=True):
+        st.session_state.active_tool = 'Engineering Analysis'
+
+with c2:
+    st.info('Manufacturing Costing')
+    if st.button('Open →', key='manufacturing_costing', use_container_width=True):
+        st.session_state.active_tool = 'Manufacturing Costing'
+
+with c3:
+    st.info('Reporting & Analytics')
+    if st.button('Open →', key='reporting', use_container_width=True):
+        st.session_state.active_tool = 'Reporting & Analytics'
+
+st.markdown('## Commercial')
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.info('RFQ Workflow')
+    if st.button('Open →', key='rfq', use_container_width=True):
+        st.session_state.active_tool = 'RFQ Workflow'
+
+with c2:
+    st.info('Quote Generator')
+    if st.button('Open →', key='quote_generator', use_container_width=True):
+        st.session_state.active_tool = 'Quote Generator'
+
+with c3:
+    st.info('Dashboard')
+    if st.button('Open →', key='dashboard', use_container_width=True):
+        st.session_state.active_tool = 'Dashboard'
 
 st.divider()
 
-active_module = st.session_state.get('active_module', 'Dashboard')
+st.success(f'Active Tool: {st.session_state.active_tool}')
 
-st.success(f'Current Module Loaded: {active_module}')
-
-MODULES[active_module]()
+try:
+    TOOLS[st.session_state.active_tool]()
+except Exception as error:
+    st.error(f'Tool loading error: {st.session_state.active_tool}')
+    st.exception(error)
