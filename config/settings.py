@@ -1,0 +1,3 @@
+APP_NAME = 'Cost Forge 2.0'
+CURRENCY = 'EUR'
+DEFAULT_OVERHEAD = 15
