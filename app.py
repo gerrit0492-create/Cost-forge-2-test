@@ -58,7 +58,11 @@ WORKFLOW = [
     ('10', 'Reporting & Analytics', 'KPI and management reporting'),
 ]
 
-active_module = st.session_state.active_module
+active_module = st.session_state.get('active_module', 'Dashboard')
+
+if active_module not in MODULES:
+    active_module = 'Dashboard'
+    st.session_state.active_module = 'Dashboard'
 
 with st.sidebar:
     st.title('Cost Forge Controls')
@@ -124,17 +128,16 @@ for step, module_name, description in WORKFLOW:
         st.markdown(f'### {step}')
 
     with c2:
-        if st.button(module_name, use_container_width=True):
+        if st.button(module_name, use_container_width=True, key=f'workflow_{module_name}'):
             st.session_state.active_module = module_name
-            st.rerun()
 
     with c3:
         st.caption(description)
 
 st.divider()
 
-active_module = st.session_state.active_module
+active_module = st.session_state.get('active_module', 'Dashboard')
 
-st.subheader(f'Current Module: {active_module}')
+st.success(f'Current Module Loaded: {active_module}')
 
 MODULES[active_module]()
