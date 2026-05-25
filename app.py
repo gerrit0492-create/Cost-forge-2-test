@@ -18,71 +18,23 @@ st.set_page_config(
     initial_sidebar_state='expanded'
 )
 
-if 'active_tool' not in st.session_state:
-    st.session_state.active_tool = 'Dashboard'
-
-if 'scenario_values' not in st.session_state:
-    st.session_state.scenario_values = {}
-
-TOOLS = {
-    'Dashboard': render_dashboard,
-    'Project Setup': render_projects,
-    'BOM Import': render_bom,
-    'Engineering Analysis': render_engineering_workspace,
-    'Routing Engine': render_routing,
-    'Manufacturing Costing': render_costing,
-    'Scenario Planner': render_scenario_planner,
-    'Supplier Management': render_suppliers,
-    'RFQ Workflow': render_rfq,
-    'Quote Generator': render_quote_generator,
-    'Reporting & Analytics': render_reporting,
-}
-
-with st.sidebar:
-    st.title('Cost Forge Controls')
-    st.caption(f'Current Tool: {st.session_state.active_tool}')
-
-    if st.session_state.active_tool == 'Scenario Planner':
-        st.subheader('Scenario Controls')
-
-        st.slider('Material Inflation %', -50, 100, value=0, key='material_inflation')
-        st.slider('Labor Adjustment %', -50, 100, value=0, key='labor_adjustment')
-        st.slider('Machine Efficiency %', -50, 100, value=0, key='machine_efficiency')
-
-        st.selectbox(
-            'Production Plant',
-            ['Eindhoven', 'Hamburg', 'Gdansk', 'Prototype Shop'],
-            key='production_plant'
-        )
-
-    elif st.session_state.active_tool == 'BOM Import':
-        st.subheader('BOM Controls')
-
-        st.file_uploader('Upload BOM', type=['xlsx', 'csv'])
-
-        st.checkbox('Enable Hierarchy Detection', value=True)
-        st.checkbox('Auto Detect Processes', value=True)
-
-    elif st.session_state.active_tool == 'Routing Engine':
-        st.subheader('Routing Controls')
-
-        st.slider('Machine Utilization %', 10, 100, 85)
-        st.slider('OEE %', 10, 100, 72)
-        st.number_input('Labor Rate €/hour', value=65.0)
-
-    elif st.session_state.active_tool == 'Manufacturing Costing':
-        st.subheader('Cost Controls')
-
-        st.slider('Target Margin %', 0, 100, 28)
-        st.slider('Overhead %', 0, 100, 15)
-
-        st.checkbox('Include Scrap Factor', value=True)
-
-    else:
-        st.info('Context controls will appear per workflow tool.')
-
 st.title('Cost Forge 2.0')
 st.caption('Manufacturing Cost Engineering Control Center')
+
+with st.sidebar:
+    st.title('Project Controls')
+
+    st.text_input('Active Project', value='DAF Proto Housing Rev-B')
+
+    st.selectbox(
+        'Production Plant',
+        ['Eindhoven', 'Hamburg', 'Gdansk', 'Prototype Shop']
+    )
+
+    st.slider('Target Margin %', 0, 100, 28)
+    st.slider('Material Inflation %', -50, 100, 0)
+    st.slider('Labor Adjustment %', -50, 100, 0)
+    st.slider('Machine Efficiency %', -50, 100, 0)
 
 k1, k2, k3, k4 = st.columns(4)
 
@@ -91,31 +43,29 @@ k2.metric('Current Margin', '31.2%')
 k3.metric('RFQ Status', 'Pending')
 k4.metric('Plant', 'Eindhoven')
 
-st.subheader('Control Center')
-
 st.markdown('## Source Data')
 
 c1, c2, c3, c4 = st.columns(4)
 
 with c1:
     st.info('QMS Prices')
-    if st.button('Open →', key='qms_prices', use_container_width=True):
-        st.session_state.active_tool = 'Project Setup'
+    with st.expander('Open →'):
+        render_projects()
 
 with c2:
     st.info('Material Database')
-    if st.button('Open →', key='material_db', use_container_width=True):
-        st.session_state.active_tool = 'BOM Import'
+    with st.expander('Open →'):
+        render_bom()
 
 with c3:
     st.info('Supplier Database')
-    if st.button('Open →', key='supplier_db', use_container_width=True):
-        st.session_state.active_tool = 'Supplier Management'
+    with st.expander('Open →'):
+        render_suppliers()
 
 with c4:
     st.info('BOM Import')
-    if st.button('Open →', key='bom_import', use_container_width=True):
-        st.session_state.active_tool = 'BOM Import'
+    with st.expander('Open →'):
+        render_bom()
 
 st.markdown('## Calculate & Size')
 
@@ -123,23 +73,23 @@ c1, c2, c3, c4 = st.columns(4)
 
 with c1:
     st.info('Quick Cost')
-    if st.button('Open →', key='quick_cost', use_container_width=True):
-        st.session_state.active_tool = 'Manufacturing Costing'
+    with st.expander('Open →'):
+        render_costing()
 
 with c2:
     st.info('Calculation')
-    if st.button('Open →', key='calculation', use_container_width=True):
-        st.session_state.active_tool = 'Manufacturing Costing'
+    with st.expander('Open →'):
+        render_costing()
 
 with c3:
     st.info('Routing Engine')
-    if st.button('Open →', key='routing_engine', use_container_width=True):
-        st.session_state.active_tool = 'Routing Engine'
+    with st.expander('Open →'):
+        render_routing()
 
 with c4:
     st.info('Scenario Planner')
-    if st.button('Open →', key='scenario_planner', use_container_width=True):
-        st.session_state.active_tool = 'Scenario Planner'
+    with st.expander('Open →'):
+        render_scenario_planner()
 
 st.markdown('## Engineering')
 
@@ -147,18 +97,18 @@ c1, c2, c3 = st.columns(3)
 
 with c1:
     st.info('Engineering Analysis')
-    if st.button('Open →', key='engineering_analysis', use_container_width=True):
-        st.session_state.active_tool = 'Engineering Analysis'
+    with st.expander('Open →'):
+        render_engineering_workspace()
 
 with c2:
     st.info('Manufacturing Costing')
-    if st.button('Open →', key='manufacturing_costing', use_container_width=True):
-        st.session_state.active_tool = 'Manufacturing Costing'
+    with st.expander('Open →'):
+        render_costing()
 
 with c3:
     st.info('Reporting & Analytics')
-    if st.button('Open →', key='reporting', use_container_width=True):
-        st.session_state.active_tool = 'Reporting & Analytics'
+    with st.expander('Open →'):
+        render_reporting()
 
 st.markdown('## Commercial')
 
@@ -166,25 +116,15 @@ c1, c2, c3 = st.columns(3)
 
 with c1:
     st.info('RFQ Workflow')
-    if st.button('Open →', key='rfq', use_container_width=True):
-        st.session_state.active_tool = 'RFQ Workflow'
+    with st.expander('Open →'):
+        render_rfq()
 
 with c2:
     st.info('Quote Generator')
-    if st.button('Open →', key='quote_generator', use_container_width=True):
-        st.session_state.active_tool = 'Quote Generator'
+    with st.expander('Open →'):
+        render_quote_generator()
 
 with c3:
     st.info('Dashboard')
-    if st.button('Open →', key='dashboard', use_container_width=True):
-        st.session_state.active_tool = 'Dashboard'
-
-st.divider()
-
-st.success(f'Active Tool: {st.session_state.active_tool}')
-
-try:
-    TOOLS[st.session_state.active_tool]()
-except Exception as error:
-    st.error(f'Tool loading error: {st.session_state.active_tool}')
-    st.exception(error)
+    with st.expander('Open →'):
+        render_dashboard()
