@@ -5,6 +5,7 @@ from modules.dashboard import render_dashboard
 from modules.projects import render_projects
 from modules.bom import render_bom
 from modules.bom_hierarchy import render_bom_hierarchy
+from modules.engineering_workspace import render_engineering_workspace
 from modules.costing import render_costing
 from modules.routing import render_routing
 from modules.reporting import render_reporting
@@ -24,6 +25,7 @@ PAGES = {
     'Home': render_home,
     'Dashboard': render_dashboard,
     'Projects': render_projects,
+    'Engineering Workspace': render_engineering_workspace,
     'BOM Import': render_bom,
     'Advanced BOM Hierarchy': render_bom_hierarchy,
     'Manufacturing Formulas': render_manufacturing_formulas,
