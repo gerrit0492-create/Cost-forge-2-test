@@ -49,21 +49,28 @@ k2.metric('Current Margin', '31.2%')
 k3.metric('RFQ Status', 'Pending')
 k4.metric('Plant', 'Eindhoven')
 
-def render_tool_card(title, card_key, module):
+def render_tool_button(title, card_key):
     st.info(title)
-
     if st.button('Open →', key=f'btn_{card_key}', use_container_width=True):
         if st.session_state.active_card == card_key:
             st.session_state.active_card = None
         else:
             st.session_state.active_card = card_key
 
-    if st.session_state.active_card == card_key:
-        st.success(f'{title} Active')
-        try:
-            MODULES[module]()
-        except Exception as error:
-            st.error(f'Module error: {error}')
+def render_active_tool(cards):
+    active_card = st.session_state.active_card
+    if not active_card:
+        return
+
+    for card_title, card_key, module_key in cards:
+        if active_card == card_key:
+            st.markdown('---')
+            st.success(f'{card_title} Active')
+            try:
+                MODULES[module_key]()
+            except Exception as error:
+                st.error(f'Module error: {error}')
+            return
 
 sections = [
     ('1. Program & Project Setup','Customer RFQ intake and commercial scope.', [('Customer RFQ','rfq_customer','rfq'),('Project Intake','project_intake','projects'),('Revision Control','revision_control','projects'),('Commercial Scope','commercial_scope','projects')]),
@@ -85,4 +92,6 @@ for title, caption, cards in sections:
 
     for idx, card in enumerate(cards):
         with cols[idx % 4]:
-            render_tool_card(card[0], card[1], card[2])
+            render_tool_button(card[0], card[1])
+
+    render_active_tool(cards)
