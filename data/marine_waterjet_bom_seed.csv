@@ -1,0 +1,19 @@
+System,Subsystem,Part,Material,Process,Commodity,Estimated Weight kg,Risk,Notes
+Waterjet,Inlet Duct,Inlet Weldment,Duplex 2205,Fabrication,Weldment,420,High,Large fabricated inlet duct
+Waterjet,Inlet Duct,Inspection Hatch,Stainless Steel,Laser Cut,Fabrication,12,Low,Inspection opening assembly
+Waterjet,Impeller System,Impeller,Duplex 2205,5-Axis CNC,Rotating,285,High,Dynamic balancing required
+Waterjet,Impeller System,Shaft Line,Duplex 2205,CNC Turning,Shafting,145,High,Splined interface machining
+Waterjet,Impeller System,Coupling Flange,Duplex 2205,CNC Turning,Powertrain,38,Medium,PCD drilling pattern
+Waterjet,Stator Bowl,Stator Bowl Housing,Duplex 2205,5-Axis CNC,Flow Control,310,High,Hydraulic flow surface critical
+Waterjet,Stator Bowl,Seat Ring,Stainless Steel,CNC Turning,Bearing Support,34,Medium,Precision seat fit
+Waterjet,Steering System,Jetavator,Aluminium,Fabrication,Steering,120,Medium,Steering vector housing
+Waterjet,Steering System,Reversing Plate,Aluminium,CNC + Welding,Steering,85,Medium,Hydraulic reversing operation
+Waterjet,Hydraulic System,Hydraulic Power Pack,Steel,Assembly,Hydraulics,96,Medium,Pumps valves and piping
+Waterjet,Hydraulic System,Hydraulic Cylinders,Steel,Assembly,Hydraulics,48,Medium,Steering and reversing cylinders
+Waterjet,Shaft Seal,Shaft Seal Assembly,Rubber + Stainless,Assembly,Seal System,22,Medium,Emergency inflatable seal
+Waterjet,Thrust Block,Thrust Bearing Block,Cast Steel,CNC + Assembly,Bearing System,190,High,Large spherical bearings
+Waterjet,Lubrication,Lubrication System,Steel + Copper,Assembly,Lubrication,28,Low,Oil cooling and circulation
+Waterjet,Controls,PCU Main Cabinet,Steel,Electrical Assembly,Controls,52,Medium,Main propulsion controller
+Waterjet,Controls,HMI Cabinet,Steel,Electrical Assembly,Controls,21,Low,Operator interface cabinet
+Waterjet,Auxiliaries,Cooling Water Connections,Bronze,Piping,Cooling,18,Low,Open loop cooling system
+Waterjet,Auxiliaries,Air Supply System,Steel,Piping,Utilities,9,Low,Emergency seal air system
