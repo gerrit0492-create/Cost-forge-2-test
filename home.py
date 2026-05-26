@@ -1,104 +1,207 @@
 import streamlit as st
-import pandas as pd
 
-from cf_core import default_bom, default_assumptions, calculate_costs, subsystem_summary, scenario_matrix, normalize_bom_file, excel_bytes, quote_text
+from cf_core import (
+    REQUIRED_BOM_COLUMNS,
+    calculate_costs,
+    default_assumptions,
+    default_bom,
+    excel_bytes,
+    normalize_bom_dataframe,
+    normalize_bom_file,
+    pdf_bytes,
+    quote_text,
+    scenario_matrix,
+    subsystem_summary,
+    system_health,
+)
 
-st.set_page_config(page_title='Cost Forge Command Center', page_icon='⚙️', layout='wide')
+APP_VERSION = "4.2-control-tower"
 
-if 'bom_df' not in st.session_state:
+st.set_page_config(page_title="Cost Forge Control Tower", page_icon="⚙️", layout="wide")
+
+if "bom_df" not in st.session_state:
     st.session_state.bom_df = default_bom()
-if 'mode' not in st.session_state:
-    st.session_state.mode = 'Mission Control'
+if "page" not in st.session_state:
+    st.session_state.page = "Control Tower"
 
-def euro(v):
-    return f'€ {v:,.0f}'
+for key, value in default_assumptions().items():
+    st.session_state.setdefault(key, value)
+
+
+def euro(value):
+    return f"€ {value:,.0f}"
+
 
 def assumptions():
-    d = default_assumptions()
     return {
-        'plant': st.session_state.get('plant', d['plant']),
-        'estimate_maturity': st.session_state.get('maturity', d['estimate_maturity']),
-        'target_margin_pct': float(st.session_state.get('margin', d['target_margin_pct'])),
-        'overhead_pct': float(st.session_state.get('overhead', d['overhead_pct'])),
-        'scrap_pct': float(st.session_state.get('scrap', d['scrap_pct'])),
-        'inflation_pct': float(st.session_state.get('inflation', d['inflation_pct'])),
-        'labor_rate_eur_h': float(st.session_state.get('labor', d['labor_rate_eur_h'])),
-        'machine_rate_eur_h': float(st.session_state.get('machine', d['machine_rate_eur_h'])),
-        'currency': st.session_state.get('currency', d['currency']),
+        "plant": st.session_state.plant,
+        "estimate_maturity": st.session_state.estimate_maturity,
+        "target_margin_pct": float(st.session_state.target_margin_pct),
+        "overhead_pct": float(st.session_state.overhead_pct),
+        "scrap_pct": float(st.session_state.scrap_pct),
+        "inflation_pct": float(st.session_state.inflation_pct),
+        "labor_rate_eur_h": float(st.session_state.labor_rate_eur_h),
+        "machine_rate_eur_h": float(st.session_state.machine_rate_eur_h),
+        "currency": st.session_state.currency,
     }
 
-st.title('⚙️ Cost Forge Command Center')
-st.caption('New standalone home.py entrypoint — no legacy shell')
+
+def go(page):
+    st.session_state.page = page
+
+
+def top_gap_table(costed):
+    cols = ["Subsystem", "Part", "Supplier Quote €", "Internal Should Cost €", "Quote vs Should Gap €", "Risk"]
+    return costed[cols].sort_values("Quote vs Should Gap €", ascending=False).head(10)
+
+
+def render_kpi_strip(summary):
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    c1.metric("Total Project Cost", euro(summary["total_cost"]))
+    c2.metric("Sales Price", euro(summary["sales_price"]))
+    c3.metric("Margin Value", euro(summary["margin_value"]))
+    c4.metric("Cost / kg", f"€ {summary['cost_per_kg']:,.0f}")
+    c5.metric("Quote Coverage", f"{summary['quote_coverage_pct']:.0f}%")
+    c6.metric("High Risk Items", str(summary["high_risk_items"]))
+
+
+def render_navigation():
+    pages = [
+        "Control Tower",
+        "BOM Factory",
+        "Cost Engine",
+        "Manufacturing Model",
+        "Scenario Lab",
+        "Supplier Radar",
+        "Quote Room",
+        "System Health",
+    ]
+    st.subheader("Cost Engineering Flow")
+    for page in pages:
+        if st.button(page, key=f"nav_{page}", use_container_width=True):
+            go(page)
+            st.rerun()
+
+
+def render_assumptions():
+    st.subheader("Live Assumptions")
+    st.selectbox("Plant", ["Eindhoven", "Hamburg", "Gdansk", "Prototype Shop"], key="plant")
+    st.selectbox("Estimate maturity", ["Budget (±15%)", "Proposal (±8%)", "Production (±3%)"], key="estimate_maturity")
+    st.slider("Target margin %", 0, 60, key="target_margin_pct")
+    st.slider("Overhead %", 0, 60, key="overhead_pct")
+    st.slider("Scrap factor %", 0, 25, key="scrap_pct")
+    st.slider("Material inflation %", -20, 80, key="inflation_pct")
+    st.number_input("Labor rate €/h", min_value=0.0, step=5.0, key="labor_rate_eur_h")
+    st.number_input("Machine rate €/h", min_value=0.0, step=5.0, key="machine_rate_eur_h")
+
+
+def render_dashboard(costed, summary):
+    st.header("Cost Engineer Dashboard")
+    left, right = st.columns([1.3, 1])
+    with left:
+        st.subheader("Cost Pareto by Subsystem")
+        st.bar_chart(costed.groupby("Subsystem")["Total Cost €"].sum().sort_values(ascending=False))
+    with right:
+        st.subheader("Decision Readiness")
+        st.dataframe(system_health(costed, summary), use_container_width=True, hide_index=True)
+        st.info(
+            f"BOM lines: {summary['bom_lines']} | Coverage: {summary['quote_coverage_pct']:.0f}% | "
+            f"Weight: {summary['total_weight']:,.0f} kg | Plant: {st.session_state.plant}"
+        )
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Material Cost", euro(summary["material_cost"]))
+    m2.metric("Conversion Cost", euro(summary["conversion_cost"]))
+    m3.metric("Overhead Cost", euro(summary["overhead_cost"]))
+
+
+def render_workbench(costed, summary, ass):
+    page = st.session_state.page
+    st.divider()
+    st.header(page)
+
+    if page == "Control Tower":
+        a, b = st.columns(2)
+        with a:
+            st.subheader("Top Cost Drivers")
+            st.dataframe(subsystem_summary(costed), use_container_width=True, hide_index=True)
+        with b:
+            st.subheader("Quote Gap / Risk Watchlist")
+            st.dataframe(top_gap_table(costed), use_container_width=True, hide_index=True)
+        st.success("Start here: review the biggest subsystem, supplier gap and high-risk lines before quoting.")
+        return
+
+    if page == "BOM Factory":
+        file = st.file_uploader("Upload BOM CSV or Excel", type=["csv", "xlsx"])
+        if file is not None:
+            try:
+                st.session_state.bom_df = normalize_bom_file(file)
+                st.success("BOM uploaded and normalized.")
+                st.rerun()
+            except Exception as exc:
+                st.error(f"BOM import failed: {exc}")
+        edited = st.data_editor(st.session_state.bom_df, use_container_width=True, hide_index=True, num_rows="dynamic")
+        c1, c2 = st.columns(2)
+        if c1.button("Apply BOM edits", use_container_width=True):
+            st.session_state.bom_df = normalize_bom_dataframe(edited[REQUIRED_BOM_COLUMNS])
+            st.rerun()
+        if c2.button("Reset demo BOM", use_container_width=True):
+            st.session_state.bom_df = default_bom()
+            st.rerun()
+        return
+
+    if page == "Cost Engine":
+        st.dataframe(costed, use_container_width=True, hide_index=True)
+        return
+
+    if page == "Manufacturing Model":
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Labor Rate", f"€ {ass['labor_rate_eur_h']:,.0f}/h")
+        c2.metric("Machine Rate", f"€ {ass['machine_rate_eur_h']:,.0f}/h")
+        c3.metric("Process Hours", f"{costed['Process h'].sum():,.1f} h")
+        st.dataframe(costed[["Subsystem", "Part", "Type", "Process h", "Conversion Cost €"]], use_container_width=True, hide_index=True)
+        return
+
+    if page == "Scenario Lab":
+        scenarios = scenario_matrix(st.session_state.bom_df, ass)
+        st.dataframe(scenarios, use_container_width=True, hide_index=True)
+        st.line_chart(scenarios.set_index("Scenario")[["Total Cost €", "Sales Price €", "Margin Value €"]])
+        return
+
+    if page == "Supplier Radar":
+        st.dataframe(top_gap_table(costed), use_container_width=True, hide_index=True)
+        st.bar_chart(costed.set_index("Part")["Quote vs Should Gap €"].sort_values(ascending=False).head(10))
+        return
+
+    if page == "Quote Room":
+        text = quote_text(summary, ass)
+        st.text_area("Quote summary", text, height=180)
+        st.download_button("Download TXT", text, "cost_forge_quote_summary.txt", "text/plain", use_container_width=True)
+        st.download_button("Download CSV", costed.to_csv(index=False), "costed_bom.csv", "text/csv", use_container_width=True)
+        st.download_button("Download Excel", excel_bytes(costed, summary, ass), "costed_bom.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        st.download_button("Download PDF", pdf_bytes(summary, ass), "cost_forge_quote_summary.pdf", "application/pdf", use_container_width=True)
+        return
+
+    if page == "System Health":
+        st.dataframe(system_health(costed, summary), use_container_width=True, hide_index=True)
+        st.success(f"Running {APP_VERSION}. home.py is the active Cost Forge entrypoint.")
+
 
 ass = assumptions()
-costed, s = calculate_costs(st.session_state.bom_df, ass)
+costed, summary = calculate_costs(st.session_state.bom_df, ass)
 
-k1,k2,k3,k4,k5,k6 = st.columns(6)
-k1.metric('Project Cost', euro(s['total_cost']))
-k2.metric('Sales Price', euro(s['sales_price']))
-k3.metric('Margin Value', euro(s['margin_value']))
-k4.metric('Cost / kg', f"€ {s['cost_per_kg']:,.0f}")
-k5.metric('Quote Coverage', f"{s['quote_coverage_pct']:.0f}%")
-k6.metric('Risk Items', str(s['high_risk_items']))
+st.title("⚙️ Cost Forge Control Tower")
+st.caption(f"Manufacturing Cost Engineering Dashboard | {APP_VERSION}")
+render_kpi_strip(summary)
 
-left, main, right = st.columns([2.4,5.8,2.4], gap='large')
-
-with left:
-    st.header('Mission Map')
-    for name in ['Mission Control','BOM Lab','Cost Engine','Scenario Lab','Supplier Radar','Quote Room']:
-        if st.button(name, key=f'mode_{name}', use_container_width=True):
-            st.session_state.mode = name
-            st.rerun()
-
-with right:
-    st.header('Live Assumptions')
-    st.selectbox('Plant', ['Eindhoven','Hamburg','Gdansk','Prototype Shop'], key='plant')
-    st.selectbox('Maturity', ['Budget (±15%)','Proposal (±8%)','Production (±3%)'], key='maturity')
-    st.slider('Target margin %', 0, 60, int(default_assumptions()['target_margin_pct']), key='margin')
-    st.slider('Overhead %', 0, 60, int(default_assumptions()['overhead_pct']), key='overhead')
-    st.slider('Scrap %', 0, 25, int(default_assumptions()['scrap_pct']), key='scrap')
-    st.slider('Inflation %', -20, 80, int(default_assumptions()['inflation_pct']), key='inflation')
-    st.number_input('Labor €/h', min_value=0.0, value=float(default_assumptions()['labor_rate_eur_h']), key='labor')
-    st.number_input('Machine €/h', min_value=0.0, value=float(default_assumptions()['machine_rate_eur_h']), key='machine')
-
+nav, main, side = st.columns([2.2, 5.8, 2.4], gap="large")
+with nav:
+    render_navigation()
+with side:
+    render_assumptions()
 with main:
     ass = assumptions()
-    costed, s = calculate_costs(st.session_state.bom_df, ass)
-    st.header('Always-On Executive Cockpit')
-    c1,c2 = st.columns([1.25,1])
-    with c1:
-        st.bar_chart(costed.groupby('Subsystem')['Total Cost €'].sum().sort_values(ascending=False))
-    with c2:
-        st.dataframe(subsystem_summary(costed), use_container_width=True, hide_index=True)
+    costed, summary = calculate_costs(st.session_state.bom_df, ass)
+    render_dashboard(costed, summary)
+    render_workbench(costed, summary, ass)
 
-    st.divider()
-    st.header(st.session_state.mode)
-
-    if st.session_state.mode == 'BOM Lab':
-        file = st.file_uploader('Upload BOM CSV or Excel', type=['csv','xlsx'])
-        if file is not None:
-            st.session_state.bom_df = normalize_bom_file(file)
-            st.rerun()
-        edited = st.data_editor(st.session_state.bom_df, use_container_width=True, hide_index=True, num_rows='dynamic')
-        if st.button('Apply BOM edits', use_container_width=True):
-            st.session_state.bom_df = edited
-            st.rerun()
-    elif st.session_state.mode == 'Cost Engine':
-        st.dataframe(costed, use_container_width=True, hide_index=True)
-    elif st.session_state.mode == 'Scenario Lab':
-        scen = scenario_matrix(st.session_state.bom_df, ass)
-        st.dataframe(scen, use_container_width=True, hide_index=True)
-        st.line_chart(scen.set_index('Scenario')[['Total Cost €','Sales Price €']])
-    elif st.session_state.mode == 'Supplier Radar':
-        st.dataframe(costed[['Subsystem','Part','Supplier Quote €','Internal Should Cost €','Quote vs Should Gap €','Risk']], use_container_width=True, hide_index=True)
-    elif st.session_state.mode == 'Quote Room':
-        txt = quote_text(s, ass)
-        st.text_area('Quote summary', txt, height=180)
-        st.download_button('Download TXT', txt, 'quote.txt', 'text/plain', use_container_width=True)
-        st.download_button('Download CSV', costed.to_csv(index=False), 'costed_bom.csv', 'text/csv', use_container_width=True)
-        st.download_button('Download Excel', excel_bytes(costed, s, ass), 'costed_bom.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', use_container_width=True)
-    else:
-        st.success('Mission Control loaded from the new standalone home.py.')
-        st.dataframe(subsystem_summary(costed), use_container_width=True, hide_index=True)
-
-st.caption('Cost Forge Command Center — new standalone build')
+st.caption("Cost Forge Control Tower — production cost engineering cockpit")
