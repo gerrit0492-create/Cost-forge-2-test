@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 
 from cf_core import (
     REQUIRED_BOM_COLUMNS,
@@ -15,9 +16,27 @@ from cf_core import (
     system_health,
 )
 
-APP_VERSION = "4.2-control-tower"
+APP_VERSION = "5.0-marine-jet-selector"
 
-st.set_page_config(page_title="Cost Forge Control Tower", page_icon="⚙️", layout="wide")
+JET_DATABASE = pd.DataFrame([
+    [510,1700,1665,1400],
+    [570,2100,1490,1750],
+    [640,2700,1330,2400],
+    [720,3400,1180,2850],
+    [810,4300,1050,3600],
+    [900,5200,980,4300],
+    [1000,6200,920,5200],
+    [1100,7300,860,6100],
+    [1200,8600,800,7200],
+    [1300,9800,760,8500],
+    [1400,11200,710,9800],
+    [1500,12800,670,11200],
+    [1640,14500,620,12800],
+    [1720,15800,590,14200],
+    [1880,17500,540,16000],
+], columns=["Jet Size","Max Power kW","Max RPM","Mass kg"])
+
+st.set_page_config(page_title="Cost Forge Marine", page_icon="⚓", layout="wide")
 
 if "bom_df" not in st.session_state:
     st.session_state.bom_df = default_bom()
@@ -50,158 +69,161 @@ def go(page):
     st.session_state.page = page
 
 
-def top_gap_table(costed):
-    cols = ["Subsystem", "Part", "Supplier Quote €", "Internal Should Cost €", "Quote vs Should Gap €", "Risk"]
-    return costed[cols].sort_values("Quote vs Should Gap €", ascending=False).head(10)
-
-
-def render_kpi_strip(summary):
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
-    c1.metric("Total Project Cost", euro(summary["total_cost"]))
-    c2.metric("Sales Price", euro(summary["sales_price"]))
-    c3.metric("Margin Value", euro(summary["margin_value"]))
-    c4.metric("Cost / kg", f"€ {summary['cost_per_kg']:,.0f}")
-    c5.metric("Quote Coverage", f"{summary['quote_coverage_pct']:.0f}%")
-    c6.metric("High Risk Items", str(summary["high_risk_items"]))
-
-
 def render_navigation():
     pages = [
         "Control Tower",
+        "Marine Jet Selector",
         "BOM Factory",
         "Cost Engine",
-        "Manufacturing Model",
         "Scenario Lab",
         "Supplier Radar",
         "Quote Room",
         "System Health",
     ]
-    st.subheader("Cost Engineering Flow")
+
+    st.markdown("## ⚓ Marine Cost Suite")
+
     for page in pages:
-        if st.button(page, key=f"nav_{page}", use_container_width=True):
+        if st.button(page, use_container_width=True):
             go(page)
             st.rerun()
 
 
 def render_assumptions():
-    st.subheader("Live Assumptions")
+    st.subheader("Commercial Assumptions")
     st.selectbox("Plant", ["Eindhoven", "Hamburg", "Gdansk", "Prototype Shop"], key="plant")
-    st.selectbox("Estimate maturity", ["Budget (±15%)", "Proposal (±8%)", "Production (±3%)"], key="estimate_maturity")
-    st.slider("Target margin %", 0, 60, key="target_margin_pct")
+    st.slider("Target Margin %", 0, 60, key="target_margin_pct")
     st.slider("Overhead %", 0, 60, key="overhead_pct")
-    st.slider("Scrap factor %", 0, 25, key="scrap_pct")
-    st.slider("Material inflation %", -20, 80, key="inflation_pct")
-    st.number_input("Labor rate €/h", min_value=0.0, step=5.0, key="labor_rate_eur_h")
-    st.number_input("Machine rate €/h", min_value=0.0, step=5.0, key="machine_rate_eur_h")
+    st.number_input("Labor €/h", min_value=0.0, step=5.0, key="labor_rate_eur_h")
+    st.number_input("Machine €/h", min_value=0.0, step=5.0, key="machine_rate_eur_h")
 
 
 def render_dashboard(costed, summary):
-    st.header("Cost Engineer Dashboard")
-    left, right = st.columns([1.3, 1])
+    st.markdown("## Cost Engineering Command Center")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Project Cost", euro(summary["total_cost"]))
+    c2.metric("Sales Price", euro(summary["sales_price"]))
+    c3.metric("Margin", euro(summary["margin_value"]))
+    c4.metric("High Risk", summary["high_risk_items"])
+
+    left, right = st.columns([1.5,1])
+
     with left:
-        st.subheader("Cost Pareto by Subsystem")
-        st.bar_chart(costed.groupby("Subsystem")["Total Cost €"].sum().sort_values(ascending=False))
+        st.markdown("### Cost Breakdown")
+        st.bar_chart(costed.groupby("Subsystem")["Total Cost €"].sum())
+
     with right:
-        st.subheader("Decision Readiness")
+        st.markdown("### Health Status")
         st.dataframe(system_health(costed, summary), use_container_width=True, hide_index=True)
-        st.info(
-            f"BOM lines: {summary['bom_lines']} | Coverage: {summary['quote_coverage_pct']:.0f}% | "
-            f"Weight: {summary['total_weight']:,.0f} kg | Plant: {st.session_state.plant}"
-        )
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Material Cost", euro(summary["material_cost"]))
-    m2.metric("Conversion Cost", euro(summary["conversion_cost"]))
-    m3.metric("Overhead Cost", euro(summary["overhead_cost"]))
+
+
+def render_jet_selector():
+    st.markdown("## 🚤 Marine Waterjet Selector")
+
+    a,b,c = st.columns(3)
+
+    with a:
+        power = st.number_input("Installed Power per Jet (kW)", value=2500)
+    with b:
+        speed = st.number_input("Design Speed (knots)", value=35)
+    with c:
+        vessel_length = st.number_input("Waterline Length (m)", value=50)
+
+    correction_factor = round(1 + ((vessel_length - 20) / 100), 2)
+    corrected_power = power * correction_factor
+
+    recommended = JET_DATABASE[JET_DATABASE["Max Power kW"] >= corrected_power].head(1)
+
+    if not recommended.empty:
+        row = recommended.iloc[0]
+
+        m1,m2,m3,m4 = st.columns(4)
+        m1.metric("Recommended Jet", f"{int(row['Jet Size'])}")
+        m2.metric("Corrected Power", f"{corrected_power:,.0f} kW")
+        m3.metric("Max RPM", f"{int(row['Max RPM'])}")
+        m4.metric("Dry Mass", f"{int(row['Mass kg'])} kg")
+
+        st.success(f"Recommended jet size based on Wärtsilä-style sizing logic: {int(row['Jet Size'])}")
+
+    st.markdown("### Full Jet Selection Matrix")
+    st.dataframe(JET_DATABASE, use_container_width=True, hide_index=True)
+
+    st.markdown("### Power vs Jet Size")
+    st.line_chart(JET_DATABASE.set_index("Jet Size")[["Max Power kW"]])
 
 
 def render_workbench(costed, summary, ass):
     page = st.session_state.page
-    st.divider()
-    st.header(page)
 
     if page == "Control Tower":
-        a, b = st.columns(2)
-        with a:
-            st.subheader("Top Cost Drivers")
-            st.dataframe(subsystem_summary(costed), use_container_width=True, hide_index=True)
-        with b:
-            st.subheader("Quote Gap / Risk Watchlist")
-            st.dataframe(top_gap_table(costed), use_container_width=True, hide_index=True)
-        st.success("Start here: review the biggest subsystem, supplier gap and high-risk lines before quoting.")
+        st.markdown("### Top Cost Drivers")
+        st.dataframe(subsystem_summary(costed), use_container_width=True, hide_index=True)
+        return
+
+    if page == "Marine Jet Selector":
+        render_jet_selector()
         return
 
     if page == "BOM Factory":
         file = st.file_uploader("Upload BOM CSV or Excel", type=["csv", "xlsx"])
+
         if file is not None:
-            try:
-                st.session_state.bom_df = normalize_bom_file(file)
-                st.success("BOM uploaded and normalized.")
-                st.rerun()
-            except Exception as exc:
-                st.error(f"BOM import failed: {exc}")
+            st.session_state.bom_df = normalize_bom_file(file)
+            st.success("Marine BOM uploaded")
+            st.rerun()
+
         edited = st.data_editor(st.session_state.bom_df, use_container_width=True, hide_index=True, num_rows="dynamic")
-        c1, c2 = st.columns(2)
-        if c1.button("Apply BOM edits", use_container_width=True):
+
+        if st.button("Apply BOM"):
             st.session_state.bom_df = normalize_bom_dataframe(edited[REQUIRED_BOM_COLUMNS])
             st.rerun()
-        if c2.button("Reset demo BOM", use_container_width=True):
-            st.session_state.bom_df = default_bom()
-            st.rerun()
+
+        st.dataframe(pd.read_csv("data/marine_waterjet_bom_seed.csv"), use_container_width=True)
         return
 
     if page == "Cost Engine":
         st.dataframe(costed, use_container_width=True, hide_index=True)
         return
 
-    if page == "Manufacturing Model":
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Labor Rate", f"€ {ass['labor_rate_eur_h']:,.0f}/h")
-        c2.metric("Machine Rate", f"€ {ass['machine_rate_eur_h']:,.0f}/h")
-        c3.metric("Process Hours", f"{costed['Process h'].sum():,.1f} h")
-        st.dataframe(costed[["Subsystem", "Part", "Type", "Process h", "Conversion Cost €"]], use_container_width=True, hide_index=True)
-        return
-
     if page == "Scenario Lab":
         scenarios = scenario_matrix(st.session_state.bom_df, ass)
         st.dataframe(scenarios, use_container_width=True, hide_index=True)
-        st.line_chart(scenarios.set_index("Scenario")[["Total Cost €", "Sales Price €", "Margin Value €"]])
         return
 
     if page == "Supplier Radar":
-        st.dataframe(top_gap_table(costed), use_container_width=True, hide_index=True)
-        st.bar_chart(costed.set_index("Part")["Quote vs Should Gap €"].sort_values(ascending=False).head(10))
+        gap_cols = ["Subsystem", "Part", "Supplier Quote €", "Internal Should Cost €", "Quote vs Should Gap €"]
+        st.dataframe(costed[gap_cols], use_container_width=True, hide_index=True)
         return
 
     if page == "Quote Room":
         text = quote_text(summary, ass)
-        st.text_area("Quote summary", text, height=180)
-        st.download_button("Download TXT", text, "cost_forge_quote_summary.txt", "text/plain", use_container_width=True)
-        st.download_button("Download CSV", costed.to_csv(index=False), "costed_bom.csv", "text/csv", use_container_width=True)
-        st.download_button("Download Excel", excel_bytes(costed, summary, ass), "costed_bom.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-        st.download_button("Download PDF", pdf_bytes(summary, ass), "cost_forge_quote_summary.pdf", "application/pdf", use_container_width=True)
+        st.text_area("Quote", text, height=180)
+
+        st.download_button("Download Excel", excel_bytes(costed, summary, ass), "marine_cost_model.xlsx")
+        st.download_button("Download PDF", pdf_bytes(summary, ass), "marine_quote.pdf")
         return
 
     if page == "System Health":
         st.dataframe(system_health(costed, summary), use_container_width=True, hide_index=True)
-        st.success(f"Running {APP_VERSION}. home.py is the active Cost Forge entrypoint.")
+        st.success(APP_VERSION)
 
 
 ass = assumptions()
 costed, summary = calculate_costs(st.session_state.bom_df, ass)
 
-st.title("⚙️ Cost Forge Control Tower")
-st.caption(f"Manufacturing Cost Engineering Dashboard | {APP_VERSION}")
-render_kpi_strip(summary)
+st.title("⚓ Cost Forge Marine")
+st.caption("Advanced Marine Waterjet Cost Engineering Platform")
 
-nav, main, side = st.columns([2.2, 5.8, 2.4], gap="large")
+render_dashboard(costed, summary)
+
+nav, main, side = st.columns([1.5,5,2])
+
 with nav:
     render_navigation()
-with side:
-    render_assumptions()
+
 with main:
-    ass = assumptions()
-    costed, summary = calculate_costs(st.session_state.bom_df, ass)
-    render_dashboard(costed, summary)
     render_workbench(costed, summary, ass)
 
-st.caption("Cost Forge Control Tower — production cost engineering cockpit")
+with side:
+    render_assumptions()
