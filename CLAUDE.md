@@ -6,6 +6,7 @@ project's conventions unless this repo's code clearly differs.
 - For changes spanning several files, make all edits in one commit
 - Match the style of the surrounding code — don't introduce new patterns
 - Don't refactor or rename things that weren't part of the requested change
+- Address the user as **Gerrit** in every suggestion and question
 - **Always Excel, never CSV** — all data exports use `.xlsx` via `df_to_excel_bytes()` or `openpyxl`
 - **Keep Excel in sync** — when a page gains a new feature or data view, update the corresponding Excel report in the same commit so the download always matches the UI
 
