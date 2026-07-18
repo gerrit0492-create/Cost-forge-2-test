@@ -1,0 +1,23 @@
+source,commodity,unit,price,currency,fx_to_eur,effective_date,url,notes
+outokumpu,Staal,Plaat,1.25,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Staal,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,RVS,Plaat,2.85,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,RVS,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,1.4462,Plaat,3.31,EUR,1,Mon Sep 08 2025 16:16:56 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+outokumpu,RVS Super Duplex,Plaat,2.85,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:32 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:33 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Gietstuk,2.5,EUR,1,Mon Sep 08 2025 15:54:34 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:35 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+LME,Aluminium,Plaat,2.5,EUR,1,Mon Sep 08 2025 15:54:36 GMT+0200 (Central European Summer Time),,Automatisch bijgewerkt
+outokumpu,Titanium,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Koper,Plaat,2.3,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Koper,Gietstuk,2.3,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+MCB,Messing,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Gietijzer,Gietstuk,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+outokumpu,Sfero Gietijzer,Gietstuk,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Nylon,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Delrin,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Teflon,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Polyethyleen,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
+Fallback,Kunststof,Plaat,5,EUR,1,Mon Sep 08 2025 06:51:54 GMT+0200 (Central European Summer Time),,Fallback prijs
